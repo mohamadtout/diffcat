@@ -1,0 +1,28 @@
+# Features → code map
+
+| Feature | What the user sees | Code |
+|---|---|---|
+| Sign in (optional) | Signed out: browse any public repo by `owner/name` or github.com URL, with a Recent list (60 GitHub requests/hour). Signing in (paste a PAT, validated against `/user`, stored in the keystore) adds your repo list, private repos and 5,000 requests/hour | `features/auth/`, `features/repos/repos_screen.dart` |
+| Repo list | Filter, pin to top, "open by name" (also accepts a github.com URL; inaccessible repos explain why), bell icon on watched repos | `features/repos/repos_screen.dart` |
+| Repo home | Branch/tag picker, tabs: Commits · Files · PRs · Console; bell = watch; Δ icon = changed-since | `features/repo/` |
+| Commit history | Infinite scroll, pull to refresh, merge marker; detail beside the list on tablets | `features/commits/commits_tab.dart`, `commit_list_view.dart` |
+| Commit review | Message, author, parents (tappable), stats, "Changed since this", "Browse at this commit", then the full diff | `features/commits/commit_screen.dart` + `features/diff/` |
+| Diff viewer | Lazy rendering, current-file indicator and jump list, collapse/expand, wrap toggle, text-size slider (live preview, remembered), long-press to copy a line, per-file menu (view file, history, copy path/patch) | `features/diff/diff_view.dart` |
+| File tree | Compacted single-child folders (`src/main/java`), file sizes, fuzzy path search, image preview | `features/files/file_tree_tab.dart`, `tree_builder.dart` |
+| File viewer | Line numbers, wrap/no-wrap, selection, **History** button | `features/files/file_view_screen.dart` |
+| **File history** | Every commit touching the file. Tapping one opens that commit scrolled to and highlighting the file | `features/files/file_history_screen.dart` |
+| **Changed since commit X** | Dropdown of the last 100 commits plus tags (or a typed SHA/tag), head branch dropdown, file list with A/M/D/R and +/−, path filter, "Review diffs" | `features/compare/changed_since_screen.dart` |
+| Compare | Range diff with a collapsible commit list; target of multi-commit notifications | `features/compare/compare_screen.dart` |
+| Pull requests | Open/closed/all, PR overview, files diff, commits | `features/pulls/` |
+| API console | Git-style commands against the API; tappable output; up-arrow history; custom API buttons | `features/console/` |
+| SSH terminal | Real shell on your own machine, lazygit-friendly key toolbar, custom SSH buttons, text-size slider, TOFU host keys, on-device Ed25519 key generation, **Install on host…** (one password login adds the device key to `authorized_keys`, like `ssh-copy-id`) | `features/terminal/` |
+| Custom buttons | Create/edit/reorder/delete API and SSH buttons; defaults include lazygit macros | `features/commands/` |
+| Notifications | Bell on a repo = watch it; the phone checks GitHub every ~15 min (+ on app open) and notifies about new commits and PR opens/merges; tapping deep-links to the commit, compare view or PR | `features/notifications/` |
+| Settings | Account, theme, Downloads (offline storage), notification status, Check now, include-own-activity toggle, watched repos | `features/settings/` |
+| **Offline downloads** | Download button on a repo (per branch): last 30/100/300 commits with diffs (default), open PRs, optionally all files (one archive). Saved repos open instantly and offline; the title says "saved 2h ago" and the button becomes **Update**. Settings → Downloads shows sizes per repo, branch, commit and PR, with delete at each level | `features/offline/` |
+| **Offline mode** | Downloaded repos always appear in the repo list (signed in: merged with yours; signed out: a "Downloaded" section), even with no internet. Their **Offline** chip opens them in offline mode: only downloaded data, never the network ("Not downloaded" otherwise). Tapping the row opens online. Inside a downloaded repo the cloud button and the offline banner's **Go online** switch modes; the choice is remembered per repo | `features/offline/offline_chip.dart`, `features/repos/repos_screen.dart`, `features/repo/repo_screen.dart` |
+| **Full-width detail** (tablets) | The handle between list and detail hides the list so a diff or file uses the whole width; remembered across launches | `core/layout/split_view.dart` |
+
+## Notification behaviour
+
+See [notifications.md](notifications.md) for events, deep links, filtering and platform caveats.

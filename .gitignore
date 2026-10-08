@@ -1,0 +1,21 @@
+# OS / editors
+.DS_Store
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Secrets that must never be committed
+*.keystore
+*.jks
+key.properties
+
+# Never commit tokens, env files or private notes
+*.token
+*.pem
+.env
+.env.*
+*.local.md
+
+# Store images: large and regenerated with `make store-frames` (see store/README.md)
+store/screenshots/
