@@ -13,6 +13,7 @@ Releases are tagged `vX.Y.Z` on `main`.
 - Blame in the file viewer (signed in): who last changed each line, tap to open the commit.
 - Sign in with GitHub (OAuth device flow) as an alternative to pasting a token.
 - Review pull requests: line comments (pending drafts kept on the device, or posted at once), replies to threads, and submitting Comment / Approve / Request changes.
+- Inbox tab: pull requests waiting for your review, yours, mentions and assignments, with optional notifications for new review requests.
 - Security and performance: secrets and offline copies kept out of backups, background checks that cost no rate
   limit when nothing changed, heavy work moved off the UI thread.
 

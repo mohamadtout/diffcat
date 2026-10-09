@@ -25,7 +25,7 @@ Future<void> main() async {
   final notifications = await LocalNotifications.init();
   final offline = await _openOfflineStore();
   // Keep the periodic background check registered while anything is watched.
-  await BackgroundPolling.sync(enabled: (prefs.getStringList(StoreKeys.watchedRepos) ?? const []).isNotEmpty);
+  await BackgroundPolling.sync(enabled: backgroundChecksWanted(prefs));
 
   runApp(
     ProviderScope(

@@ -81,6 +81,8 @@ void main() {
     }
     await tester.tap(find.text('Terminal').last);
     await shot('10_terminal');
+    await tester.tap(find.text('Inbox').last);
+    await shot('11_inbox');
 
     expect(env.github.unknown, isEmpty, reason: 'unexpected GitHub calls: ${env.github.unknown}');
     expect(tester.takeException(), isNull);

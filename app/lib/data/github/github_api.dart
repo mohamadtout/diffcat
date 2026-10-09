@@ -119,6 +119,19 @@ query($owner: String!, $name: String!, $ref: String!, $path: String!) {
     return (res['data'] as Map<String, dynamic>?) ?? const {};
   }
 
+  /// Open pull requests across GitHub matching search [qualifiers]
+  /// (`review-requested:@me`…), most recently updated first. Needs a token
+  /// for `@me`.
+  Future<GhSearchResult<GhSearchPull>> searchPulls(String qualifiers, {int perPage = 50}) async {
+    final j = await client.getJson(
+      '/search/issues',
+      query: {'q': 'is:pr is:open archived:false $qualifiers', 'sort': 'updated', 'order': 'desc', 'per_page': perPage},
+    ) as Map<String, dynamic>;
+    return GhSearchResult([
+      for (final i in j['items'] as List<dynamic>) GhSearchPull.fromJson(i as Map<String, dynamic>),
+    ], total: (j['total_count'] as int?) ?? 0);
+  }
+
   Future<GhPage<GhPull>> pulls(RepoRef r, {String state = 'open', int page = 1}) => client.getPage(
     '${_r(r)}/pulls',
     query: {'state': state, 'page': page, 'per_page': 30, 'sort': 'updated', 'direction': 'desc'},

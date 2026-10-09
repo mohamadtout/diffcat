@@ -12,6 +12,7 @@ import '../../features/compare/compare_screen.dart';
 import '../../features/diff/code_view_settings_screen.dart';
 import '../../features/files/file_history_screen.dart';
 import '../../features/files/file_view_screen.dart';
+import '../../features/inbox/inbox_screen.dart';
 import '../../features/notifications/local_notifications.dart';
 import '../../features/offline/downloads_screen.dart';
 import '../../features/pulls/pull_screen.dart';
@@ -116,6 +117,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ],
               ),
             ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: Routes.inbox, builder: (_, _) => const InboxScreen())],
           ),
           StatefulShellBranch(
             routes: [

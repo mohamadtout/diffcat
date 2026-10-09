@@ -16,6 +16,12 @@ const _taskName = 'git-reviewer-poll';
 /// (Doze, battery saver), which is why notifications can be late.
 const pollInterval = Duration(minutes: 15);
 
+/// Whether background checks have anything to do: watched repos, or review
+/// request notifications while signed in.
+bool backgroundChecksWanted(SharedPreferences prefs) =>
+    (prefs.getStringList(StoreKeys.watchedRepos) ?? const []).isNotEmpty ||
+    ((prefs.getBool(StoreKeys.notifyReviewRequests) ?? false) && prefs.getString(StoreKeys.viewerLogin) != null);
+
 /// Runs the poller and posts a notification per event. Shared by the
 /// background task and the in-app "Check now".
 Future<PollResult> pollAndNotify({

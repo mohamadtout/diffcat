@@ -43,6 +43,7 @@ const _r = DemoGitHub.repo;
 final _sha = DemoGitHub.sha(1);
 final _screens = <String>[
   Routes.repos,
+  Routes.inbox,
   Routes.repo(_r),
   Routes.repo(_r, tab: 'files'),
   Routes.repo(_r, tab: 'pulls'),
@@ -110,7 +111,7 @@ void main() {
           await tester.pumpWidget(env.app());
           await _settle(tester);
           final router = ProviderScope.containerOf(tester.element(find.byType(MaterialApp))).read(routerProvider);
-          for (final s in signedIn ? _screens : [Routes.repos, Routes.settings, Routes.setup]) {
+          for (final s in signedIn ? _screens : [Routes.repos, Routes.inbox, Routes.settings, Routes.setup]) {
             screen = s;
             router.go(s);
             await _settle(tester);

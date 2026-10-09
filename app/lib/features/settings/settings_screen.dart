@@ -175,6 +175,19 @@ class _NotificationsSection extends ConsumerWidget {
               subtitle: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
             ),
         SwitchListTile(
+          secondary: const Icon(Icons.rate_review_outlined),
+          title: const Text('Review requests'),
+          subtitle: Text(
+            ref.watch(isSignedInProvider)
+                ? 'Notify when someone asks for your review, on any repo'
+                : 'Sign in to be notified when someone asks for your review',
+          ),
+          value: ref.watch(notifyReviewRequestsProvider) && ref.watch(isSignedInProvider),
+          onChanged: ref.watch(isSignedInProvider)
+              ? (v) => ref.read(notifyReviewRequestsProvider.notifier).set(v)
+              : null,
+        ),
+        SwitchListTile(
           secondary: const Icon(Icons.person_outline),
           title: const Text('Notify about my own activity'),
           subtitle: const Text('Your own commits and PRs (merges always notify)'),

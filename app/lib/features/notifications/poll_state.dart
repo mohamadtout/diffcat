@@ -157,3 +157,19 @@ GitEvent? pushEvent(
 }
 
 String _truncate(String s, [int max = 120]) => s.length > max ? '${s.substring(0, max - 1)}…' : s;
+
+/// Pull requests newly waiting for the user's review: in [now] but not in
+/// [seen] (keys from [GhSearchPull.key]). [seen] null means never checked:
+/// that first check only records a baseline.
+List<GitEvent> reviewRequestEvents(Set<String>? seen, List<GhSearchPull> now) => seen == null
+    ? const []
+    : [
+        for (final p in now)
+          if (!seen.contains(p.key))
+            GitEvent(
+              title: 'Review requested: ${p.repo.name} #${p.number}',
+              body: '${p.title} (by ${p.author.login})',
+              route: Routes.pull(p.repo, p.number),
+              tag: 'review:${p.key}',
+            ),
+      ];

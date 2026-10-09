@@ -350,6 +350,24 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
 }
 ''';
 
+  Map<String, dynamic> _searchPull(
+    int n,
+    String title,
+    int author,
+    int hours, {
+    String repo = repoName,
+    bool draft = false,
+  }) => {
+    'number': n,
+    'title': title,
+    'repository_url': 'https://api.github.com/repos/$owner/$repo',
+    'user': {'login': _people[author].$1, 'avatar_url': null},
+    'updated_at': _ago(Duration(hours: hours)),
+    'draft': draft,
+    'comments': n == openPullNumber ? 2 : 0,
+    'pull_request': {'url': 'https://api.github.com/repos/$owner/$repo/pulls/$n'},
+  };
+
   /// A thread on the open PR's retry.go, on the line declaring `max`.
   List<Map<String, dynamic>> get _reviewComments => [
     {
@@ -430,6 +448,18 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
     const base = '/repos/$owner/$repoName';
     if (path == '/user') return {'login': owner, 'name': 'Demo Developer', 'avatar_url': null};
     if (path == '/user/repos') return [for (final r in _repos) _repo(r)];
+    if (path == '/search/issues') {
+      final q = '${query['q']}';
+      final items = [
+        if (q.contains('review-requested:@me')) ...[
+          _searchPull(openPullNumber, openPullTitle, 0, 1),
+          _searchPull(7, 'Retry dead-letter queue on startup', 3, 6, repo: 'mobile-app'),
+        ],
+        if (q.contains('author:@me'))
+          _searchPull(41, 'Round zero-decimal currencies to whole units', 1, 50, draft: true),
+      ];
+      return {'total_count': items.length, 'incomplete_results': false, 'items': items};
+    }
     for (final r in _repos) {
       if (path.toLowerCase() == '/repos/$owner/${r.$1}'.toLowerCase()) return _repo(r);
     }
