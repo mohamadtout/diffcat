@@ -76,37 +76,25 @@ This is for running real git and lazygit from the phone on a machine you own. No
 
 ## 5. Android release signing *(optional)*
 
-Debug builds install fine with `flutter run`. To build a standalone release APK:
+Debug builds install fine with `flutter run`. Release builds (`make apk`, or `flutter build appbundle` for Google Play)
+are signed with your own key. The Gradle side is already wired up in `app/android/app/build.gradle.kts`: it reads
+`app/android/key.properties` when that file exists, and otherwise signs with the debug key, so CI and forks still build.
 
-1. Create a keystore (keep it and the passwords safe and **outside git**):
+1. Create a keystore **outside the repo** and keep it and its passwords backed up. Losing it means you can't update the
+   app on Google Play (unless you use Play App Signing with a separate upload key, which is recommended):
    ```bash
-   keytool -genkey -v -keystore ~/git-reviewer-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias git-reviewer
+   keytool -genkey -v -keystore ~/diffcat-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias diffcat
    ```
-2. Create `app/android/key.properties` (git-ignored):
+2. Create `app/android/key.properties`. It is git-ignored; never commit it or the `.jks`:
    ```properties
    storePassword=…
    keyPassword=…
-   keyAlias=git-reviewer
-   storeFile=/Users/<you>/git-reviewer-release.jks
+   keyAlias=diffcat
+   storeFile=/Users/<you>/diffcat-release.jks
    ```
-3. In `app/android/app/build.gradle.kts`, replace `release { signingConfig = signingConfigs.getByName("debug") }` with:
-   ```kotlin
-   // top of file, after plugins {}
-   val keystoreProperties = java.util.Properties().apply {
-       val f = rootProject.file("key.properties"); if (f.exists()) load(f.inputStream())
-   }
-   // inside android { }
-   signingConfigs {
-       create("release") {
-           keyAlias = keystoreProperties["keyAlias"] as String?
-           keyPassword = keystoreProperties["keyPassword"] as String?
-           storeFile = (keystoreProperties["storeFile"] as String?)?.let { file(it) }
-           storePassword = keystoreProperties["storePassword"] as String?
-       }
-   }
-   buildTypes { release { signingConfig = signingConfigs.getByName("release") } }
-   ```
-4. Run `make apk` and install `app/build/app/outputs/flutter-apk/app-release.apk`.
+3. Run `make apk` and install `app/build/app/outputs/flutter-apk/app-release.apk`. To check which key signed it:
+   `$ANDROID_HOME/build-tools/<version>/apksigner verify --print-certs <apk>`. It should show your name, not
+   `CN=Android Debug`.
 
 ## 6. iOS / iPadOS
 

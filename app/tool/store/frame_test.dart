@@ -6,13 +6,20 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../test/support/fonts.dart';
+import 'rgb_png.dart';
 
-/// Turns raw store screenshots into captioned store images, plus the Play
-/// feature graphic and 512 px icon: `make store-frames`.
+/// Turns raw store screenshots into captioned store images, plus the App
+/// Store header and search-results artwork and the Play feature graphic and
+/// 512 px icon: `make store-frames`.
 ///
 /// Reads `app/build/store/raw/<device>/` (from `make store-screenshots`),
-/// writes `store/screenshots/<store>/<device>/` at the repo root. Captions
-/// are listed here and in store/README.md; keep them in sync.
+/// writes `store/screenshots/<store>/<slot>/` at the repo root, one folder per
+/// upload slot, named like the slot in the store's console. Captions are
+/// listed here and in store/README.md; keep them in sync.
+///
+/// Images are written as 24-bit PNGs (no alpha channel): App Store Connect
+/// rejects images with one, and so does Play for screenshots and the feature
+/// graphic. Only Play's 512 px icon keeps its alpha channel, as Play asks.
 const _brandTop = Color(0xFF8957E5);
 const _brandMid = Color(0xFF4C2F9E);
 const _brandBottom = Color(0xFF1B1446);
@@ -23,7 +30,7 @@ typedef _Shot = (String raw, String title, String subtitle);
 
 const _phone = <_Shot>[
   ('01_repos', 'All your repos,\nin your pocket', 'Pin favorites. Open any public repo.'),
-  ('03_diff', 'Diffs made for\nsmall screens', 'Wrapped lines, line numbers, jump between files.'),
+  ('03_diff', 'Diffs made for\nsmall screens', 'Wrapped lines and line numbers.'),
   ('04_pull', 'Review pull requests\nanywhere', 'Overview, changed files and commits.'),
   ('07_offline_mode', 'Download once,\nread offline', 'For flights, trains and slow networks.'),
   ('09_terminal', 'Your own machine,\nover SSH', 'Run git, tests and lazygit in a real terminal.'),
@@ -45,7 +52,11 @@ const _tablet = <_Shot>[
 
 /// (raw device folder, output folder, canvas size in px, shots)
 const _targets = <(String, String, Size, List<_Shot>)>[
-  ('iphone-6.9', 'app-store/iphone-6.9', Size(1320, 2868), _phone),
+  // App Store Connect requires "iPhone with Dynamic Island (medium display)"
+  // (iPhone 17 Pro: 1206 × 2622) and, for iPad apps, "iPad 13-inch display".
+  // The large display (iPhone 17 Pro Max) is optional.
+  ('iphone-6.3', 'app-store/iphone-dynamic-island-medium', Size(1206, 2622), _phone),
+  ('iphone-6.9', 'app-store/iphone-dynamic-island-large', Size(1320, 2868), _phone),
   ('ipad-13', 'app-store/ipad-13', Size(2064, 2752), _tablet),
   ('android-phone', 'google-play/phone', Size(1080, 1920), _phone),
   // Android tablets are shot in landscape: in portrait they're narrower than
@@ -100,6 +111,40 @@ void main() {
       const Size(512, 512),
       RawImage(image: icon, fit: BoxFit.cover, filterQuality: FilterQuality.high),
       '$_outRoot/google-play/icon-512.png',
+      alpha: true, // Play asks for a 32-bit PNG icon
+    );
+  });
+
+  // Product page header (21:9) and search results (3:2) artwork. App Store
+  // Connect lists them under "Header and Search Results". They are optional
+  // and show on iOS/iPadOS 27 and later. Apple's guidance: one clear idea,
+  // focal artwork centered (edges may be cropped), short text.
+  testWidgets('App Store header and search results', (tester) async {
+    final raw = Directory('$_rawRoot/iphone-6.3').existsSync() ? 'iphone-6.3' : 'iphone-6.9';
+    Future<ui.Image?> load(String name) async {
+      final f = File('$_rawRoot/$raw/$name.png');
+      return f.existsSync() ? tester.runAsync(() => _decode(f)) : null;
+    }
+
+    final icon = (await tester.runAsync(() => _decode(File('$_repoRoot/app/assets/icon/icon.png'))))!;
+    final diff = await load('03_diff');
+    final pull = await load('04_pull');
+    final repos = await load('01_repos');
+    if (diff == null || pull == null || repos == null) {
+      markTestSkipped('no raw iPhone screenshots; run make store-screenshots first');
+      return;
+    }
+    await _render(
+      tester,
+      const Size(3840, 1646),
+      _Header(icon: icon, left: diff, right: pull),
+      '$_outRoot/app-store/header-and-search/product-page-header.png',
+    );
+    await _render(
+      tester,
+      const Size(3840, 2560),
+      _SearchResult(shots: [repos, diff, pull]),
+      '$_outRoot/app-store/header-and-search/search-results.png',
     );
   });
 }
@@ -111,7 +156,7 @@ Future<ui.Image> _decode(File f) async {
 
 final _boundary = GlobalKey();
 
-Future<void> _render(WidgetTester tester, Size size, Widget child, String path) async {
+Future<void> _render(WidgetTester tester, Size size, Widget child, String path, {bool alpha = false}) async {
   tester.view
     ..physicalSize = size
     ..devicePixelRatio = 1;
@@ -129,10 +174,15 @@ Future<void> _render(WidgetTester tester, Size size, Widget child, String path) 
   await tester.runAsync(() async {
     final boundary = _boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
     final image = await boundary.toImage();
-    final png = await image.toByteData(format: ui.ImageByteFormat.png);
     final out = File(path);
     await out.parent.create(recursive: true);
-    await out.writeAsBytes(png!.buffer.asUint8List());
+    if (alpha) {
+      final png = await image.toByteData(format: ui.ImageByteFormat.png);
+      await out.writeAsBytes(png!.buffer.asUint8List());
+    } else {
+      final rgba = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      await out.writeAsBytes(encodeRgbPng(image.width, image.height, rgba!.buffer.asUint8List()));
+    }
   });
   debugPrint('wrote $path (${size.width.toInt()}×${size.height.toInt()})');
 }
@@ -185,32 +235,8 @@ class _Frame extends StatelessWidget {
     ],
   );
 
-  Widget _device(double width, {required double bezel, required double radius}) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: _bezel,
-      borderRadius: BorderRadius.circular(radius),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.45),
-          blurRadius: width * 0.06,
-          offset: Offset(0, width * 0.025),
-        ),
-      ],
-    ),
-    child: Padding(
-      padding: EdgeInsets.all(bezel),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius - bezel),
-        child: SizedBox(
-          width: width - 2 * bezel,
-          child: AspectRatio(
-            aspectRatio: shot.width / shot.height,
-            child: RawImage(image: shot, fit: BoxFit.cover, filterQuality: FilterQuality.high),
-          ),
-        ),
-      ),
-    ),
-  );
+  Widget _device(double width, {required double bezel, required double radius}) =>
+      _deviceFrame(shot, width, bezel: bezel, radius: radius);
 
   /// Landscape tablets: caption on the left, the device on the right.
   Widget _landscape(BoxConstraints c) {
@@ -319,4 +345,151 @@ class _FeatureGraphic extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// [shot] in a simple dark device bezel with a soft shadow, [width] wide.
+Widget _deviceFrame(ui.Image shot, double width, {required double bezel, required double radius}) => DecoratedBox(
+  decoration: BoxDecoration(
+    color: _bezel,
+    borderRadius: BorderRadius.circular(radius),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.45),
+        blurRadius: width * 0.06,
+        offset: Offset(0, width * 0.025),
+      ),
+    ],
+  ),
+  child: Padding(
+    padding: EdgeInsets.all(bezel),
+    child: ClipRRect(
+      borderRadius: BorderRadius.circular(radius - bezel),
+      child: SizedBox(
+        width: width - 2 * bezel,
+        child: AspectRatio(
+          aspectRatio: shot.width / shot.height,
+          child: RawImage(image: shot, fit: BoxFit.cover, filterQuality: FilterQuality.high),
+        ),
+      ),
+    ),
+  ),
+);
+
+/// A phone screenshot in a bezel, sized for the header and search artwork.
+Widget _phoneFrame(ui.Image shot, double width) => _deviceFrame(shot, width, bezel: width * 0.03, radius: width * 0.12);
+
+/// Product page header, 3840 × 1646 (21:9): icon, name and a short phrase in
+/// the center, where Apple says focal artwork belongs; two phones at the
+/// sides, which can be cropped on narrow screens without losing anything.
+class _Header extends StatelessWidget {
+  const _Header({required this.icon, required this.left, required this.right});
+
+  final ui.Image icon;
+  final ui.Image left;
+  final ui.Image right;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(gradient: _gradient),
+    child: Stack(
+      clipBehavior: Clip.hardEdge,
+      children: [
+        Positioned(
+          left: 3840 * 0.14 - 330,
+          top: 240,
+          child: Transform.rotate(angle: -0.07, child: _phoneFrame(left, 660)),
+        ),
+        Positioned(
+          left: 3840 * 0.86 - 330,
+          top: 240,
+          child: Transform.rotate(angle: 0.07, child: _phoneFrame(right, 660)),
+        ),
+        Center(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(100),
+                child: SizedBox.square(
+                  dimension: 440,
+                  child: RawImage(image: icon, fit: BoxFit.cover, filterQuality: FilterQuality.high),
+                ),
+              ),
+              const SizedBox(width: 90),
+              const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Diffcat',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 240,
+                      height: 1,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 36),
+                  Text(
+                    'Code review in your pocket',
+                    style: TextStyle(fontFamily: 'Roboto', fontSize: 100, color: _lavender),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+/// Search results artwork, 3840 × 2560 (3:2): what the app does in a few
+/// words, then the interface itself, as Apple's guidance suggests.
+class _SearchResult extends StatelessWidget {
+  const _SearchResult({required this.shots});
+
+  final List<ui.Image> shots;
+
+  @override
+  Widget build(BuildContext context) {
+    const phoneW = 940.0, gap = 170.0;
+    const start = (3840 - 3 * phoneW - 2 * gap) / 2;
+    return DecoratedBox(
+      decoration: const BoxDecoration(gradient: _gradient),
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 150,
+            child: Column(
+              children: [
+                Text(
+                  'Review GitHub code on the go',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Roboto',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 190,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 30),
+                Text(
+                  'Diffs, pull requests and offline repos',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'Roboto', fontSize: 96, color: _lavender),
+                ),
+              ],
+            ),
+          ),
+          for (final (i, shot) in shots.take(3).indexed)
+            Positioned(left: start + i * (phoneW + gap), top: i == 1 ? 640 : 760, child: _phoneFrame(shot, phoneW)),
+        ],
+      ),
+    );
+  }
 }

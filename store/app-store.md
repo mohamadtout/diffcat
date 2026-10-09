@@ -88,12 +88,41 @@ First release. Read diffs, review pull requests, browse code, download repos for
 
 ## Screenshots
 
-| Display | Size | Files |
-|---|---|---|
-| iPhone 6.9" (required) | 1320 × 2868 portrait | `store/screenshots/app-store/iphone-6.9/` (8) |
-| iPad 13" (required, the app runs on iPad) | 2064 × 2752 portrait | `store/screenshots/app-store/ipad-13/` (8) |
+*Product Page Information → App Previews and Screenshots.* Folder names match the slots in App Store Connect
+(spec: [Screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications)).
 
-Smaller iPhones and iPads are scaled from these. Upload in file-name order: the first three show in search results.
+| Slot in App Store Connect | Status | Size (portrait) | Files |
+|---|---|---|---|
+| iPhone with Dynamic Island (medium display) | **Required** | 1206 × 2622 (iPhone 17 Pro) | `store/screenshots/app-store/iphone-dynamic-island-medium/` (8) |
+| iPhone with Dynamic Island (large display) | Optional (else scaled from older sizes) | 1320 × 2868 (iPhone 17 Pro Max) | `store/screenshots/app-store/iphone-dynamic-island-large/` (8) |
+| iPad 13" display | **Required** (the app runs on iPad) | 2064 × 2752 | `store/screenshots/app-store/ipad-13/` (8) |
+| iPhone Duo (inner and outer) | Optional now; required from April 2027 for apps built with the iOS 27.1 SDK | inner 2007 × 2853, outer 1398 × 2034 | none yet, see below |
+
+- Each slot only accepts its own sizes, so a 1320 × 2868 image is rejected in the medium slot.
+- Smaller iPhones and iPads are scaled from these. Upload in file-name order: up to three show in search results.
+- Every image is a 24-bit PNG with no alpha channel, as Apple requires.
+- Each image shows the app in use with a short caption. That follows guideline 2.3.3: most screenshots must show the
+  app in use, and marketing text must not crowd out the app.
+
+**iPhone Duo:** leave it empty for now. Diffcat is built with the iOS 26 SDK, so on an iPhone Duo it runs in a
+375 × 667 pt compatibility window. Screenshots of a full-screen Duo layout would misrepresent it (guideline 2.3.3).
+Duo support and its screenshots need the iOS 27.1 SDK and the iPhone Duo simulator (Xcode 27.1), which run only on
+Apple silicon Macs. Before April 2027, either use an Apple silicon Mac (or a hosted macOS runner) to build with the new
+SDK and run `make store-screenshots` on the Duo simulator, or keep building with the older SDK for as long as App Store
+Connect accepts it.
+
+## Header and search results (optional, iOS 27 and later)
+
+*Product Page Information → Header and Search Results.* New in October 2026, shown on iOS and iPadOS 27 and later,
+alongside the screenshots (spec: [Creative assets specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/creative-assets-specifications)).
+
+| Asset | Size | File | Design |
+|---|---|---|---|
+| Product page header | 3840 × 1646 (21:9) | `store/screenshots/app-store/header-and-search/product-page-header.png` | Icon, name and "Code review in your pocket" in the center, where Apple says focal artwork belongs. The phones at the sides can be cropped without losing anything. |
+| Search results | 3840 × 2560 (3:2) | `store/screenshots/app-store/header-and-search/search-results.png` | States what the app does ("Review GitHub code on the go"), then shows the interface, as Apple's guidance suggests. |
+
+Check both with the **Preview** button in App Store Connect before submitting. Apple publishes no exact safe areas, so
+confirm nothing important is cut off on iPhone and iPad.
 
 ## App Privacy ("nutrition label")
 
@@ -144,10 +173,17 @@ Contact info: your name, phone and email (not shown publicly).
 ## Before you submit
 
 - [ ] Apple Developer Program membership (paid, yearly).
+- [ ] Register the bundle ID as an **explicit App ID**. App Store Connect's *New App* dialog only lists explicit App IDs,
+  and device builds with automatic signing may use the team's wildcard (`*`) profile instead. Running
+  `cd app && flutter build ipa --release` once registers it, together with an App Store provisioning profile. Or add it
+  by hand: developer.apple.com → Certificates, Identifiers & Profiles → Identifiers → **+** → App IDs → App →
+  Explicit, `com.mohamadtout.gitReviewer`, no extra capabilities. It can take a few minutes to show up.
 - [ ] App Store Connect → *Apps* → **+** → New App with the bundle ID above, which must match `PRODUCT_BUNDLE_IDENTIFIER`.
+  The app belongs to whichever team you create it in, and that team's name is shown as the seller.
 - [ ] Your Team ID in `app/ios/Flutter/Signing.xcconfig` (git-ignored, see SETUP.md § 6).
 - [ ] Build with Xcode 26 or later. Apple has required the iOS 26 SDK for uploads since April 28, 2026; Xcode 26.3 is installed.
 - [ ] Set `version:` in `app/pubspec.yaml` (`1.0.0+1`). Raise the build number (`+N`) on every upload.
-- [ ] `cd app && flutter build ipa --release`, then upload `build/ios/ipa/*.ipa` with Transporter or Xcode → Organizer.
+- [ ] `cd app && flutter build ipa --release`, then upload `build/ios/ipa/Diffcat.ipa` with Transporter, or open
+  `build/ios/archive/Runner.xcarchive` (Xcode → Organizer) → *Distribute App* → *App Store Connect*.
 - [ ] TestFlight on your own iPhone and iPad first, including a background notification check.
 - [ ] App icon: the 1024 px marketing icon is already in the asset catalog with no alpha channel.
