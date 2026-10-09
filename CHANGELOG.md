@@ -11,6 +11,7 @@ Releases are tagged `vX.Y.Z` on `main`.
 - Code view settings: font, full files with changes in place, editable diff colors and palettes.
 - Syntax highlighting in diffs and the file viewer, with the exact changed words marked.
 - Blame in the file viewer (signed in): who last changed each line, tap to open the commit.
+- Sign in with GitHub (OAuth device flow) as an alternative to pasting a token.
 - Security and performance: secrets and offline copies kept out of backups, background checks that cost no rate
   limit when nothing changed, heavy work moved off the UI thread.
 

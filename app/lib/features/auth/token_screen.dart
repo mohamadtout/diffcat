@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/routing/routes.dart';
-
+import '../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
+import 'device_flow.dart';
 
-/// Optional sign-in: paste a GitHub personal access token.
+/// Starts a GitHub device-flow sign-in, or null when the build has no OAuth
+/// client ID (then only pasting a token is offered). Overridden in tests.
+final deviceFlowProvider = Provider<DeviceFlow Function()?>(
+  (ref) => githubClientId.isEmpty ? null : () => DeviceFlow(clientId: githubClientId),
+);
+
+/// Optional sign-in: "Sign in with GitHub" (device flow) when the build has
+/// an OAuth client ID, or paste a personal access token.
 class TokenScreen extends ConsumerStatefulWidget {
   const TokenScreen({super.key});
 
@@ -28,6 +38,19 @@ class _TokenScreenState extends ConsumerState<TokenScreen> {
 
   Future<void> _submit() async {
     if (_ctrl.text.trim().isEmpty) return;
+    await _signIn(_ctrl.text);
+  }
+
+  Future<void> _withGitHub(DeviceFlow Function() flow) async {
+    final token = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => DeviceCodeDialog(flow: flow()),
+    );
+    if (token != null && mounted) await _signIn(token);
+  }
+
+  Future<void> _signIn(String token) async {
     setState(() {
       _busy = true;
       _error = null;
@@ -36,7 +59,7 @@ class _TokenScreenState extends ConsumerState<TokenScreen> {
     // rebuilds this page, so this State may be gone by the time we navigate.
     final router = GoRouter.of(context);
     try {
-      await ref.read(authTokenProvider.notifier).signIn(_ctrl.text);
+      await ref.read(authTokenProvider.notifier).signIn(token);
       // That refresh re-applies the current stack (it would undo an immediate
       // pop), so navigate once it's done. The router's /setup redirect only
       // covers a direct visit, not this screen pushed on top of another.
@@ -80,6 +103,25 @@ class _TokenScreenState extends ConsumerState<TokenScreen> {
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 24),
+                  if (ref.watch(deviceFlowProvider) case final flow?) ...[
+                    FilledButton.icon(
+                      icon: const Icon(Icons.login),
+                      label: const Text('Sign in with GitHub'),
+                      onPressed: _busy ? null : () => _withGitHub(flow),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('or paste a token', style: theme.textTheme.bodySmall),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   TextField(
                     controller: _ctrl,
                     obscureText: _obscure,
@@ -119,6 +161,105 @@ class _TokenScreenState extends ConsumerState<TokenScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Shows the one-time code to enter on github.com and waits for approval.
+/// Pops with the token, or null when cancelled.
+class DeviceCodeDialog extends StatefulWidget {
+  const DeviceCodeDialog({super.key, required this.flow});
+
+  final DeviceFlow flow;
+
+  @override
+  State<DeviceCodeDialog> createState() => _DeviceCodeDialogState();
+}
+
+class _DeviceCodeDialogState extends State<DeviceCodeDialog> {
+  DeviceCode? _code;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _run();
+  }
+
+  @override
+  void dispose() {
+    widget.flow.cancel();
+    super.dispose();
+  }
+
+  Future<void> _run() async {
+    try {
+      final code = await widget.flow.start();
+      if (!mounted) return;
+      setState(() => _code = code);
+      final token = await widget.flow.waitForToken(code);
+      if (mounted) Navigator.pop(context, token);
+    } on DeviceFlowException catch (e) {
+      if (mounted && e.message != 'Cancelled') setState(() => _error = e.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final code = _code;
+    return AlertDialog(
+      title: const Text('Sign in with GitHub'),
+      scrollable: true,
+      content: _error != null
+          ? Text(_error!, style: TextStyle(color: theme.colorScheme.error))
+          : code == null
+          ? const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Open GitHub and enter this code:'),
+                const SizedBox(height: 12),
+                SelectableText(
+                  code.userCode,
+                  style: theme.textTheme.headlineMedium?.copyWith(fontFamily: AppTheme.monoFamily, letterSpacing: 2),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.copy, size: 18),
+                      label: const Text('Copy'),
+                      onPressed: () => Clipboard.setData(ClipboardData(text: code.userCode)),
+                    ),
+                    FilledButton.icon(
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                      label: const Text('Open GitHub'),
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: code.userCode));
+                        await launchUrl(Uri.parse(code.verificationUri), mode: LaunchMode.externalApplication);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    const SizedBox(width: 8),
+                    Flexible(child: Text('Waiting for approval…', style: theme.textTheme.bodySmall)),
+                  ],
+                ),
+              ],
+            ),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel'))],
     );
   }
 }

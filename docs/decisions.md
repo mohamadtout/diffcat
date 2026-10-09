@@ -24,6 +24,10 @@ OS-scheduled on iOS), which the owner explicitly accepted.
 ### D6: Personal access token auth, optional
 For a single-user app, a fine-grained PAT is the simplest secure option, with no OAuth app or callback server. OAuth device flow is on the roadmap if the app is ever shared.
 
+*Amended 2026-10-09:* builds with an OAuth App client ID (`--dart-define=GITHUB_CLIENT_ID`) also offer **Sign in with
+GitHub** through the device flow. It needs no client secret or redirect, so the app stays backend-free; the client ID
+is public. Pasting a PAT still works, and is the only option in builds without the ID (forks, CI).
+
 Signing in is optional (2026-10-08): public repos are readable without a token, so the app opens to a public-repo browser and the token only unlocks your repo list, private repos and the 5,000/hour limit (60/hour signed out). Notifications also work signed out, within the lower limit.
 
 ### D7: Riverpod 3 without codegen, hand-written models
