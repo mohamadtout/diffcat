@@ -19,7 +19,7 @@ firing (Xcode → Debug → Simulate Background Fetch).*
 - Review actions: approve / request changes / comment on lines (GitHub review API).
 - PR "files changed since last review" (track the last-seen head SHA per PR).
 - Mark files as viewed (persisted per PR or commit).
-- Blame view (GraphQL `blame`), and history that follows renames (GraphQL or the compare API heuristics).
+- File history that follows renames (GraphQL or the compare API heuristics).
 - Android foreground service to keep SSH sessions alive in the background.
 - OAuth device-flow sign-in (no PAT copy-paste).
 - Mosh / Eternal Terminal for flaky mobile networks; jump-host support.

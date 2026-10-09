@@ -73,6 +73,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 | `git ls-tree -r` | `GET /repos/{o}/{r}/git/trees/{ref}?recursive=1` | Files tab, console `ls` |
 | `git show ref:path` | `GET /repos/{o}/{r}/contents/{path}?ref=` (raw) | File viewer, console `cat` |
 | branches / tags | `GET …/branches`, `GET …/tags` | Ref picker, console, poller |
+| `git blame` | GraphQL `repository.object(expression:).blame(path:)` (token required) | File viewer blame |
 | PRs | `GET …/pulls`, `…/pulls/{n}`, `…/files`, `…/commits` | PRs tab, PR screen, poller |
 
 Known API limits: the tree is truncated for huge repos, compare returns at most 300 files, a single commit returns at most 3000 files, and file history doesn't follow renames. The UI says so wherever one of these applies.
@@ -96,7 +97,7 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 | `/repos/:owner/:name/commit/:sha?file=` | commit diff, optionally focused on a file |
 | `/repos/:owner/:name/compare?base=&head=&file=` | range diff (multi-commit notifications land here) |
 | `/repos/:owner/:name/pull/:number` | pull request |
-| `/repos/:owner/:name/file?path=&ref=` | file viewer |
+| `/repos/:owner/:name/file?path=&ref=&blame=1` | file viewer (optionally with blame) |
 | `/repos/:owner/:name/history?path=&ref=` | file history |
 | `/repos/:owner/:name/since?ref=&base=` | "files changed since commit X" |
 | `/terminal`, `/terminal/edit?id=`, `/terminal/:hostId` | SSH hosts, host editor, live session |

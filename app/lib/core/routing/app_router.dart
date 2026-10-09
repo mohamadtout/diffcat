@@ -92,6 +92,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                           repo: _repo(s),
                           path: s.uri.queryParameters['path']!,
                           gitRef: s.uri.queryParameters['ref']!,
+                          blame: s.uri.queryParameters['blame'] == '1',
                         ),
                       ),
                       GoRoute(

@@ -2,8 +2,10 @@ import 'dart:isolate';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/github/github_exception.dart';
 import '../../data/github/models/models.dart';
 import '../auth/auth_controller.dart';
+import '../offline/offline_providers.dart';
 import 'tree_builder.dart';
 
 typedef TreeKey = ({RepoRef repo, String ref});
@@ -35,3 +37,10 @@ typedef FileKey = ({RepoRef repo, String path, String ref});
 final fileContentProvider = FutureProvider.autoDispose.family<String, FileKey>(
   (ref, k) => ref.watch(githubApiProvider).fileContent(k.repo, k.path, k.ref),
 );
+
+/// Who last changed each line of a file. Needs a token (GraphQL), and isn't
+/// part of offline copies.
+final blameProvider = FutureProvider.autoDispose.family<List<BlameRange>, FileKey>((ref, k) {
+  if (ref.watch(isOfflineProvider(k.repo))) throw GitHubException.notDownloaded();
+  return ref.watch(githubApiProvider).blame(k.repo, k.path, k.ref);
+});

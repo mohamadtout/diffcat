@@ -1,4 +1,5 @@
 import 'github_client.dart';
+import 'github_exception.dart';
 import 'models/models.dart';
 
 /// Typed GitHub REST endpoints used by the app.
@@ -77,6 +78,46 @@ class GitHubApi {
 
   /// The whole tree at [ref] as a .tar.gz (one request instead of one per file).
   Future<List<int>> tarball(RepoRef r, String ref) => client.getBytes('${_r(r)}/tarball/${Uri.encodeComponent(ref)}');
+
+  /// `git blame` at [ref]. GraphQL only (there's no REST blame), and GraphQL
+  /// always needs a token.
+  Future<List<BlameRange>> blame(RepoRef r, String path, String ref) async {
+    const query = r'''
+query($owner: String!, $name: String!, $ref: String!, $path: String!) {
+  repository(owner: $owner, name: $name) {
+    object(expression: $ref) {
+      ... on Commit {
+        blame(path: $path) {
+          ranges {
+            startingLine endingLine age
+            commit { oid messageHeadline committedDate author { name user { login } } }
+          }
+        }
+      }
+    }
+  }
+}''';
+    final data = await graphql(query, {'owner': r.owner, 'name': r.name, 'ref': ref, 'path': path});
+    final object = (data['repository'] as Map<String, dynamic>?)?['object'] as Map<String, dynamic>?;
+    final blame = object?['blame'] as Map<String, dynamic>?;
+    if (blame == null) throw GitHubException('No blame for $path at $ref', statusCode: 404);
+    return [for (final r in blame['ranges'] as List<dynamic>) BlameRange.fromJson(r as Map<String, dynamic>)];
+  }
+
+  /// Runs a GraphQL query. GraphQL reports failures as `errors` in a 200
+  /// response; those become [GitHubException]s like REST failures.
+  Future<Map<String, dynamic>> graphql(String query, Map<String, dynamic> variables) async {
+    final res = await client.postJson('/graphql', {'query': query, 'variables': variables}) as Map<String, dynamic>;
+    final errors = res['errors'] as List<dynamic>?;
+    if (errors != null && errors.isNotEmpty) {
+      final first = errors.first as Map<String, dynamic>;
+      throw GitHubException(
+        (first['message'] as String?) ?? 'GitHub GraphQL request failed',
+        statusCode: first['type'] == 'NOT_FOUND' ? 404 : null,
+      );
+    }
+    return (res['data'] as Map<String, dynamic>?) ?? const {};
+  }
 
   Future<GhPage<GhPull>> pulls(RepoRef r, {String state = 'open', int page = 1}) => client.getPage(
     '${_r(r)}/pulls',

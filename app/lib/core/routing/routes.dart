@@ -36,7 +36,9 @@ abstract final class Routes {
 
   static String pull(RepoRef r, int number) => '${_base(r)}/pull/$number';
 
-  static String file(RepoRef r, String path, String ref) => '${_base(r)}/file${_q({'path': path, 'ref': ref})}';
+  /// [blame] opens with the blame gutter on.
+  static String file(RepoRef r, String path, String ref, {bool blame = false}) =>
+      '${_base(r)}/file${_q({'path': path, 'ref': ref, 'blame': blame ? '1' : null})}';
 
   static String history(RepoRef r, String path, String ref) => '${_base(r)}/history${_q({'path': path, 'ref': ref})}';
 
