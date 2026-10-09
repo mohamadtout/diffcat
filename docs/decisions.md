@@ -53,3 +53,20 @@ Downloads (repo screen → download button, per branch) replay the same `GitHubA
 - The notification poller uses `liveGithubApiProvider`, which ignores saved copies.
 - **Offline mode** is a separate, explicit per-repo switch (Offline chip, cloud button, banner): online mode prefers saved copies but still fetches what's missing; offline mode never touches the network. Tapping a repo row always opens online, so offline is a deliberate choice.
 
+
+### D12: The file history graph is built from per-branch path histories
+GitHub's `commits?path=` returns each commit's real parents, not the simplified ones `git log --graph -- path` draws
+with, and walking the real DAG would mean fetching every commit in between (or a clone, ruled out by D2). So the graph
+uses one path-filtered history per branch (1 request per 30 commits per branch) and lays it out in
+`history_graph.dart`:
+
+- A commit belongs to the base lane if the base branch has it, otherwise to the first other branch that does. A
+  branch's line runs from its newest own commit to the commit its work started from.
+- Rebased or cherry-picked copies are found by identical message, author and author date (git keeps the author date
+  and changes the committer date), and `Revert "X"` by title. Both get dashed links. Squash merges can't be matched.
+- A branch that was merged has no commits of its own any more, so it shows only as a tip label in the base lane.
+- Rows older than the oldest loaded commit of a branch with more pages are hidden until that page loads, so a lane
+  never looks shorter than it is.
+
+Branches cost requests, so open PR branches are added automatically only when signed in (at most 3), and at most 5
+branches are drawn, which is about as many lanes as fit beside the text on a phone.
