@@ -80,3 +80,13 @@ off by default, its echo is hidden, and the same hook is offered to paste into a
 Fonts are bundled (about 3.8 MB) rather than downloaded at runtime (Google Fonts), which would add a network
 dependency and a third party to the privacy policy. JetBrains Mono is the Nerd Font build, regular weight only,
 because prompt themes (starship, powerlevel10k) need its glyphs.
+### D14: Secrets stay on this device; app data isn't backed up
+Secure storage uses one configuration everywhere (`appSecureStorage`). On iOS it's
+`first_unlock_this_device`: the background check runs while the phone is locked, which the default
+(`when_unlocked`) can't read, and `ThisDevice` keeps secrets out of backups and device migration. Existing items are
+re-saved once (`SecureStore.migrate`) because a keychain item keeps the level it was written with.
+
+Android backups are off (`allowBackup=false`, `data_extraction_rules.xml` for cloud and device transfer) and on iOS
+the offline folder is excluded from iCloud backup: offline copies can be private source code, which the privacy policy
+promises never leaves the device. Secure storage couldn't be restored on another device anyway (its key is in the
+Keystore/Keychain). The cost is that a new phone starts fresh: re-add the token and SSH hosts.

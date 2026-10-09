@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
+import 'core/storage/backup_exclusion.dart';
 import 'core/storage/storage.dart';
 import 'core/theme/code_fonts.dart';
 import 'data/github/github_exception.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
   _installErrorSafetyNet();
   CodeFont.registerLicenses();
   final prefs = await SharedPreferences.getInstance();
+  await SecureStore.migrate(appSecureStorage, prefs);
   final notifications = await LocalNotifications.init();
   final offline = await _openOfflineStore();
   // Keep the periodic background check registered while anything is watched.
@@ -45,7 +47,10 @@ Future<void> main() async {
 /// just without downloads.
 Future<OfflineStore?> _openOfflineStore() async {
   try {
-    return await OfflineStore.open(Directory('${(await getApplicationSupportDirectory()).path}/offline'));
+    final dir = Directory('${(await getApplicationSupportDirectory()).path}/offline');
+    final store = await OfflineStore.open(dir);
+    await excludeFromBackup(dir);
+    return store;
   } on Object catch (e) {
     debugPrint('Offline storage unavailable: $e');
     return null;

@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/github/models/models.dart';
@@ -14,10 +16,15 @@ class RepoTree {
   final int fileCount;
 }
 
+/// Trees bigger than this are built on a background isolate: a monorepo's
+/// 100k entries would otherwise freeze the UI for a moment.
+const _isolateTreeEntries = 5000;
+
 final treeProvider = FutureProvider.autoDispose.family<RepoTree, TreeKey>((ref, k) async {
   final tree = await ref.watch(githubApiProvider).tree(k.repo, k.ref);
+  final entries = tree.entries;
   return RepoTree(
-    buildTree(tree.entries),
+    entries.length > _isolateTreeEntries ? await Isolate.run(() => buildTree(entries)) : buildTree(entries),
     truncated: tree.truncated,
     fileCount: tree.entries.where((e) => e.type == TreeEntryType.blob).length,
   );

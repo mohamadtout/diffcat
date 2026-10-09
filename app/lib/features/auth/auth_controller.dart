@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -28,12 +30,23 @@ class AuthController extends AsyncNotifier<String?> {
     await ref.read(secureStoreProvider).write(StoreKeys.githubToken, trimmed);
     await ref.read(sharedPrefsProvider).setString(StoreKeys.viewerLogin, user.login);
     state = AsyncData(trimmed);
+    unawaited(_clearPollEtags());
     return user;
+  }
+
+  /// Saved responses of the previous account must not outlive it.
+  Future<void> _clearPollEtags() async {
+    try {
+      await (await pollEtagCache()).clear();
+    } on Object {
+      // No app storage (tests, unsupported platform): nothing was saved.
+    }
   }
 
   Future<void> signOut() async {
     await ref.read(secureStoreProvider).delete(StoreKeys.githubToken);
     await ref.read(sharedPrefsProvider).remove(StoreKeys.viewerLogin); // poller's 'is this me?' cache
+    unawaited(_clearPollEtags());
     state = const AsyncData(null);
   }
 }

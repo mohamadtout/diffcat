@@ -1,15 +1,35 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../data/github/etag_cache.dart';
+
+/// ETags of the background notification check (see [FileEtagCache]).
+/// Cleared on sign-in and sign-out: they can hold private repos' data.
+Future<FileEtagCache> pollEtagCache() async =>
+    FileEtagCache(Directory('${(await getApplicationSupportDirectory()).path}/poll_etags'));
 
 /// Overridden in main() with the already-initialized instance.
 final sharedPrefsProvider = Provider<SharedPreferences>(
   (ref) => throw UnimplementedError('sharedPrefsProvider must be overridden'),
 );
 
-final secureStoreProvider = Provider<SecureStore>((ref) => SecureStore(const FlutterSecureStorage()));
+/// Secure storage as the whole app (and the background check) opens it.
+///
+/// iOS: readable after the first unlock since boot, so the background check
+/// can read the token while the phone is locked, and `ThisDevice`, so secrets
+/// never travel in backups or to a new phone. Android: the plugin's default
+/// (AES-GCM, Keystore-wrapped key).
+const appSecureStorage = FlutterSecureStorage(
+  iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+);
+
+final secureStoreProvider = Provider<SecureStore>((ref) => SecureStore(appSecureStorage));
 
 /// Keys for everything persisted by the app. Keep in one place to avoid
 /// collisions and make migrations greppable.
@@ -41,11 +61,31 @@ abstract final class StoreKeys {
   static const diffFullFile = 'diff_full_file';
   static const diffColors = 'diff_colors';
   static const splitCollapsed = 'split_collapsed';
+  static const secureStorageVersion = 'secure_storage_version';
 }
 
 class SecureStore {
   SecureStore(this._storage);
   final FlutterSecureStorage _storage;
+
+  /// Re-saves every secret once so items written before [appSecureStorage]
+  /// set its keychain accessibility get the new one (an existing item keeps
+  /// the level it was written with). Harmless on Android.
+  static Future<void> migrate(FlutterSecureStorage storage, SharedPreferences prefs) async {
+    const version = 2;
+    if ((prefs.getInt(StoreKeys.secureStorageVersion) ?? 1) >= version) return;
+    try {
+      final secrets = {...await storage.readAll()}; // a copy: the loop rewrites the store
+      for (final e in secrets.entries) {
+        await storage.delete(key: e.key);
+        await storage.write(key: e.key, value: e.value);
+      }
+      await prefs.setInt(StoreKeys.secureStorageVersion, version);
+    } on Object catch (e) {
+      // Try again next launch; the secrets are still readable as they are.
+      debugPrint('Secure storage migration failed: ${e.runtimeType}');
+    }
+  }
 
   Future<String?> read(String key) => _storage.read(key: key);
 
