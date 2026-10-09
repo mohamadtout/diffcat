@@ -78,6 +78,20 @@ class SettingsScreen extends ConsumerWidget {
                 onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: const Text('Code view'),
+              subtitle: const Text('Font, full files, diff colors'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.codeView),
+            ),
+            ListTile(
+              leading: const Icon(Icons.terminal),
+              title: const Text('Terminal appearance'),
+              subtitle: const Text('Colors, font, background, git status bar'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.terminalAppearance),
+            ),
             section('Offline'),
             const _DownloadsTile(),
             section('Notifications'),
@@ -160,6 +174,19 @@ class _NotificationsSection extends ConsumerWidget {
               title: Text(e.key),
               subtitle: Text(e.value, maxLines: 2, overflow: TextOverflow.ellipsis),
             ),
+        SwitchListTile(
+          secondary: const Icon(Icons.rate_review_outlined),
+          title: const Text('Review requests'),
+          subtitle: Text(
+            ref.watch(isSignedInProvider)
+                ? 'Notify when someone asks for your review, on any repo'
+                : 'Sign in to be notified when someone asks for your review',
+          ),
+          value: ref.watch(notifyReviewRequestsProvider) && ref.watch(isSignedInProvider),
+          onChanged: ref.watch(isSignedInProvider)
+              ? (v) => ref.read(notifyReviewRequestsProvider.notifier).set(v)
+              : null,
+        ),
         SwitchListTile(
           secondary: const Icon(Icons.person_outline),
           title: const Text('Notify about my own activity'),

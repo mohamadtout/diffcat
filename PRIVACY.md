@@ -16,17 +16,21 @@ Everything the app keeps stays on your device:
   host names and user names are in app preferences.
 - **Preferences**, such as theme, text size, pinned and recently opened repositories, watched repositories and
   command buttons.
+- **A terminal background picture**, if you choose one. The app copies it into its own storage; it never leaves
+  the device. Only the picture you pick is read, not your photo library.
 - **Offline copies** of repositories you choose to download. These are saved responses from the GitHub API. You can
   see their size and delete them in Settings → Downloads.
 
-Uninstalling the app deletes all of it. Signing out deletes the token.
+None of it is included in device backups (Android backups are turned off for the app; on iOS, secrets and offline
+copies are excluded from iCloud backup). Uninstalling the app deletes all of it. Signing out deletes the token.
 
 ## Who the app talks to
 
 - **GitHub** (`api.github.com`), to load the repositories, commits, pull requests and files you open, and to check
   repositories you choose to watch for notifications. If you are signed in, requests carry your token. GitHub handles
   this traffic under its own privacy statement: <https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement>.
-- **SSH servers you add yourself**, only when you open a terminal session to them.
+- **SSH servers you add yourself**, only when you open a terminal session to them. To show the git branch in the
+  terminal's status bar, the app runs `git status` on that server over the same SSH connection.
 
 All connections are encrypted (HTTPS and SSH). The app makes no other network requests.
 

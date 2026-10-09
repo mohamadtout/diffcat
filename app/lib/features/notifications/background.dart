@@ -1,7 +1,6 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -16,6 +15,12 @@ const _taskName = 'git-reviewer-poll';
 /// Android's minimum for periodic background work. The OS may stretch it
 /// (Doze, battery saver), which is why notifications can be late.
 const pollInterval = Duration(minutes: 15);
+
+/// Whether background checks have anything to do: watched repos, or review
+/// request notifications while signed in.
+bool backgroundChecksWanted(SharedPreferences prefs) =>
+    (prefs.getStringList(StoreKeys.watchedRepos) ?? const []).isNotEmpty ||
+    ((prefs.getBool(StoreKeys.notifyReviewRequests) ?? false) && prefs.getString(StoreKeys.viewerLogin) != null);
 
 /// Runs the poller and posts a notification per event. Shared by the
 /// background task and the in-app "Check now".
@@ -37,10 +42,13 @@ void backgroundPollDispatcher() {
   Workmanager().executeTask((task, input) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = await const FlutterSecureStorage().read(key: StoreKeys.githubToken);
+      final token = await appSecureStorage.read(key: StoreKeys.githubToken);
+      // Unchanged repos answer 304 to the saved ETags: no rate limit spent.
+      final etags = await pollEtagCache();
+      await etags.prune();
       // Signed out still works for public repos, at GitHub's lower rate limit.
       await pollAndNotify(
-        api: GitHubApi(GitHubClient(token: token)),
+        api: GitHubApi(GitHubClient(token: token, etags: etags)),
         prefs: prefs,
         notifications: await LocalNotifications.init(),
       );

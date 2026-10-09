@@ -9,9 +9,11 @@ import 'package:git_reviewer/core/widgets/text_size_sheet.dart';
 import 'package:git_reviewer/data/github/models/models.dart';
 import 'package:git_reviewer/features/offline/download_button.dart';
 import 'package:git_reviewer/features/offline/offline_store.dart';
+import 'package:git_reviewer/features/pulls/review_widgets.dart';
 import 'package:git_reviewer/features/repo/ref_picker.dart';
 import 'package:git_reviewer/features/terminal/host_edit_screen.dart';
 import 'package:git_reviewer/features/terminal/host_key_dialog.dart';
+import 'package:git_reviewer/features/terminal/terminal_appearance_screen.dart';
 
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
@@ -41,6 +43,7 @@ const _r = DemoGitHub.repo;
 final _sha = DemoGitHub.sha(1);
 final _screens = <String>[
   Routes.repos,
+  Routes.inbox,
   Routes.repo(_r),
   Routes.repo(_r, tab: 'files'),
   Routes.repo(_r, tab: 'pulls'),
@@ -50,6 +53,7 @@ final _screens = <String>[
   Routes.compare(_r, 'main', DemoGitHub.featureBranch),
   Routes.pull(_r, DemoGitHub.openPullNumber),
   Routes.file(_r, DemoGitHub.retryGo, 'main'),
+  Routes.file(_r, DemoGitHub.retryGo, 'main', blame: true),
   Routes.history(_r, DemoGitHub.retryGo, 'main'),
   Routes.changedSince(_r, ref: 'main', base: 'v1.4.0'),
   Routes.terminal,
@@ -58,6 +62,8 @@ final _screens = <String>[
   Routes.terminalSession(demoHosts.first.id),
   Routes.settings,
   Routes.commands,
+  Routes.terminalAppearance,
+  Routes.codeView,
   Routes.downloads,
   Routes.savedRepo(_r),
   Routes.setup,
@@ -105,7 +111,7 @@ void main() {
           await tester.pumpWidget(env.app());
           await _settle(tester);
           final router = ProviderScope.containerOf(tester.element(find.byType(MaterialApp))).read(routerProvider);
-          for (final s in signedIn ? _screens : [Routes.repos, Routes.settings, Routes.setup]) {
+          for (final s in signedIn ? _screens : [Routes.repos, Routes.inbox, Routes.settings, Routes.setup]) {
             screen = s;
             router.go(s);
             await _settle(tester);
@@ -162,6 +168,18 @@ void main() {
         await show(
           'download sheet, new branch',
           (c) => showDownloadSheet(c, repo: _r, branch: DemoGitHub.featureBranch),
+        );
+        await show('shell integration sheet', showShellIntegrationSheet);
+        await show('comment composer', (c) => showCommentComposer(c, title: 'retry.go:27'));
+        await show(
+          'review sheet',
+          (c) => showModalBottomSheet<void>(
+            context: c,
+            useRootNavigator: true,
+            isScrollControlled: true,
+            builder: (_) =>
+                ReviewSubmitSheet(pullKey: (repo: _r, number: DemoGitHub.openPullNumber), headSha: DemoGitHub.sha(1)),
+          ),
         );
         await show('text size sheet', (c) => showTextSizeSheet(c, value: 13, min: 8, max: 24, onChanged: (_) {}));
         overlay = 'branch picker';

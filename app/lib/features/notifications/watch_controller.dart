@@ -34,7 +34,27 @@ class WatchedRepos extends Notifier<Set<String>> {
   Future<void> _save(Set<String> s) async {
     state = s;
     await ref.read(sharedPrefsProvider).setStringList(StoreKeys.watchedRepos, s.toList()..sort());
-    await BackgroundPolling.sync(enabled: s.isNotEmpty);
+    await BackgroundPolling.sync(enabled: backgroundChecksWanted(ref.read(sharedPrefsProvider)));
+  }
+}
+
+/// Notify when someone requests your review, on any repo (default: off,
+/// since it asks for notification permission). Needs sign-in.
+final notifyReviewRequestsProvider = NotifierProvider<NotifyReviewRequests, bool>(NotifyReviewRequests.new);
+
+class NotifyReviewRequests extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(sharedPrefsProvider).getBool(StoreKeys.notifyReviewRequests) ?? false;
+
+  Future<void> set(bool on) async {
+    if (on) await ref.read(localNotificationsProvider).requestPermission();
+    state = on;
+    final prefs = ref.read(sharedPrefsProvider);
+    await prefs.setBool(StoreKeys.notifyReviewRequests, on);
+    // Off then on again: start from a fresh baseline, not stale history.
+    if (!on) await prefs.remove(StoreKeys.reviewRequestsSeen);
+    await BackgroundPolling.sync(enabled: backgroundChecksWanted(prefs));
+    if (on) await ref.read(pollControllerProvider.notifier).checkNow(); // silent baseline
   }
 }
 
@@ -107,7 +127,7 @@ class PollController extends Notifier<PollStatus> {
 
   /// Called when the app returns to the foreground.
   Future<void> checkIfStale({Duration maxAge = const Duration(minutes: 10)}) async {
-    if (ref.read(watchedReposProvider).isEmpty || !ref.read(authTokenProvider).hasValue) return;
+    if (!backgroundChecksWanted(ref.read(sharedPrefsProvider)) || !ref.read(authTokenProvider).hasValue) return;
     await ref.read(sharedPrefsProvider).reload();
     final last = _readLast();
     state = PollStatus(last: last, running: state.running);

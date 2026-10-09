@@ -42,6 +42,8 @@ class DiffDocument {
     List<GhFileChange> files, {
     required Set<int> collapsed,
     required List<List<DiffHunk>?> parsed,
+    Map<int, List<DiffLine>> full = const {},
+    Map<int, String> notices = const {},
   }) {
     final rows = <DiffRow>[];
     final headerIndex = <int>[];
@@ -53,7 +55,15 @@ class DiffDocument {
       rows.add(FileHeaderRow(i, f, collapsed: isCollapsed));
       if (!isCollapsed) {
         final hunks = parsed[i];
-        if (hunks == null) {
+        if (notices[i] case final notice?) rows.add(NoticeRow(i, notice));
+        if (full[i] case final lines?) {
+          // The whole file with its changes in place, no hunk headers.
+          for (final l in lines) {
+            rows.add(LineRow(i, l));
+            final len = l.text.length + 3 * '\t'.allMatches(l.text).length;
+            if (len > maxLen) maxLen = len;
+          }
+        } else if (hunks == null) {
           rows.add(NoticeRow(i, _noPatchMessage(f)));
         } else if (hunks.isEmpty) {
           rows.add(

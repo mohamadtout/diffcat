@@ -15,16 +15,12 @@ firing (Xcode → Debug → Simulate Background Fetch).*
 
 ## Backlog
 
-- Syntax highlighting in diffs and the file viewer (e.g. `re_highlight`), plus word-level intra-line diff.
 - Sticky file header while scrolling a diff.
-- Review actions: approve / request changes / comment on lines (GitHub review API).
 - PR "files changed since last review" (track the last-seen head SHA per PR).
 - Mark files as viewed (persisted per PR or commit).
-- Blame view (GraphQL `blame`), and history that follows renames (GraphQL or the compare API heuristics).
+- File history that follows renames (GraphQL or the compare API heuristics).
 - Android foreground service to keep SSH sessions alive in the background.
-- OAuth device-flow sign-in (no PAT copy-paste).
 - Mosh / Eternal Terminal for flaky mobile networks; jump-host support.
 - Share-sheet / github.com link handling (Android App Links, iOS Universal Links), which maps straight onto `Routes`.
 - Notification preferences per repo (branches filter, PR-only).
-- Persist ETags for the poller's requests so unchanged repos cost 0 rate limit (304s are free).
 - i18n.

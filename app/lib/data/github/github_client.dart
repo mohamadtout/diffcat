@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
+import 'etag_cache.dart';
 import 'github_exception.dart';
 import 'response_cache.dart';
 
@@ -22,12 +25,16 @@ class GhPage<T> {
 /// [token] is optional: without it, public repos still work but GitHub allows
 /// only 60 requests/hour instead of 5,000.
 class GitHubClient {
-  GitHubClient({String? token, Dio? dio, this.cache, this.cacheMode = CacheMode.replay, this.cacheOnly})
+  GitHubClient({String? token, Dio? dio, this.cache, this.cacheMode = CacheMode.replay, this.cacheOnly, this.etags})
     : isAnonymous = token == null,
       _dio = dio ?? Dio(baseOptions(token));
 
   /// Offline copies (features/offline). Null: network only.
   final ResponseCache? cache;
+
+  /// ETags that outlive this client (the background check). The in-memory
+  /// cache is consulted first.
+  final EtagCache? etags;
   final CacheMode cacheMode;
 
   /// For keys where this returns true (repos in offline mode), only saved
@@ -110,12 +117,25 @@ class GitHubClient {
     return res.data as String;
   }
 
-  /// Binary download (e.g. a tarball). Never cached; follows GitHub's redirect.
-  Future<List<int>> getBytes(String path) async {
+  /// Binary download (e.g. a tarball). Never cached; follows GitHub's redirect
+  /// (Dart drops the Authorization header when it leaves api.github.com).
+  ///
+  /// Streams, and stops at [maxBytes]: a huge repo's archive would otherwise
+  /// be held in memory whole and could take the app down.
+  Future<List<int>> getBytes(String path, {int maxBytes = 300 * 1000 * 1000}) async {
     try {
-      final res = await _dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes));
+      final res = await _dio.get<ResponseBody>(path, options: Options(responseType: ResponseType.stream));
       _trackRateLimit(res.headers);
-      return res.data ?? const [];
+      final body = res.data;
+      if (body == null) return const [];
+      final out = BytesBuilder(copy: false);
+      await for (final chunk in body.stream) {
+        out.add(chunk);
+        if (out.length > maxBytes) {
+          throw GitHubException('Download larger than ${maxBytes ~/ 1000000} MB, stopped.');
+        }
+      }
+      return out.takeBytes();
     } on DioException catch (e) {
       throw _mapError(e);
     }
@@ -150,7 +170,23 @@ class GitHubClient {
       );
     }
     if (cacheMode == CacheMode.replay && (cacheOnly?.call(key) ?? false)) throw GitHubException.notDownloaded();
-    final cached = _cache[key];
+    var cached = _cache[key];
+    if (cached == null && etags != null) {
+      final stored = await etags!.read(key);
+      if (stored != null) {
+        cached = _CacheEntry(
+          stored.etag,
+          Response(
+            requestOptions: RequestOptions(path: path, queryParameters: query),
+            statusCode: 200,
+            data: stored.data,
+            headers: Headers.fromMap({
+              if (stored.link != null) 'link': [stored.link!],
+            }),
+          ),
+        );
+      }
+    }
     try {
       final res = await _dio.get<dynamic>(
         path,
@@ -160,7 +196,10 @@ class GitHubClient {
       _trackRateLimit(res.headers);
       if (res.statusCode == 304 && cached != null) return cached.response;
       final etag = res.headers.value('etag');
-      if (etag != null) _remember(key, _CacheEntry(etag, res));
+      if (etag != null) {
+        _remember(key, _CacheEntry(etag, res));
+        await etags?.write(key, EtagEntry(etag: etag, data: res.data, link: res.headers.value('link')));
+      }
       if (cacheMode == CacheMode.record) {
         await cache?.write(key, path, query, CachedResponse(data: res.data, link: res.headers.value('link')));
       }

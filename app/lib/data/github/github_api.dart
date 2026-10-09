@@ -1,4 +1,5 @@
 import 'github_client.dart';
+import 'github_exception.dart';
 import 'models/models.dart';
 
 /// Typed GitHub REST endpoints used by the app.
@@ -78,6 +79,59 @@ class GitHubApi {
   /// The whole tree at [ref] as a .tar.gz (one request instead of one per file).
   Future<List<int>> tarball(RepoRef r, String ref) => client.getBytes('${_r(r)}/tarball/${Uri.encodeComponent(ref)}');
 
+  /// `git blame` at [ref]. GraphQL only (there's no REST blame), and GraphQL
+  /// always needs a token.
+  Future<List<BlameRange>> blame(RepoRef r, String path, String ref) async {
+    const query = r'''
+query($owner: String!, $name: String!, $ref: String!, $path: String!) {
+  repository(owner: $owner, name: $name) {
+    object(expression: $ref) {
+      ... on Commit {
+        blame(path: $path) {
+          ranges {
+            startingLine endingLine age
+            commit { oid messageHeadline committedDate author { name user { login } } }
+          }
+        }
+      }
+    }
+  }
+}''';
+    final data = await graphql(query, {'owner': r.owner, 'name': r.name, 'ref': ref, 'path': path});
+    final object = (data['repository'] as Map<String, dynamic>?)?['object'] as Map<String, dynamic>?;
+    final blame = object?['blame'] as Map<String, dynamic>?;
+    if (blame == null) throw GitHubException('No blame for $path at $ref', statusCode: 404);
+    return [for (final r in blame['ranges'] as List<dynamic>) BlameRange.fromJson(r as Map<String, dynamic>)];
+  }
+
+  /// Runs a GraphQL query. GraphQL reports failures as `errors` in a 200
+  /// response; those become [GitHubException]s like REST failures.
+  Future<Map<String, dynamic>> graphql(String query, Map<String, dynamic> variables) async {
+    final res = await client.postJson('/graphql', {'query': query, 'variables': variables}) as Map<String, dynamic>;
+    final errors = res['errors'] as List<dynamic>?;
+    if (errors != null && errors.isNotEmpty) {
+      final first = errors.first as Map<String, dynamic>;
+      throw GitHubException(
+        (first['message'] as String?) ?? 'GitHub GraphQL request failed',
+        statusCode: first['type'] == 'NOT_FOUND' ? 404 : null,
+      );
+    }
+    return (res['data'] as Map<String, dynamic>?) ?? const {};
+  }
+
+  /// Open pull requests across GitHub matching search [qualifiers]
+  /// (`review-requested:@me`…), most recently updated first. Needs a token
+  /// for `@me`.
+  Future<GhSearchResult<GhSearchPull>> searchPulls(String qualifiers, {int perPage = 50}) async {
+    final j = await client.getJson(
+      '/search/issues',
+      query: {'q': 'is:pr is:open archived:false $qualifiers', 'sort': 'updated', 'order': 'desc', 'per_page': perPage},
+    ) as Map<String, dynamic>;
+    return GhSearchResult([
+      for (final i in j['items'] as List<dynamic>) GhSearchPull.fromJson(i as Map<String, dynamic>),
+    ], total: (j['total_count'] as int?) ?? 0);
+  }
+
   Future<GhPage<GhPull>> pulls(RepoRef r, {String state = 'open', int page = 1}) => client.getPage(
     '${_r(r)}/pulls',
     query: {'state': state, 'page': page, 'per_page': 30, 'sort': 'updated', 'direction': 'desc'},
@@ -89,6 +143,50 @@ class GitHubApi {
 
   Future<List<GhFileChange>> pullFiles(RepoRef r, int number) =>
       client.getAll('${_r(r)}/pulls/$number/files', parse: GhFileChange.fromJson, maxPages: 30);
+
+  /// Line comments of a pull request, oldest first.
+  Future<List<GhReviewComment>> reviewComments(RepoRef r, int number) =>
+      client.getAll('${_r(r)}/pulls/$number/comments', parse: GhReviewComment.fromJson, maxPages: 10);
+
+  /// Submitted reviews (approve / request changes / comment), oldest first.
+  Future<List<GhReview>> reviews(RepoRef r, int number) =>
+      client.getAll('${_r(r)}/pulls/$number/reviews', parse: GhReview.fromJson, maxPages: 5);
+
+  /// Submits a review with its line [comments] in one go, against [commitId]
+  /// (the head the comments were written on).
+  Future<void> submitReview(
+    RepoRef r,
+    int number, {
+    required String commitId,
+    required ReviewEvent event,
+    String body = '',
+    List<Map<String, dynamic>> comments = const [],
+  }) => client.postJson('${_r(r)}/pulls/$number/reviews', {
+    'commit_id': commitId,
+    'event': event.api,
+    if (body.isNotEmpty) 'body': body,
+    if (comments.isNotEmpty) 'comments': comments,
+  });
+
+  /// One line comment outside a review ("Add single comment").
+  Future<void> addReviewComment(
+    RepoRef r,
+    int number, {
+    required String commitId,
+    required String path,
+    required int line,
+    required DiffSide side,
+    required String body,
+  }) => client.postJson('${_r(r)}/pulls/$number/comments', {
+    'commit_id': commitId,
+    'path': path,
+    'line': line,
+    'side': side.api,
+    'body': body,
+  });
+
+  Future<void> replyToReviewComment(RepoRef r, int number, int commentId, String body) =>
+      client.postJson('${_r(r)}/pulls/$number/comments/$commentId/replies', {'body': body});
 
   Future<List<GhCommit>> pullCommits(RepoRef r, int number) =>
       client.getAll('${_r(r)}/pulls/$number/commits', parse: GhCommit.fromJson, maxPages: 3);

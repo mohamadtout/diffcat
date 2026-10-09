@@ -9,8 +9,10 @@ import '../../features/commands/commands_screen.dart';
 import '../../features/commits/commit_screen.dart';
 import '../../features/compare/changed_since_screen.dart';
 import '../../features/compare/compare_screen.dart';
+import '../../features/diff/code_view_settings_screen.dart';
 import '../../features/files/file_history_screen.dart';
 import '../../features/files/file_view_screen.dart';
+import '../../features/inbox/inbox_screen.dart';
 import '../../features/notifications/local_notifications.dart';
 import '../../features/offline/downloads_screen.dart';
 import '../../features/pulls/pull_screen.dart';
@@ -19,6 +21,7 @@ import '../../features/repos/repos_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/terminal/host_edit_screen.dart';
 import '../../features/terminal/hosts_screen.dart';
+import '../../features/terminal/terminal_appearance_screen.dart';
 import '../../features/terminal/terminal_screen.dart';
 import 'root_scaffold.dart';
 import 'routes.dart';
@@ -90,6 +93,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                           repo: _repo(s),
                           path: s.uri.queryParameters['path']!,
                           gitRef: s.uri.queryParameters['ref']!,
+                          blame: s.uri.queryParameters['blame'] == '1',
                         ),
                       ),
                       GoRoute(
@@ -113,6 +117,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                 ],
               ),
             ],
+          ),
+          StatefulShellBranch(
+            routes: [GoRoute(path: Routes.inbox, builder: (_, _) => const InboxScreen())],
           ),
           StatefulShellBranch(
             routes: [
@@ -139,6 +146,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, _) => const SettingsScreen(),
                 routes: [
                   GoRoute(path: 'commands', builder: (_, _) => const CommandsScreen()),
+                  GoRoute(path: 'terminal', builder: (_, _) => const TerminalAppearanceScreen()),
+                  GoRoute(path: 'code', builder: (_, _) => const CodeViewSettingsScreen()),
                   GoRoute(
                     path: 'downloads',
                     builder: (_, _) => const DownloadsScreen(),

@@ -12,6 +12,8 @@ import 'package:git_reviewer/data/github/github_api.dart';
 import 'package:git_reviewer/data/github/github_client.dart';
 import 'package:git_reviewer/data/github/response_cache.dart';
 import 'package:git_reviewer/features/auth/auth_controller.dart';
+import 'package:git_reviewer/features/auth/device_flow.dart';
+import 'package:git_reviewer/features/auth/token_screen.dart';
 import 'package:git_reviewer/features/notifications/local_notifications.dart';
 import 'package:git_reviewer/features/offline/downloader.dart';
 import 'package:git_reviewer/features/offline/offline_providers.dart';
@@ -66,6 +68,8 @@ class DemoEnv {
       localNotificationsProvider.overrideWithValue(notifications ?? LocalNotifications.disabled()),
       githubAdapterProvider.overrideWithValue(github),
       offlineStoreProvider.overrideWithValue(store),
+      // Shows "Sign in with GitHub" as a build with a client ID would.
+      deviceFlowProvider.overrideWithValue(() => DeviceFlow(clientId: 'demo')),
     ],
     child: const GitReviewerApp(),
   );

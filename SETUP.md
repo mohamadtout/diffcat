@@ -29,11 +29,26 @@ Without a token you can open any public repo (type `owner/name` or paste a githu
 - Expiration: your call. When it expires the app says "GitHub rejected the token"; sign out in Settings and paste a new one.
 - If an org uses SAML SSO: on the token list, use **Configure SSO → Authorize** for that org.
 
-**Fine-grained token (only your own or one org's repos):** Contents → Read, Metadata → Read, Pull requests → Read.
+**Fine-grained token (only your own or one org's repos):** Contents → Read, Metadata → Read, Pull requests → **Read and write** (write is for submitting reviews and comments; Read is enough to only browse).
 
 Collaborator on someone's repo? Accept the invitation first (github.com/notifications or the repo page).
 
 Paste the token on the Sign in screen. It's stored in Android Keystore / iOS Keychain and only sent to `api.github.com`. **Never keep it in a file inside the project.**
+
+### 1b. "Sign in with GitHub" (OAuth device flow) *(owner, once)*
+
+Builds can offer a **Sign in with GitHub** button instead of token pasting: the app shows a short code, you approve it on
+github.com/login/device, and GitHub hands the app a token. No client secret and no server are involved.
+
+1. GitHub → Settings → Developer settings → **OAuth Apps → New OAuth App**. Name *Diffcat*, homepage the repo URL,
+   callback URL anything (e.g. the repo URL; the device flow doesn't use it).
+2. On the app's page, tick **Enable Device Flow** and save. Copy the **Client ID** (`Ov23…`). It's public, not a secret;
+   don't create a client secret.
+3. Build with it: `make run GITHUB_CLIENT_ID=Ov23…` (also `make apk`, `make device-test`), or
+   `flutter run --dart-define=GITHUB_CLIENT_ID=Ov23…`. Without it the button is hidden and tokens are pasted as above.
+
+The app asks for the `repo` and `read:user` scopes (private repos, reviews, your name). Users can revoke it any time at
+github.com → Settings → Applications.
 
 ## 2. Run the app
 
@@ -76,37 +91,25 @@ This is for running real git and lazygit from the phone on a machine you own. No
 
 ## 5. Android release signing *(optional)*
 
-Debug builds install fine with `flutter run`. To build a standalone release APK:
+Debug builds install fine with `flutter run`. Release builds (`make apk`, or `flutter build appbundle` for Google Play)
+are signed with your own key. The Gradle side is already wired up in `app/android/app/build.gradle.kts`: it reads
+`app/android/key.properties` when that file exists, and otherwise signs with the debug key, so CI and forks still build.
 
-1. Create a keystore (keep it and the passwords safe and **outside git**):
+1. Create a keystore **outside the repo** and keep it and its passwords backed up. Losing it means you can't update the
+   app on Google Play (unless you use Play App Signing with a separate upload key, which is recommended):
    ```bash
-   keytool -genkey -v -keystore ~/git-reviewer-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias git-reviewer
+   keytool -genkey -v -keystore ~/diffcat-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias diffcat
    ```
-2. Create `app/android/key.properties` (git-ignored):
+2. Create `app/android/key.properties`. It is git-ignored; never commit it or the `.jks`:
    ```properties
    storePassword=…
    keyPassword=…
-   keyAlias=git-reviewer
-   storeFile=/Users/<you>/git-reviewer-release.jks
+   keyAlias=diffcat
+   storeFile=/Users/<you>/diffcat-release.jks
    ```
-3. In `app/android/app/build.gradle.kts`, replace `release { signingConfig = signingConfigs.getByName("debug") }` with:
-   ```kotlin
-   // top of file, after plugins {}
-   val keystoreProperties = java.util.Properties().apply {
-       val f = rootProject.file("key.properties"); if (f.exists()) load(f.inputStream())
-   }
-   // inside android { }
-   signingConfigs {
-       create("release") {
-           keyAlias = keystoreProperties["keyAlias"] as String?
-           keyPassword = keystoreProperties["keyPassword"] as String?
-           storeFile = (keystoreProperties["storeFile"] as String?)?.let { file(it) }
-           storePassword = keystoreProperties["storePassword"] as String?
-       }
-   }
-   buildTypes { release { signingConfig = signingConfigs.getByName("release") } }
-   ```
-4. Run `make apk` and install `app/build/app/outputs/flutter-apk/app-release.apk`.
+3. Run `make apk` and install `app/build/app/outputs/flutter-apk/app-release.apk`. To check which key signed it:
+   `$ANDROID_HOME/build-tools/<version>/apksigner verify --print-certs <apk>`. It should show your name, not
+   `CN=Android Debug`.
 
 ## 6. iOS / iPadOS
 

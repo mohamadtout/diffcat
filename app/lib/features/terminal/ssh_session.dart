@@ -8,6 +8,7 @@ import 'package:xterm/xterm.dart';
 
 import '../../core/storage/storage.dart';
 import '../commands/key_sequence.dart';
+import 'shell_integration.dart';
 import 'ssh_host.dart';
 
 enum SshStatus { idle, connecting, connected, disconnected, failed }
@@ -32,6 +33,19 @@ class SshSessionController extends ChangeNotifier {
   SshStatus status = SshStatus.idle;
   String? error;
 
+  /// The shell's folder, when it reports it (OSC 7, see shell_integration.dart).
+  String? cwd;
+
+  /// Git status of [cwd], null when it isn't in a repo (or unknown).
+  GitStatus? git;
+  bool _gitBusy = false;
+  bool _gitAgain = false;
+  Timer? _gitDebounce;
+
+  EchoHider? _hider;
+  Timer? _hiderTimeout;
+  DateTime _lastOutput = DateTime.now();
+
   /// Sticky modifiers from the on-screen toolbar; applied to the next typed key.
   bool ctrlLatched = false;
   bool altLatched = false;
@@ -42,7 +56,8 @@ class SshSessionController extends ChangeNotifier {
 
   bool get isActive => status == SshStatus.connecting || status == SshStatus.connected;
 
-  Future<void> connect() async {
+  /// [shellIntegration]: type the folder-reporting hook after login.
+  Future<void> connect({bool shellIntegration = false}) async {
     if (isActive) return;
     _setStatus(SshStatus.connecting);
     terminal.write('\x1b[2mConnecting to ${host.address}…\x1b[0m\r\n');
@@ -68,18 +83,107 @@ class SshSessionController extends ChangeNotifier {
       );
       terminal.onOutput = _send;
       terminal.onResize = session.resizeTerminal;
+      terminal.onPrivateOSC = _osc;
       const decoder = Utf8Decoder(allowMalformed: true);
       _subs
-        ..add(session.stdout.cast<List<int>>().transform(decoder).listen(terminal.write))
-        ..add(session.stderr.cast<List<int>>().transform(decoder).listen(terminal.write));
+        ..add(session.stdout.cast<List<int>>().transform(decoder).listen(_output))
+        ..add(session.stderr.cast<List<int>>().transform(decoder).listen(_output));
       unawaited(session.done.then((_) => _closed(), onError: _closed));
       _setStatus(SshStatus.connected);
-      if (host.startupCommand.trim().isNotEmpty) sendKeys(host.startupCommand);
+      unawaited(_afterLogin(shellIntegration: shellIntegration));
     } catch (e) {
       _teardown();
       error = e.toString();
       terminal.write('\r\n\x1b[31m✖ $error\x1b[0m\r\n');
       _setStatus(SshStatus.failed);
+    }
+  }
+
+  Future<void> _afterLogin({required bool shellIntegration}) async {
+    if (shellIntegration) await _installHook();
+    if (status == SshStatus.connected && host.startupCommand.trim().isNotEmpty) sendKeys(host.startupCommand);
+  }
+
+  /// Types [shellHookCommand] once the login output settles (the shell is at
+  /// its prompt), hiding its echo. Gives up quietly after a few seconds.
+  Future<void> _installHook() async {
+    final started = DateTime.now();
+    while (status == SshStatus.connected &&
+        DateTime.now().difference(_lastOutput) < const Duration(milliseconds: 400) &&
+        DateTime.now().difference(started) < const Duration(seconds: 3)) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    final session = _session;
+    if (session == null || status != SshStatus.connected) return;
+    final command = shellHookCommand();
+    final hider = _hider = EchoHider(command);
+    final done = Completer<void>();
+    _hiderTimeout = Timer(const Duration(seconds: 4), () {
+      if (_hider == hider) _releaseHider();
+      if (!done.isCompleted) done.complete();
+    });
+    session.write(Uint8List.fromList(utf8.encode('$command\r')));
+    while (!hider.done && !done.isCompleted && status == SshStatus.connected) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
+  void _releaseHider() {
+    final rest = _hider?.flush() ?? '';
+    _hider = null;
+    _hiderTimeout?.cancel();
+    if (rest.isNotEmpty) terminal.write(rest);
+  }
+
+  void _output(String data) {
+    _lastOutput = DateTime.now();
+    final hider = _hider;
+    if (hider == null) return terminal.write(data);
+    final shown = hider.process(data);
+    if (hider.done) {
+      _hider = null;
+      _hiderTimeout?.cancel();
+    }
+    if (shown.isNotEmpty) terminal.write(shown);
+  }
+
+  void _osc(String code, List<String> args) {
+    if (code != '7') return;
+    final dir = parseOsc7(args);
+    if (dir == null) return;
+    if (dir != cwd) {
+      cwd = dir;
+      notifyListeners();
+    }
+    // Every prompt reports the folder: a good moment to refresh git status
+    // (after a checkout, commit or pull).
+    _gitDebounce?.cancel();
+    _gitDebounce = Timer(const Duration(milliseconds: 300), refreshGit);
+  }
+
+  /// Re-reads the git status of [cwd] on a separate channel.
+  Future<void> refreshGit() async {
+    final client = _client;
+    final dir = cwd;
+    if (client == null || dir == null) return;
+    if (_gitBusy) {
+      _gitAgain = true;
+      return;
+    }
+    _gitBusy = true;
+    try {
+      final out = await client.run(gitStatusCommand(dir), stderr: false).timeout(const Duration(seconds: 8));
+      if (_client != client) return;
+      git = parseGitStatus(utf8.decode(out, allowMalformed: true));
+      notifyListeners();
+    } on Object catch (e) {
+      debugPrint('git status failed: $e'); // keep the last known status
+    } finally {
+      _gitBusy = false;
+      if (_gitAgain) {
+        _gitAgain = false;
+        unawaited(refreshGit());
+      }
     }
   }
 
@@ -181,6 +285,11 @@ class SshSessionController extends ChangeNotifier {
     _client = null;
     terminal.onOutput = null;
     terminal.onResize = null;
+    terminal.onPrivateOSC = null;
+    _gitDebounce?.cancel();
+    if (_hider != null) _releaseHider();
+    cwd = null;
+    git = null;
   }
 
   void _setStatus(SshStatus s) {

@@ -11,6 +11,7 @@ class GhPull {
     required this.author,
     required this.headRef,
     required this.headSha,
+    this.headRepo,
     required this.baseRef,
     required this.createdAt,
     required this.updatedAt,
@@ -41,6 +42,7 @@ class GhPull {
       author: GhUser.fromJson(j['user'] as Map<String, dynamic>),
       headRef: head['ref'] as String,
       headSha: head['sha'] as String,
+      headRepo: (head['repo'] as Map<String, dynamic>?)?['full_name'] as String?,
       baseRef: base['ref'] as String,
       createdAt: DateTime.parse(j['created_at'] as String),
       updatedAt: DateTime.parse(j['updated_at'] as String),
@@ -59,6 +61,10 @@ class GhPull {
   final GhUser author;
   final String headRef;
   final String headSha;
+
+  /// `owner/name` the head branch lives in: differs for PRs from forks, and
+  /// is null when the fork was deleted.
+  final String? headRepo;
   final String baseRef;
   final DateTime createdAt;
   final DateTime updatedAt;

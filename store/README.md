@@ -24,7 +24,8 @@ Folder names the frame tool expects, and the devices that produce the right size
 
 | NAME | Device | Raw size | Framed output |
 |---|---|---|---|
-| `iphone-6.9` | iPhone 17 Pro Max simulator | 1320 × 2868 | App Store 6.9", same size |
+| `iphone-6.3` | iPhone 17 Pro simulator | 1206 × 2622 | App Store *iPhone with Dynamic Island (medium)*, required; also used for the header and search-results artwork |
+| `iphone-6.9` | iPhone 17 Pro Max simulator | 1320 × 2868 | App Store *iPhone with Dynamic Island (large)*, optional |
 | `ipad-13` | iPad Pro 13-inch (M5) simulator | 2064 × 2752 | App Store 13", same size |
 | `android-phone` | Pixel 8 emulator (`Shots_Phone`) | 1080 × 2400 | Play phone, 1080 × 1920 |
 | `android-tablet-7` | Medium tablet emulator (`Shots_Tablet7`) | 1200 × 1920 | Play 7", same size |

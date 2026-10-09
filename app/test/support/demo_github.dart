@@ -23,6 +23,9 @@ class DemoGitHub implements HttpClientAdapter {
   static const retryGo = 'internal/webhooks/retry.go';
 
   final unknown = <String>[];
+
+  /// Writes the app made (POST path and body), e.g. submitted reviews.
+  final posted = <(String, Object?)>[];
   final DateTime _now;
 
   String _ago(Duration d) => _now.subtract(d).toIso8601String();
@@ -181,7 +184,70 @@ class DemoGitHub implements HttpClientAdapter {
     {'filename': 'docs/retry-timeline.png', 'status': 'added', 'additions': 0, 'deletions': 0, 'sha': 'f4'},
   ];
 
-  Map<String, dynamic> _pull(int n, String title, String state, int author, {String? merged, bool draft = false}) => {
+  /// History of [retryGo] per branch, for the file history graph: main and
+  /// two branches forked from it. One main commit is a rebased copy of a
+  /// feature commit (same author date and message, new sha); one reverts
+  /// another. (id, title, author index, hours since authored, hours since committed)
+  static const _retryHistory = {
+    'main': [
+      (101, 'Revert "Retry on 409 Conflict"', 3, 2, 2),
+      (102, 'Add exponential backoff to webhook retries', 0, 30, 5),
+      (103, 'Retry on 409 Conflict', 1, 20, 20),
+      (104, 'Log request IDs in error responses', 3, 27, 27),
+      (105, 'Make retry count configurable', 2, 46, 46),
+      (106, 'Add refund webhook handler', 1, 95, 95),
+      (107, 'Document the retry policy', 0, 120, 120),
+      (108, 'Initial webhook retries', 2, 260, 260),
+    ],
+    featureBranch: [
+      (111, 'Cap backoff at one minute', 0, 3, 3),
+      (112, 'Add exponential backoff to webhook retries', 0, 30, 30),
+      (105, 'Make retry count configurable', 2, 46, 46),
+      (106, 'Add refund webhook handler', 1, 95, 95),
+      (107, 'Document the retry policy', 0, 120, 120),
+      (108, 'Initial webhook retries', 2, 260, 260),
+    ],
+    'fix/currency-rounding': [
+      (121, 'Honor Retry-After headers', 1, 8, 8),
+      (103, 'Retry on 409 Conflict', 1, 20, 20),
+      (104, 'Log request IDs in error responses', 3, 27, 27),
+      (105, 'Make retry count configurable', 2, 46, 46),
+      (106, 'Add refund webhook handler', 1, 95, 95),
+      (107, 'Document the retry policy', 0, 120, 120),
+      (108, 'Initial webhook retries', 2, 260, 260),
+    ],
+  };
+
+  List<Map<String, dynamic>>? _fileHistory(String? branch, String path) {
+    if (path != retryGo) return [_commit(0)];
+    final list = _retryHistory[branch ?? 'main'];
+    if (list == null) return null;
+    return [
+      for (final (i, (id, title, author, authored, committed)) in list.indexed)
+        {
+          'sha': sha(id),
+          'commit': {
+            'message': title,
+            'author': {'name': _people[author].$2, 'date': _ago(Duration(hours: authored))},
+            'committer': {'name': _people[author].$2, 'date': _ago(Duration(hours: committed))},
+          },
+          'author': {'login': _people[author].$1, 'avatar_url': null},
+          'parents': [
+            {'sha': i + 1 < list.length ? sha(list[i + 1].$1) : sha(99)},
+          ],
+        },
+    ];
+  }
+
+  Map<String, dynamic> _pull(
+    int n,
+    String title,
+    String state,
+    int author, {
+    String? merged,
+    bool draft = false,
+    String head = featureBranch,
+  }) => {
     'number': n,
     'title': title,
     'body':
@@ -191,7 +257,11 @@ class DemoGitHub implements HttpClientAdapter {
     'draft': draft,
     'merged_at': merged,
     'user': {'login': _people[author].$1, 'avatar_url': null},
-    'head': {'ref': featureBranch, 'sha': sha(1)},
+    'head': {
+      'ref': head,
+      'sha': sha(1),
+      'repo': {'full_name': '$owner/$repoName'},
+    },
     'base': {'ref': 'main', 'sha': sha(3)},
     'created_at': _ago(const Duration(hours: 30)),
     'updated_at': _ago(Duration(hours: n == openPullNumber ? 1 : 50)),
@@ -204,7 +274,7 @@ class DemoGitHub implements HttpClientAdapter {
 
   List<Map<String, dynamic>> get _pulls => [
     _pull(openPullNumber, openPullTitle, 'open', 0),
-    _pull(41, 'Round zero-decimal currencies to whole units', 'open', 1, draft: true),
+    _pull(41, 'Round zero-decimal currencies to whole units', 'open', 1, draft: true, head: 'fix/currency-rounding'),
     _pull(39, 'Reconcile ledger in batches', 'closed', 2, merged: _ago(const Duration(hours: 9))),
     _pull(37, 'Try a Redis-backed rate limiter', 'closed', 3),
   ];
@@ -280,10 +350,116 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
 }
 ''';
 
+  Map<String, dynamic> _searchPull(
+    int n,
+    String title,
+    int author,
+    int hours, {
+    String repo = repoName,
+    bool draft = false,
+  }) => {
+    'number': n,
+    'title': title,
+    'repository_url': 'https://api.github.com/repos/$owner/$repo',
+    'user': {'login': _people[author].$1, 'avatar_url': null},
+    'updated_at': _ago(Duration(hours: hours)),
+    'draft': draft,
+    'comments': n == openPullNumber ? 2 : 0,
+    'pull_request': {'url': 'https://api.github.com/repos/$owner/$repo/pulls/$n'},
+  };
+
+  /// A thread on the open PR's retry.go, on the line declaring `max`.
+  List<Map<String, dynamic>> get _reviewComments => [
+    {
+      'id': 9001,
+      'path': retryGo,
+      'line': 16,
+      'side': 'RIGHT',
+      'body': 'Should max be configurable per endpoint?',
+      'user': {'login': _people[1].$1, 'avatar_url': null},
+      'created_at': _ago(const Duration(hours: 5)),
+    },
+    {
+      'id': 9002,
+      'path': retryGo,
+      'line': 16,
+      'side': 'RIGHT',
+      'in_reply_to_id': 9001,
+      'body': 'Later, if a customer asks. One minute is the documented limit.',
+      'user': {'login': _people[0].$1, 'avatar_url': null},
+      'created_at': _ago(const Duration(hours: 4)),
+    },
+  ];
+
+  List<Map<String, dynamic>> get _reviews => [
+    {
+      'id': 1,
+      'user': {'login': _people[2].$1},
+      'state': 'APPROVED',
+      'body': '',
+      'submitted_at': _ago(const Duration(hours: 2)),
+    },
+    {
+      'id': 2,
+      'user': {'login': _people[1].$1},
+      'state': 'COMMENTED',
+      'body': '',
+      'submitted_at': _ago(const Duration(hours: 5)),
+    },
+  ];
+
+  /// GraphQL: blame of [retryGo] (any other file: one range).
+  Object? _graphql(Object? body) {
+    final vars = (body as Map<String, dynamic>?)?['variables'] as Map<String, dynamic>? ?? const {};
+    final lines = '\n'.allMatches(_retrySource).length;
+    Map<String, dynamic> range(int start, int end, int id, int age) {
+      final (_, title, author, _, hours) = _retryHistory['main']!.firstWhere((c) => c.$1 == id);
+      return {
+        'startingLine': start,
+        'endingLine': end,
+        'age': age,
+        'commit': {
+          'oid': sha(id),
+          'messageHeadline': title,
+          'committedDate': _ago(Duration(hours: hours)),
+          'author': {
+            'name': _people[author].$2,
+            'user': {'login': _people[author].$1},
+          },
+        },
+      };
+    }
+
+    final ranges = vars['path'] == retryGo
+        ? [range(1, 9, 108, 9), range(10, 16, 105, 6), range(17, 26, 102, 2), range(27, lines, 103, 4)]
+        : [range(1, 200, 107, 7)];
+    return {
+      'data': {
+        'repository': {
+          'object': {
+            'blame': {'ranges': ranges},
+          },
+        },
+      },
+    };
+  }
+
   Object? _route(String path, Map<String, dynamic> query) {
     const base = '/repos/$owner/$repoName';
     if (path == '/user') return {'login': owner, 'name': 'Demo Developer', 'avatar_url': null};
     if (path == '/user/repos') return [for (final r in _repos) _repo(r)];
+    if (path == '/search/issues') {
+      final q = '${query['q']}';
+      final items = [
+        if (q.contains('review-requested:@me')) ...[
+          _searchPull(openPullNumber, openPullTitle, 0, 1),
+          _searchPull(7, 'Retry dead-letter queue on startup', 3, 6, repo: 'mobile-app'),
+        ],
+        if (q.contains('author:@me'))
+          _searchPull(41, 'Round zero-decimal currencies to whole units', 1, 50, draft: true),
+      ];
+      return {'total_count': items.length, 'incomplete_results': false, 'items': items};
+    }
     for (final r in _repos) {
       if (path.toLowerCase() == '/repos/$owner/${r.$1}'.toLowerCase()) return _repo(r);
     }
@@ -304,6 +480,9 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
             'commit': {'sha': sha(i * 4 + 3)},
           },
       ];
+    }
+    if (path == '$base/commits' && query['path'] != null) {
+      return _fileHistory(query['sha'] as String?, '${query['path']}');
     }
     if (path == '$base/commits') {
       final perPage = int.tryParse('${query['per_page'] ?? ''}') ?? 30;
@@ -347,6 +526,8 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
         null => p,
         '/files' => _files,
         '/commits' => [_commit(1), _commit(0)],
+        '/comments' => n == openPullNumber ? _reviewComments : <Object>[],
+        '/reviews' => n == openPullNumber ? _reviews : <Object>[],
         _ => null,
       };
     }
@@ -359,7 +540,17 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    final data = _route(options.path, options.queryParameters);
+    if (options.method == 'POST' && options.path != '/graphql') {
+      posted.add((options.path, options.data));
+      return ResponseBody.fromString(
+        '{}',
+        200,
+        headers: {
+          'content-type': ['application/json'],
+        },
+      );
+    }
+    final data = options.path == '/graphql' ? _graphql(options.data) : _route(options.path, options.queryParameters);
     if (data == null) {
       unknown.add(options.path);
       return ResponseBody.fromString(

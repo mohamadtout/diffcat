@@ -12,6 +12,9 @@ import 'poll_state.dart';
 /// after a long offline period doesn't flood the shade.
 const _maxEventsPerRepo = 5;
 
+/// Repos checked at the same time.
+const _parallelRepos = 4;
+
 /// How many PR snapshots to remember per repo.
 const _maxPullSnapshots = 200;
 
@@ -48,18 +51,34 @@ class Poller {
     final includeOwn = prefs.getBool(StoreKeys.notifyIncludeOwn) ?? false;
     final self = includeOwn ? null : await _selfLogin();
 
-    final events = <GitEvent>[];
+    // A few repos at a time: iOS gives a background refresh about 30 seconds.
+    final perRepo = <String, List<GitEvent>>{};
     final errors = <String, String>{};
-    for (final fullName in watched) {
-      final parts = fullName.split('/');
-      if (parts.length != 2) continue;
-      final repo = (owner: parts[0], name: parts[1]);
-      final state = states[fullName] ?? RepoPollState();
+    final queue = [...watched];
+    Future<void> worker() async {
+      while (queue.isNotEmpty) {
+        final fullName = queue.removeAt(0);
+        final parts = fullName.split('/');
+        if (parts.length != 2) continue;
+        final repo = (owner: parts[0], name: parts[1]);
+        final state = states[fullName] ?? RepoPollState();
+        try {
+          perRepo[fullName] = (await checkRepo(repo, state, selfLogin: self)).take(_maxEventsPerRepo).toList();
+          states[fullName] = state;
+        } catch (e) {
+          errors[fullName] = e.toString();
+        }
+      }
+    }
+
+    await Future.wait([for (var i = 0; i < _parallelRepos; i++) worker()]);
+    // In watched order, whatever order the checks finished in.
+    final events = [for (final r in watched) ...?perRepo[r]];
+    if ((prefs.getBool(StoreKeys.notifyReviewRequests) ?? false) && !api.client.isAnonymous) {
       try {
-        events.addAll((await checkRepo(repo, state, selfLogin: self)).take(_maxEventsPerRepo));
-        states[fullName] = state;
+        events.addAll((await _reviewRequests()).take(_maxEventsPerRepo));
       } catch (e) {
-        errors[fullName] = e.toString();
+        errors['Review requests'] = e.toString();
       }
     }
     // Forget repos that are no longer watched.
@@ -121,6 +140,14 @@ class Poller {
       commits: cmp.commits.where(keep).toList(),
       forced: cmp.status == 'diverged',
     );
+  }
+
+  /// New requests for the user's review, on any repo (one search request).
+  Future<List<GitEvent>> _reviewRequests() async {
+    final now = (await api.searchPulls('review-requested:@me')).items;
+    final seen = prefs.getStringList(StoreKeys.reviewRequestsSeen)?.toSet();
+    await prefs.setStringList(StoreKeys.reviewRequestsSeen, [for (final p in now) p.key]);
+    return reviewRequestEvents(seen, now);
   }
 
   Future<String?> _selfLogin() async {

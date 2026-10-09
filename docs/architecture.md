@@ -45,6 +45,8 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 - **Screen-local UI state** (the selected branch, selected item in split view) lives in `StatefulWidget`s, not providers. This keeps pushed screens independent: "browse at commit X" doesn't change the branch on the screen below it.
 - **Retries:** `ProviderScope.retry` in `main.dart` retries only transient errors (`GitHubException.isRetryable`).
 - **Background isolate:** the WorkManager task (`backgroundPollDispatcher`) runs without Riverpod. `Poller` takes a `GitHubApi` and `SharedPreferences` directly, so the same code runs in both isolates.
+- **Heavy work off the UI thread:** trees over 5,000 entries are built with `Isolate.run`, saved responses over 50 KB are
+  decoded with `compute` (Dio already does this for network JSON), and the file viewer splits a file once per content.
 - **Long-lived things** (`sshSessionsProvider`, `consoleProvider`) are deliberately not auto-disposed, so an SSH session or console scrollback survives navigation.
 
 ## GitHub access
@@ -54,6 +56,10 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 - Sends `Authorization: Bearer <token>` when signed in (nothing when signed out) and `X-GitHub-Api-Version: 2022-11-28`. `githubApiProvider` is always available; `isSignedInProvider` says which mode it's in.
 - Uses **conditional requests**: it stores `ETag`s (LRU, 300 entries) and sends `If-None-Match`. A `304` reuses the cached body and doesn't count against the rate limit.
 - `getPage` / `getAll` follow `Link: rel="next"`.
+- The background notification check also passes an `EtagCache` (`FileEtagCache`), so its conditional requests survive
+  between runs (each run is a fresh isolate with an empty memory cache).
+- `getBytes` (tarballs) streams and stops at 300 MB rather than holding an unbounded archive in memory. Redirects to
+  `codeload.github.com` don't carry the token: Dart's `HttpClient` drops `Authorization` on cross-origin redirects.
 - Maps errors to `GitHubException` (`isUnauthorized`, `isNotFound`, `isRateLimited`, `isRetryable`). `ErrorView` turns these into readable messages.
 - **Offline copies** (`features/offline/`, decision D11): the client takes an optional `ResponseCache`. In `CacheMode.replay` (screens, via `githubApiProvider`) a saved response is returned before any network call. In `CacheMode.record` (`BranchDownloader`) every response is fetched and saved. Keys come from `GitHubClient.cacheKey` (owner/name case-insensitive). `OfflineStore` keeps one folder per repo with an `index.json` that files each response under a group (`repo`, `branch:<name>`, `commit:<sha>`, `pr:<n>`, `files:<branch>`) for sizes and selective deletes. `liveGithubApiProvider` skips the cache (the notification poller uses it). Both take their transport from `githubAdapterProvider` (null means the real network). Tests and the store screenshots override it with canned responses, so the offline layer and everything above it run unchanged. **Offline mode** (`offlineModeProvider`, a remembered per-repo set) adds `cacheOnly` to the screens' client: for those repos a missing response throws `GitHubException.notDownloaded` (never retried) instead of going to the network. The repo list merges `savedReposInfoProvider` (repo details read back from the saved copies) into your repos, so downloads show up even with no network.
 
@@ -67,7 +73,10 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 | `git ls-tree -r` | `GET /repos/{o}/{r}/git/trees/{ref}?recursive=1` | Files tab, console `ls` |
 | `git show ref:path` | `GET /repos/{o}/{r}/contents/{path}?ref=` (raw) | File viewer, console `cat` |
 | branches / tags | `GET …/branches`, `GET …/tags` | Ref picker, console, poller |
+| `git blame` | GraphQL `repository.object(expression:).blame(path:)` (token required) | File viewer blame |
 | PRs | `GET …/pulls`, `…/pulls/{n}`, `…/files`, `…/commits` | PRs tab, PR screen, poller |
+| Inbox | `GET /search/issues?q=is:pr is:open archived:false review-requested:@me` (and `author:`, `mentions:`, `assignee:`) | Inbox tab, review-request notifications |
+| Reviews | `GET …/pulls/{n}/comments`, `…/reviews`; `POST …/reviews` (with line comments), `…/comments`, `…/comments/{id}/replies` | PR screen (signed in, online) |
 
 Known API limits: the tree is truncated for huge repos, compare returns at most 300 files, a single commit returns at most 3000 files, and file history doesn't follow renames. The UI says so wherever one of these applies.
 
@@ -80,21 +89,24 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 
 ## Routing
 
-`Routes` builds every path, and `app_router.dart` declares them. A `StatefulShellRoute` has three branches (Repos, Terminal, Settings), so each tab keeps its own stack.
+`Routes` builds every path, and `app_router.dart` declares them. A `StatefulShellRoute` has four branches (Repos, Inbox, Terminal, Settings), so each tab keeps its own stack.
 
 | Route | Screen |
 |---|---|
 | `/` · `/setup` | splash · optional token sign-in (pushed from Repos/Settings) |
 | `/repos` | repository list |
+| `/inbox` | pull requests that need you (search) |
 | `/repos/:owner/:name?tab=&ref=` | repo home (Commits / Files / PRs / Console) |
 | `/repos/:owner/:name/commit/:sha?file=` | commit diff, optionally focused on a file |
 | `/repos/:owner/:name/compare?base=&head=&file=` | range diff (multi-commit notifications land here) |
 | `/repos/:owner/:name/pull/:number` | pull request |
-| `/repos/:owner/:name/file?path=&ref=` | file viewer |
+| `/repos/:owner/:name/file?path=&ref=&blame=1` | file viewer (optionally with blame) |
 | `/repos/:owner/:name/history?path=&ref=` | file history |
 | `/repos/:owner/:name/since?ref=&base=` | "files changed since commit X" |
 | `/terminal`, `/terminal/edit?id=`, `/terminal/:hostId` | SSH hosts, host editor, live session |
 | `/settings`, `/settings/commands` | settings, custom buttons |
+| `/settings/terminal` | terminal appearance |
+| `/settings/code` | code view (font, full files, diff colors) |
 | `/settings/downloads`, `/settings/downloads/:owner/:name` | offline storage: all repos, one repo by branch/commit/PR |
 
 Because repo routes are nested under `/repos`, `router.go(route)` from a notification builds a proper back stack (repo list → repo → commit).
@@ -114,6 +126,16 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 
 - It's lazy, so a 5,000-line commit scrolls smoothly, and `ListController.jumpToItem` powers "jump to file".
 - **No-wrap mode** pans only the code column horizontally (a shared `AnimationController` plus `Transform.translate`, with fling), so line numbers stay visible. Wrap mode is a toggle and persists.
+- **Full files:** `fullFileLines` merges the new file's content with the hunks (context lines between them get both
+  line numbers) and returns null if the content doesn't match, e.g. a compare whose head branch moved. A file header
+  requests its content after it's built, so only files scrolled near cost a request.
+- **Colors** come from the `DiffColors` theme extension, which `app.dart` builds from `diffColorsProvider` (a palette
+  plus per-slot overrides for light and dark), so every `DiffColors.of(context)` follows the user's choice.
+- **Syntax and word diffs** (`syntax.dart`, pure): `highlightDiffLines` highlights each side of a file's diff as one
+  text (new side: context + added; old side: context + removed), so block comments and strings spanning lines color
+  right, then splits the result back into lines. `pairedWordDiffs` pairs the i-th removed with the i-th added line of a
+  change block and marks differing tokens (token LCS, skipped for rewrites). Both run per file the first time one of
+  its lines is built and are looked up per line through `Expando`s.
 - Files with more than 1200 changed lines start collapsed. The toolbar shows the file currently on screen; tap it for the file list.
 
 ## SSH terminal
@@ -125,3 +147,9 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 - On-screen toolbar: Esc/Tab/arrows/PgUp…, plus sticky **Ctrl/Alt** that modify the next typed key.
 - Custom buttons and the startup command use key notation (docs/commands.md) and go through `Terminal.keyInput`, so arrow keys respect application-cursor mode (important for lazygit).
 - Sessions live in `SshSessionRegistry`, so leaving the screen doesn't drop the connection while the app is in the foreground.
+- **Status bar / shell integration** (`shell_integration.dart`): the shell's folder arrives as OSC 7 (`Terminal.onPrivateOSC`).
+  After each report the session runs `git status --porcelain=v2 --branch` in that folder on a separate exec channel
+  (`SSHClient.run`, `GIT_OPTIONAL_LOCKS=0`), never in the user's shell. With shell integration on, the hook is typed
+  once the login output settles; `EchoHider` hides its echo up to a private OSC marker and fails open after 4 s.
+- **Appearance** (`terminalAppearanceProvider`) is one JSON blob in prefs. A picked background image is copied to
+  app support storage (`terminal/`) and the old copy deleted. Bundled fonts' licenses are registered in `main.dart`.
