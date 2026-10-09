@@ -62,6 +62,9 @@ abstract final class StoreKeys {
   static const diffSyntax = 'diff_syntax';
   static const diffColors = 'diff_colors';
   static const splitCollapsed = 'split_collapsed';
+
+  /// A pull request review being written (see features/pulls/review.dart).
+  static String reviewDraft(String repo, int number) => 'review_draft:${repo.toLowerCase()}#$number';
   static const secureStorageVersion = 'secure_storage_version';
 }
 

@@ -131,6 +131,50 @@ query($owner: String!, $name: String!, $ref: String!, $path: String!) {
   Future<List<GhFileChange>> pullFiles(RepoRef r, int number) =>
       client.getAll('${_r(r)}/pulls/$number/files', parse: GhFileChange.fromJson, maxPages: 30);
 
+  /// Line comments of a pull request, oldest first.
+  Future<List<GhReviewComment>> reviewComments(RepoRef r, int number) =>
+      client.getAll('${_r(r)}/pulls/$number/comments', parse: GhReviewComment.fromJson, maxPages: 10);
+
+  /// Submitted reviews (approve / request changes / comment), oldest first.
+  Future<List<GhReview>> reviews(RepoRef r, int number) =>
+      client.getAll('${_r(r)}/pulls/$number/reviews', parse: GhReview.fromJson, maxPages: 5);
+
+  /// Submits a review with its line [comments] in one go, against [commitId]
+  /// (the head the comments were written on).
+  Future<void> submitReview(
+    RepoRef r,
+    int number, {
+    required String commitId,
+    required ReviewEvent event,
+    String body = '',
+    List<Map<String, dynamic>> comments = const [],
+  }) => client.postJson('${_r(r)}/pulls/$number/reviews', {
+    'commit_id': commitId,
+    'event': event.api,
+    if (body.isNotEmpty) 'body': body,
+    if (comments.isNotEmpty) 'comments': comments,
+  });
+
+  /// One line comment outside a review ("Add single comment").
+  Future<void> addReviewComment(
+    RepoRef r,
+    int number, {
+    required String commitId,
+    required String path,
+    required int line,
+    required DiffSide side,
+    required String body,
+  }) => client.postJson('${_r(r)}/pulls/$number/comments', {
+    'commit_id': commitId,
+    'path': path,
+    'line': line,
+    'side': side.api,
+    'body': body,
+  });
+
+  Future<void> replyToReviewComment(RepoRef r, int number, int commentId, String body) =>
+      client.postJson('${_r(r)}/pulls/$number/comments/$commentId/replies', {'body': body});
+
   Future<List<GhCommit>> pullCommits(RepoRef r, int number) =>
       client.getAll('${_r(r)}/pulls/$number/commits', parse: GhCommit.fromJson, maxPages: 3);
 }

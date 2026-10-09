@@ -38,6 +38,8 @@ class DiffView extends ConsumerStatefulWidget {
     this.focusPath,
     this.header,
     this.preview = false,
+    this.onLineTap,
+    this.lineFooter,
   });
 
   final RepoRef repo;
@@ -54,6 +56,12 @@ class DiffView extends ConsumerStatefulWidget {
 
   /// A sample in settings: no toolbar, no file actions, no network.
   final bool preview;
+
+  /// Tapping a code line (e.g. to comment on it in a pull request).
+  final void Function(GhFileChange file, DiffLine line)? onLineTap;
+
+  /// Shown under a line (e.g. its review comments), or null for nothing.
+  final Widget? Function(GhFileChange file, DiffLine line)? lineFooter;
 
   @override
   ConsumerState<DiffView> createState() => _DiffViewState();
@@ -201,6 +209,13 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
     if (range == null || _doc.rows.isEmpty) return;
     final idx = range.$1.clamp(0, _doc.rows.length - 1);
     _currentFile.value = _doc.rows[idx].fileIndex;
+  }
+
+  Widget _withFooter(int file, DiffLine line, Widget lineView) {
+    final footer = widget.lineFooter?.call(widget.files[file], line);
+    return footer == null
+        ? lineView
+        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [lineView, footer]);
   }
 
   List<HlSeg>? _segsFor(int file, DiffLine line) {
@@ -392,12 +407,17 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
       onHistory: () => context.push(Routes.history(widget.repo, file.filename, widget.fileRef)),
     ),
     HunkHeaderRow(:final header) => _HunkHeader(header: header, mono: m.mono),
-    LineRow(:final fileIndex, :final line) => _LineView(
-      line: line,
-      m: m,
-      h: _h,
-      segs: _segsFor(fileIndex, line),
-      changed: _emph[line] ?? const [],
+    LineRow(:final fileIndex, :final line) => _withFooter(
+      fileIndex,
+      line,
+      _LineView(
+        line: line,
+        m: m,
+        h: _h,
+        segs: _segsFor(fileIndex, line),
+        changed: _emph[line] ?? const [],
+        onTap: widget.onLineTap == null ? null : () => widget.onLineTap!(widget.files[fileIndex], line),
+      ),
     ),
     NoticeRow(:final message) => Padding(
       padding: const EdgeInsets.all(16),
@@ -696,7 +716,16 @@ class _HunkHeader extends StatelessWidget {
 }
 
 class _LineView extends StatelessWidget {
-  const _LineView({required this.line, required this.m, required this.h, this.segs, this.changed = const []});
+  const _LineView({
+    required this.line,
+    required this.m,
+    required this.h,
+    this.segs,
+    this.changed = const [],
+    this.onTap,
+  });
+
+  final VoidCallback? onTap;
 
   final DiffLine line;
 
@@ -743,6 +772,7 @@ class _LineView extends StatelessWidget {
           );
 
     return GestureDetector(
+      onTap: onTap,
       onLongPress: () {
         Clipboard.setData(ClipboardData(text: line.text));
         ScaffoldMessenger.of(context)

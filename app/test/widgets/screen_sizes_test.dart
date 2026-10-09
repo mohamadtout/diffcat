@@ -9,6 +9,7 @@ import 'package:git_reviewer/core/widgets/text_size_sheet.dart';
 import 'package:git_reviewer/data/github/models/models.dart';
 import 'package:git_reviewer/features/offline/download_button.dart';
 import 'package:git_reviewer/features/offline/offline_store.dart';
+import 'package:git_reviewer/features/pulls/review_widgets.dart';
 import 'package:git_reviewer/features/repo/ref_picker.dart';
 import 'package:git_reviewer/features/terminal/host_edit_screen.dart';
 import 'package:git_reviewer/features/terminal/host_key_dialog.dart';
@@ -168,6 +169,17 @@ void main() {
           (c) => showDownloadSheet(c, repo: _r, branch: DemoGitHub.featureBranch),
         );
         await show('shell integration sheet', showShellIntegrationSheet);
+        await show('comment composer', (c) => showCommentComposer(c, title: 'retry.go:27'));
+        await show(
+          'review sheet',
+          (c) => showModalBottomSheet<void>(
+            context: c,
+            useRootNavigator: true,
+            isScrollControlled: true,
+            builder: (_) =>
+                ReviewSubmitSheet(pullKey: (repo: _r, number: DemoGitHub.openPullNumber), headSha: DemoGitHub.sha(1)),
+          ),
+        );
         await show('text size sheet', (c) => showTextSizeSheet(c, value: 13, min: 8, max: 24, onChanged: (_) {}));
         overlay = 'branch picker';
         await tester.tap(find.byType(RefPickerButton).first);

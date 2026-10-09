@@ -6,11 +6,18 @@ import '../../core/routing/routes.dart';
 import '../../core/utils/relative_time.dart';
 import '../../core/widgets/async_view.dart';
 import '../../core/widgets/common.dart';
+import '../../data/github/github_exception.dart';
 import '../../data/github/models/models.dart';
+import '../auth/auth_controller.dart';
 import '../commits/commit_list_view.dart';
+import '../diff/diff_parser.dart';
 import '../diff/diff_view.dart';
+import '../offline/offline_providers.dart';
 import 'pulls_providers.dart';
 import 'pulls_tab.dart';
+import 'review.dart';
+import 'review_providers.dart';
+import 'review_widgets.dart';
 
 class PullScreen extends StatelessWidget {
   const PullScreen({super.key, required this.repo, required this.number});
@@ -55,11 +62,11 @@ class PullView extends ConsumerWidget {
               child: TabBarView(
                 physics: const NeverScrollableScrollPhysics(), // diff pans horizontally
                 children: [
-                  _Overview(pull: pull),
+                  _Overview(pull: pull, repo: repo),
                   AsyncView(
                     value: ref.watch(pullFilesProvider(key)),
                     onRetry: () => ref.invalidate(pullFilesProvider(key)),
-                    data: (files) => DiffView(repo: repo, files: files, fileRef: pull.headSha),
+                    data: (files) => _ReviewableDiff(pull: pull, pullKey: key, files: files),
                   ),
                   AsyncView(
                     value: ref.watch(pullCommitsProvider(key)),
@@ -74,9 +81,114 @@ class PullView extends ConsumerWidget {
                 ],
               ),
             ),
+            if (_canReview(ref, pull, repo)) ReviewBar(pullKey: key, headSha: pull.headSha),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Reviewing writes to GitHub: signed in, online, and only open PRs.
+bool _canReview(WidgetRef ref, GhPull pull, RepoRef repo) =>
+    ref.watch(isSignedInProvider) &&
+    !ref.watch(isOfflineProvider(repo)) &&
+    (pull.state == PullState.open || pull.state == PullState.draft);
+
+/// The files diff with review threads and pending comments under their
+/// lines; tapping a line comments on it.
+class _ReviewableDiff extends ConsumerWidget {
+  const _ReviewableDiff({required this.pull, required this.pullKey, required this.files});
+
+  final GhPull pull;
+  final PullKey pullKey;
+  final List<GhFileChange> files;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canReview = _canReview(ref, pull, pullKey.repo);
+    final comments = ref.watch(reviewCommentsProvider(pullKey)).value ?? const [];
+    final threads = threadComments(comments).byLine;
+    final draft = ref.watch(reviewDraftProvider(pullKey));
+    final drafts = ref.read(reviewDraftProvider(pullKey).notifier);
+    final api = ref.read(githubApiProvider);
+
+    Future<void> post(Future<void> Function() call) async {
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        await call();
+        ref.invalidate(reviewCommentsProvider(pullKey));
+      } on Object catch (e) {
+        messenger.showSnackBar(SnackBar(content: Text("Couldn't post: ${e is GitHubException ? e.message : e}")));
+      }
+    }
+
+    Future<void> comment(GhFileChange file, DiffLine line) async {
+      final anchor = anchorFor(file.filename, line);
+      if (anchor == null) return;
+      final r = await showCommentComposer(
+        context,
+        title: '${file.basename}:${anchor.line}${anchor.side == DiffSide.left ? ' (removed)' : ''}',
+      );
+      if (r == null) return;
+      if (r.action == ComposeAction.addToReview) {
+        drafts.add(
+          DraftComment(anchor: anchor, body: r.text),
+          headSha: pull.headSha,
+        );
+      } else {
+        await post(
+          () => api.addReviewComment(
+            pullKey.repo,
+            pullKey.number,
+            commitId: pull.headSha,
+            path: anchor.path,
+            line: anchor.line,
+            side: anchor.side,
+            body: r.text,
+          ),
+        );
+      }
+    }
+
+    Future<void> reply(ReviewThread t) async {
+      final r = await showCommentComposer(
+        context,
+        title: 'Reply to ${t.root.user.login}',
+        actions: const [ComposeAction.commentNow],
+      );
+      if (r != null) await post(() => api.replyToReviewComment(pullKey.repo, pullKey.number, t.root.id, r.text));
+    }
+
+    Future<void> edit(DraftComment d) async {
+      final r = await showCommentComposer(
+        context,
+        title: 'Edit pending comment',
+        initial: d.body,
+        actions: const [ComposeAction.save],
+      );
+      if (r != null) drafts.replace(d, DraftComment(anchor: d.anchor, body: r.text));
+    }
+
+    return DiffView(
+      repo: pullKey.repo,
+      files: files,
+      fileRef: pull.headSha,
+      onLineTap: canReview ? comment : null,
+      lineFooter: (file, line) {
+        final anchor = anchorFor(file.filename, line);
+        if (anchor == null) return null;
+        final t = threads[anchor] ?? const [];
+        final d = draft.comments.where((c) => c.anchor == anchor).toList();
+        if (t.isEmpty && d.isEmpty) return null;
+        return LineComments(
+          threads: t,
+          drafts: d,
+          onReply: canReview ? reply : null,
+          onEditDraft: edit,
+          onDeleteDraft: drafts.remove,
+        );
+      },
     );
   }
 }
@@ -119,8 +231,9 @@ class _PullHeader extends StatelessWidget {
 }
 
 class _Overview extends StatelessWidget {
-  const _Overview({required this.pull});
+  const _Overview({required this.pull, required this.repo});
   final GhPull pull;
+  final RepoRef repo;
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +241,7 @@ class _Overview extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        ReviewersSummary(pullKey: (repo: repo, number: pull.number)),
         Row(
           children: [
             UserAvatar(url: pull.author.avatarUrl, fallback: pull.author.login, size: 24),

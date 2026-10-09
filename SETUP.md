@@ -29,7 +29,7 @@ Without a token you can open any public repo (type `owner/name` or paste a githu
 - Expiration: your call. When it expires the app says "GitHub rejected the token"; sign out in Settings and paste a new one.
 - If an org uses SAML SSO: on the token list, use **Configure SSO → Authorize** for that org.
 
-**Fine-grained token (only your own or one org's repos):** Contents → Read, Metadata → Read, Pull requests → Read.
+**Fine-grained token (only your own or one org's repos):** Contents → Read, Metadata → Read, Pull requests → **Read and write** (write is for submitting reviews and comments; Read is enough to only browse).
 
 Collaborator on someone's repo? Accept the invitation first (github.com/notifications or the repo page).
 
