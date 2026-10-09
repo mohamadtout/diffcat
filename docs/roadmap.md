@@ -16,7 +16,6 @@ firing (Xcode → Debug → Simulate Background Fetch).*
 ## Backlog
 
 - Sticky file header while scrolling a diff.
-- Review actions: approve / request changes / comment on lines (GitHub review API).
 - PR "files changed since last review" (track the last-seen head SHA per PR).
 - Mark files as viewed (persisted per PR or commit).
 - File history that follows renames (GraphQL or the compare API heuristics).

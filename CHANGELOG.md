@@ -12,6 +12,7 @@ Releases are tagged `vX.Y.Z` on `main`.
 - Syntax highlighting in diffs and the file viewer, with the exact changed words marked.
 - Blame in the file viewer (signed in): who last changed each line, tap to open the commit.
 - Sign in with GitHub (OAuth device flow) as an alternative to pasting a token.
+- Review pull requests: line comments (pending drafts kept on the device, or posted at once), replies to threads, and submitting Comment / Approve / Request changes.
 - Security and performance: secrets and offline copies kept out of backups, background checks that cost no rate
   limit when nothing changed, heavy work moved off the UI thread.
 

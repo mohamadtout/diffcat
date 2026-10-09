@@ -23,6 +23,9 @@ class DemoGitHub implements HttpClientAdapter {
   static const retryGo = 'internal/webhooks/retry.go';
 
   final unknown = <String>[];
+
+  /// Writes the app made (POST path and body), e.g. submitted reviews.
+  final posted = <(String, Object?)>[];
   final DateTime _now;
 
   String _ago(Duration d) => _now.subtract(d).toIso8601String();
@@ -347,6 +350,46 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
 }
 ''';
 
+  /// A thread on the open PR's retry.go, on the line declaring `max`.
+  List<Map<String, dynamic>> get _reviewComments => [
+    {
+      'id': 9001,
+      'path': retryGo,
+      'line': 16,
+      'side': 'RIGHT',
+      'body': 'Should max be configurable per endpoint?',
+      'user': {'login': _people[1].$1, 'avatar_url': null},
+      'created_at': _ago(const Duration(hours: 5)),
+    },
+    {
+      'id': 9002,
+      'path': retryGo,
+      'line': 16,
+      'side': 'RIGHT',
+      'in_reply_to_id': 9001,
+      'body': 'Later, if a customer asks. One minute is the documented limit.',
+      'user': {'login': _people[0].$1, 'avatar_url': null},
+      'created_at': _ago(const Duration(hours: 4)),
+    },
+  ];
+
+  List<Map<String, dynamic>> get _reviews => [
+    {
+      'id': 1,
+      'user': {'login': _people[2].$1},
+      'state': 'APPROVED',
+      'body': '',
+      'submitted_at': _ago(const Duration(hours: 2)),
+    },
+    {
+      'id': 2,
+      'user': {'login': _people[1].$1},
+      'state': 'COMMENTED',
+      'body': '',
+      'submitted_at': _ago(const Duration(hours: 5)),
+    },
+  ];
+
   /// GraphQL: blame of [retryGo] (any other file: one range).
   Object? _graphql(Object? body) {
     final vars = (body as Map<String, dynamic>?)?['variables'] as Map<String, dynamic>? ?? const {};
@@ -453,6 +496,8 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
         null => p,
         '/files' => _files,
         '/commits' => [_commit(1), _commit(0)],
+        '/comments' => n == openPullNumber ? _reviewComments : <Object>[],
+        '/reviews' => n == openPullNumber ? _reviews : <Object>[],
         _ => null,
       };
     }
@@ -465,6 +510,16 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    if (options.method == 'POST' && options.path != '/graphql') {
+      posted.add((options.path, options.data));
+      return ResponseBody.fromString(
+        '{}',
+        200,
+        headers: {
+          'content-type': ['application/json'],
+        },
+      );
+    }
     final data = options.path == '/graphql' ? _graphql(options.data) : _route(options.path, options.queryParameters);
     if (data == null) {
       unknown.add(options.path);

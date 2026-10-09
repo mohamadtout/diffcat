@@ -75,6 +75,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 | branches / tags | `GET …/branches`, `GET …/tags` | Ref picker, console, poller |
 | `git blame` | GraphQL `repository.object(expression:).blame(path:)` (token required) | File viewer blame |
 | PRs | `GET …/pulls`, `…/pulls/{n}`, `…/files`, `…/commits` | PRs tab, PR screen, poller |
+| Reviews | `GET …/pulls/{n}/comments`, `…/reviews`; `POST …/reviews` (with line comments), `…/comments`, `…/comments/{id}/replies` | PR screen (signed in, online) |
 
 Known API limits: the tree is truncated for huge repos, compare returns at most 300 files, a single commit returns at most 3000 files, and file history doesn't follow renames. The UI says so wherever one of these applies.
 
