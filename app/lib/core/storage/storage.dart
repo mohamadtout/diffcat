@@ -59,6 +59,7 @@ abstract final class StoreKeys {
   static const diffFontSize = 'diff_wrap_font';
   static const diffFont = 'diff_font';
   static const diffFullFile = 'diff_full_file';
+  static const diffSyntax = 'diff_syntax';
   static const diffColors = 'diff_colors';
   static const splitCollapsed = 'split_collapsed';
   static const secureStorageVersion = 'secure_storage_version';

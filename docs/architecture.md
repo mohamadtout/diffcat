@@ -127,6 +127,11 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
   requests its content after it's built, so only files scrolled near cost a request.
 - **Colors** come from the `DiffColors` theme extension, which `app.dart` builds from `diffColorsProvider` (a palette
   plus per-slot overrides for light and dark), so every `DiffColors.of(context)` follows the user's choice.
+- **Syntax and word diffs** (`syntax.dart`, pure): `highlightDiffLines` highlights each side of a file's diff as one
+  text (new side: context + added; old side: context + removed), so block comments and strings spanning lines color
+  right, then splits the result back into lines. `pairedWordDiffs` pairs the i-th removed with the i-th added line of a
+  change block and marks differing tokens (token LCS, skipped for rewrites). Both run per file the first time one of
+  its lines is built and are looked up per line through `Expando`s.
 - Files with more than 1200 changed lines start collapsed. The toolbar shows the file currently on screen; tap it for the file list.
 
 ## SSH terminal

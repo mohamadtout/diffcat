@@ -1,3 +1,4 @@
+import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -11,6 +12,8 @@ import '../../core/widgets/async_view.dart';
 import '../../data/github/models/models.dart';
 import '../auth/auth_controller.dart';
 import '../diff/diff_settings.dart';
+import '../diff/syntax.dart';
+import '../diff/syntax_style.dart';
 import 'files_providers.dart';
 
 const _imageExts = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'};
@@ -110,7 +113,7 @@ class FileView extends ConsumerWidget {
         onRetry: () => ref.invalidate(fileContentProvider(key)),
         data: (content) => content.contains('\u0000')
             ? const EmptyView(icon: Icons.memory, message: 'Binary file not shown.')
-            : CodeLines(content: content),
+            : CodeLines(content: content, path: path),
       );
     }
 
@@ -125,9 +128,12 @@ class FileView extends ConsumerWidget {
 
 /// Lazily-rendered source code with a line-number gutter.
 class CodeLines extends ConsumerStatefulWidget {
-  const CodeLines({super.key, required this.content});
+  const CodeLines({super.key, required this.content, this.path});
 
   final String content;
+
+  /// Picks the syntax highlighting language.
+  final String? path;
 
   @override
   ConsumerState<CodeLines> createState() => _CodeLinesState();
@@ -139,6 +145,10 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
   late List<String> lines;
   late int longest;
 
+  /// Highlighted lines, once ready (null: plain).
+  List<List<HlSeg>>? _hl;
+  String? _hlFor;
+
   @override
   void initState() {
     super.initState();
@@ -148,7 +158,24 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
   @override
   void didUpdateWidget(CodeLines old) {
     super.didUpdateWidget(old);
-    if (old.content != widget.content) _split();
+    if (old.content != widget.content) {
+      _split();
+      _hl = null;
+      _hlFor = null;
+    }
+  }
+
+  /// Highlights once per content; big files on a background isolate so the
+  /// file shows (plain) at once and colors in a moment later.
+  Future<void> _highlight() async {
+    final content = widget.content;
+    final language = widget.path == null ? null : languageForPath(widget.path!);
+    if (_hlFor == content || language == null) return;
+    _hlFor = content;
+    final hl = lines.length > 2000
+        ? await Isolate.run(() => highlightLines(content, language))
+        : highlightLines(content, language);
+    if (mounted && _hlFor == content) setState(() => _hl = hl);
   }
 
   void _split() {
@@ -161,6 +188,15 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
   Widget build(BuildContext context) {
     final settings = ref.watch(diffSettingsProvider);
     final mono = settings.codeStyle(context);
+    if (settings.syntax && _hlFor != widget.content) {
+      // Not during build: it calls setState when done.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _highlight());
+    }
+    final hl = settings.syntax ? _hl : null;
+    final theme = syntaxTheme(context);
+    Text code(int i, {bool wrap = true}) => hl == null || i >= hl.length
+        ? Text(lines[i], style: mono, softWrap: wrap)
+        : Text.rich(codeSpan(lineRuns(hl[i], const []), mono, theme), softWrap: wrap);
     final gutterStyle = mono.copyWith(color: DiffColors.of(context).gutter);
     final tp = TextPainter(
       text: TextSpan(text: 'MMMMMMMMMM', style: mono),
@@ -182,10 +218,7 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
             child: Text('${i + 1}', textAlign: TextAlign.right, style: gutterStyle),
           ),
         ),
-        if (settings.wrap)
-          Expanded(child: Text(lines[i], style: mono))
-        else
-          Text(lines[i], style: mono, softWrap: false),
+        if (settings.wrap) Expanded(child: code(i)) else code(i, wrap: false),
       ],
     );
 

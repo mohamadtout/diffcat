@@ -9,6 +9,7 @@ Releases are tagged `vX.Y.Z` on `main`.
 - File history graph across branches: forks, rebased/cherry-picked copies, reverts; compare any two versions.
 - Terminal customization: color themes, bundled code fonts, gradient or photo backgrounds, git status bar.
 - Code view settings: font, full files with changes in place, editable diff colors and palettes.
+- Syntax highlighting in diffs and the file viewer, with the exact changed words marked.
 - Security and performance: secrets and offline copies kept out of backups, background checks that cost no rate
   limit when nothing changed, heavy work moved off the UI thread.
 
