@@ -21,7 +21,6 @@ firing (Xcode → Debug → Simulate Background Fetch).*
 - Mark files as viewed (persisted per PR or commit).
 - File history that follows renames (GraphQL or the compare API heuristics).
 - Android foreground service to keep SSH sessions alive in the background.
-- OAuth device-flow sign-in (no PAT copy-paste).
 - Mosh / Eternal Terminal for flaky mobile networks; jump-host support.
 - Share-sheet / github.com link handling (Android App Links, iOS Universal Links), which maps straight onto `Routes`.
 - Notification preferences per repo (branches filter, PR-only).

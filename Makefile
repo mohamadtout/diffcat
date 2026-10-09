@@ -4,6 +4,9 @@
 setup:            ## Install dependencies
 	cd app && flutter pub get
 
+# OAuth App client ID for "Sign in with GitHub" (SETUP.md § 1b). Public, not a secret.
+DART_DEFINES := $(if $(GITHUB_CLIENT_ID),--dart-define=GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID))
+
 check:            ## Everything CI runs: format, analyze, test
 	cd app && dart format --output=none --set-exit-if-changed lib test integration_test test_driver tool
 	cd app && flutter analyze
@@ -13,11 +16,11 @@ fmt:              ## Auto-format Dart sources
 	cd app && dart format lib test integration_test test_driver tool
 
 run:              ## Run the app on a connected device
-	cd app && flutter run
+	cd app && flutter run $(DART_DEFINES)
 
 device-test:      ## On-device smoke test + screenshots: make device-test DEVICE=<id from `flutter devices`>
 	cd app && flutter drive --driver=test_driver/integration_test.dart \
-		--target=integration_test/device_smoke_test.dart $(if $(DEVICE),-d $(DEVICE))
+		--target=integration_test/device_smoke_test.dart $(if $(DEVICE),-d $(DEVICE)) $(DART_DEFINES)
 
 ssh-test:         ## Real SSH from a device: make ssh-test DEVICE=<id> SSH_HOST=<ip> SSH_USER=<user> SSH_KEY=<private key file>
 	cd app && flutter drive --driver=test_driver/integration_test.dart --target=integration_test/ssh_test.dart \
@@ -38,4 +41,4 @@ store-frames:     ## Captioned store images from the raw screenshots → store/s
 	python3 store/check_lengths.py
 
 apk:              ## Release APK (see SETUP.md § Release signing)
-	cd app && flutter build apk --release
+	cd app && flutter build apk --release $(DART_DEFINES)

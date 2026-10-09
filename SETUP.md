@@ -35,6 +35,21 @@ Collaborator on someone's repo? Accept the invitation first (github.com/notifica
 
 Paste the token on the Sign in screen. It's stored in Android Keystore / iOS Keychain and only sent to `api.github.com`. **Never keep it in a file inside the project.**
 
+### 1b. "Sign in with GitHub" (OAuth device flow) *(owner, once)*
+
+Builds can offer a **Sign in with GitHub** button instead of token pasting: the app shows a short code, you approve it on
+github.com/login/device, and GitHub hands the app a token. No client secret and no server are involved.
+
+1. GitHub → Settings → Developer settings → **OAuth Apps → New OAuth App**. Name *Diffcat*, homepage the repo URL,
+   callback URL anything (e.g. the repo URL; the device flow doesn't use it).
+2. On the app's page, tick **Enable Device Flow** and save. Copy the **Client ID** (`Ov23…`). It's public, not a secret;
+   don't create a client secret.
+3. Build with it: `make run GITHUB_CLIENT_ID=Ov23…` (also `make apk`, `make device-test`), or
+   `flutter run --dart-define=GITHUB_CLIENT_ID=Ov23…`. Without it the button is hidden and tokens are pasted as above.
+
+The app asks for the `repo` and `read:user` scopes (private repos, reviews, your name). Users can revoke it any time at
+github.com → Settings → Applications.
+
 ## 2. Run the app
 
 ```bash
