@@ -48,6 +48,8 @@ abstract final class StoreKeys {
   static const lastPoll = 'poll_last_result';
   static const viewerLogin = 'viewer_login';
   static const notifyIncludeOwn = 'notify_include_own';
+  static const notifyReviewRequests = 'notify_review_requests';
+  static const reviewRequestsSeen = 'review_requests_seen';
   static const pinnedRepos = 'pinned_repos';
   static const recentRepos = 'recent_repos';
   static const offlineModeRepos = 'offline_mode_repos';

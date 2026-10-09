@@ -75,6 +75,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 | branches / tags | `GET …/branches`, `GET …/tags` | Ref picker, console, poller |
 | `git blame` | GraphQL `repository.object(expression:).blame(path:)` (token required) | File viewer blame |
 | PRs | `GET …/pulls`, `…/pulls/{n}`, `…/files`, `…/commits` | PRs tab, PR screen, poller |
+| Inbox | `GET /search/issues?q=is:pr is:open archived:false review-requested:@me` (and `author:`, `mentions:`, `assignee:`) | Inbox tab, review-request notifications |
 | Reviews | `GET …/pulls/{n}/comments`, `…/reviews`; `POST …/reviews` (with line comments), `…/comments`, `…/comments/{id}/replies` | PR screen (signed in, online) |
 
 Known API limits: the tree is truncated for huge repos, compare returns at most 300 files, a single commit returns at most 3000 files, and file history doesn't follow renames. The UI says so wherever one of these applies.
@@ -88,12 +89,13 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 
 ## Routing
 
-`Routes` builds every path, and `app_router.dart` declares them. A `StatefulShellRoute` has three branches (Repos, Terminal, Settings), so each tab keeps its own stack.
+`Routes` builds every path, and `app_router.dart` declares them. A `StatefulShellRoute` has four branches (Repos, Inbox, Terminal, Settings), so each tab keeps its own stack.
 
 | Route | Screen |
 |---|---|
 | `/` · `/setup` | splash · optional token sign-in (pushed from Repos/Settings) |
 | `/repos` | repository list |
+| `/inbox` | pull requests that need you (search) |
 | `/repos/:owner/:name?tab=&ref=` | repo home (Commits / Files / PRs / Console) |
 | `/repos/:owner/:name/commit/:sha?file=` | commit diff, optionally focused on a file |
 | `/repos/:owner/:name/compare?base=&head=&file=` | range diff (multi-commit notifications land here) |

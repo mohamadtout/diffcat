@@ -29,6 +29,10 @@ Android WorkManager (every ~15 min, network required)      App opened / resumed 
   its ETags on disk (`FileEtagCache`, `<app support>/poll_etags`, cleared on sign-in and sign-out), so a repo with no
   changes answers 304 and costs no rate limit at all. Repos are checked four at a time (iOS allows a background refresh
   about 30 seconds).
+- **Review requests** (opt-in, signed in: Settings → Notifications → Review requests, or the Inbox hint): one search
+  (`review-requested:@me`) per check finds PRs waiting for you on any repo, watched or not. The first check records a
+  baseline; afterwards each new request notifies and opens the PR. Seen keys are under `StoreKeys.reviewRequestsSeen`.
+  Background checks are scheduled while anything is watched **or** this is on (`backgroundChecksWanted`).
 - **State:** each repo's branch heads, PR snapshots and last-check time are stored as JSON under `StoreKeys.pollState`. The last result (time, event count, per-repo errors) is under `StoreKeys.lastPoll` and shown in Settings.
 
 | Event | Notification | Tap opens |

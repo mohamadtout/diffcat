@@ -74,6 +74,13 @@ class Poller {
     await Future.wait([for (var i = 0; i < _parallelRepos; i++) worker()]);
     // In watched order, whatever order the checks finished in.
     final events = [for (final r in watched) ...?perRepo[r]];
+    if ((prefs.getBool(StoreKeys.notifyReviewRequests) ?? false) && !api.client.isAnonymous) {
+      try {
+        events.addAll((await _reviewRequests()).take(_maxEventsPerRepo));
+      } catch (e) {
+        errors['Review requests'] = e.toString();
+      }
+    }
     // Forget repos that are no longer watched.
     states.removeWhere((k, _) => !watched.contains(k));
     await _saveStates(states);
@@ -133,6 +140,14 @@ class Poller {
       commits: cmp.commits.where(keep).toList(),
       forced: cmp.status == 'diverged',
     );
+  }
+
+  /// New requests for the user's review, on any repo (one search request).
+  Future<List<GitEvent>> _reviewRequests() async {
+    final now = (await api.searchPulls('review-requested:@me')).items;
+    final seen = prefs.getStringList(StoreKeys.reviewRequestsSeen)?.toSet();
+    await prefs.setStringList(StoreKeys.reviewRequestsSeen, [for (final p in now) p.key]);
+    return reviewRequestEvents(seen, now);
   }
 
   Future<String?> _selfLogin() async {

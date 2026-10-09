@@ -12,6 +12,7 @@ class RootScaffold extends StatelessWidget {
 
   static const _destinations = [
     (Icons.inventory_2_outlined, Icons.inventory_2, 'Repos'),
+    (Icons.inbox_outlined, Icons.inbox, 'Inbox'),
     (Icons.terminal_outlined, Icons.terminal, 'Terminal'),
     (Icons.settings_outlined, Icons.settings, 'Settings'),
   ];

@@ -8,6 +8,7 @@ abstract final class Routes {
   static const splash = '/';
   static const setup = '/setup';
   static const repos = '/repos';
+  static const inbox = '/inbox';
   static const terminal = '/terminal';
   static const settings = '/settings';
   static const commands = '/settings/commands';
