@@ -51,6 +51,7 @@ final _screens = <String>[
   Routes.compare(_r, 'main', DemoGitHub.featureBranch),
   Routes.pull(_r, DemoGitHub.openPullNumber),
   Routes.file(_r, DemoGitHub.retryGo, 'main'),
+  Routes.file(_r, DemoGitHub.retryGo, 'main', blame: true),
   Routes.history(_r, DemoGitHub.retryGo, 'main'),
   Routes.changedSince(_r, ref: 'main', base: 'v1.4.0'),
   Routes.terminal,

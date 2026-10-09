@@ -347,6 +347,42 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
 }
 ''';
 
+  /// GraphQL: blame of [retryGo] (any other file: one range).
+  Object? _graphql(Object? body) {
+    final vars = (body as Map<String, dynamic>?)?['variables'] as Map<String, dynamic>? ?? const {};
+    final lines = '\n'.allMatches(_retrySource).length;
+    Map<String, dynamic> range(int start, int end, int id, int age) {
+      final (_, title, author, _, hours) = _retryHistory['main']!.firstWhere((c) => c.$1 == id);
+      return {
+        'startingLine': start,
+        'endingLine': end,
+        'age': age,
+        'commit': {
+          'oid': sha(id),
+          'messageHeadline': title,
+          'committedDate': _ago(Duration(hours: hours)),
+          'author': {
+            'name': _people[author].$2,
+            'user': {'login': _people[author].$1},
+          },
+        },
+      };
+    }
+
+    final ranges = vars['path'] == retryGo
+        ? [range(1, 9, 108, 9), range(10, 16, 105, 6), range(17, 26, 102, 2), range(27, lines, 103, 4)]
+        : [range(1, 200, 107, 7)];
+    return {
+      'data': {
+        'repository': {
+          'object': {
+            'blame': {'ranges': ranges},
+          },
+        },
+      },
+    };
+  }
+
   Object? _route(String path, Map<String, dynamic> query) {
     const base = '/repos/$owner/$repoName';
     if (path == '/user') return {'login': owner, 'name': 'Demo Developer', 'avatar_url': null};
@@ -429,7 +465,7 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    final data = _route(options.path, options.queryParameters);
+    final data = options.path == '/graphql' ? _graphql(options.data) : _route(options.path, options.queryParameters);
     if (data == null) {
       unknown.add(options.path);
       return ResponseBody.fromString(
