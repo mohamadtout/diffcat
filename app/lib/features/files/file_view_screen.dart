@@ -124,16 +124,42 @@ class FileView extends ConsumerWidget {
 }
 
 /// Lazily-rendered source code with a line-number gutter.
-class CodeLines extends ConsumerWidget {
+class CodeLines extends ConsumerStatefulWidget {
   const CodeLines({super.key, required this.content});
 
   final String content;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(diffSettingsProvider);
-    final lines = content.replaceAll('\t', '    ').split('\n');
+  ConsumerState<CodeLines> createState() => _CodeLinesState();
+}
+
+class _CodeLinesState extends ConsumerState<CodeLines> {
+  // Split once per content, not on every rebuild (the text size slider
+  // rebuilds on every tick, and files can have tens of thousands of lines).
+  late List<String> lines;
+  late int longest;
+
+  @override
+  void initState() {
+    super.initState();
+    _split();
+  }
+
+  @override
+  void didUpdateWidget(CodeLines old) {
+    super.didUpdateWidget(old);
+    if (old.content != widget.content) _split();
+  }
+
+  void _split() {
+    lines = widget.content.replaceAll('\t', '    ').split('\n');
     if (lines.isNotEmpty && lines.last.isEmpty) lines.removeLast();
+    longest = lines.fold<int>(0, (m, l) => math.max(m, l.length));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(diffSettingsProvider);
     final mono = settings.codeStyle(context);
     final gutterStyle = mono.copyWith(color: DiffColors.of(context).gutter);
     final tp = TextPainter(
@@ -145,7 +171,6 @@ class CodeLines extends ConsumerWidget {
     final charW = tp.width / 10;
     tp.dispose();
     final gutterW = math.max(3, lines.length.toString().length) * charW + 16;
-    final longest = lines.fold<int>(0, (m, l) => math.max(m, l.length));
 
     Widget line(int i) => Row(
       crossAxisAlignment: CrossAxisAlignment.start,

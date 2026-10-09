@@ -21,7 +21,8 @@ Everything the app keeps stays on your device:
 - **Offline copies** of repositories you choose to download. These are saved responses from the GitHub API. You can
   see their size and delete them in Settings → Downloads.
 
-Uninstalling the app deletes all of it. Signing out deletes the token.
+None of it is included in device backups (Android backups are turned off for the app; on iOS, secrets and offline
+copies are excluded from iCloud backup). Uninstalling the app deletes all of it. Signing out deletes the token.
 
 ## Who the app talks to
 

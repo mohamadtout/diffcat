@@ -27,5 +27,24 @@ private let backgroundPollTask = "git-reviewer-poll"
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+    // Keeps offline copies (possibly private code) out of iCloud backups.
+    // Called from lib/core/storage/backup_exclusion.dart.
+    guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "DiffcatBackup") else { return }
+    let channel = FlutterMethodChannel(name: "diffcat/backup", binaryMessenger: registrar.messenger())
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "exclude", let path = call.arguments as? String else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      var url = URL(fileURLWithPath: path)
+      var values = URLResourceValues()
+      values.isExcludedFromBackup = true
+      do {
+        try url.setResourceValues(values)
+        result(true)
+      } catch {
+        result(FlutterError(code: "exclude_failed", message: error.localizedDescription, details: nil))
+      }
+    }
   }
 }

@@ -45,6 +45,8 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 - **Screen-local UI state** (the selected branch, selected item in split view) lives in `StatefulWidget`s, not providers. This keeps pushed screens independent: "browse at commit X" doesn't change the branch on the screen below it.
 - **Retries:** `ProviderScope.retry` in `main.dart` retries only transient errors (`GitHubException.isRetryable`).
 - **Background isolate:** the WorkManager task (`backgroundPollDispatcher`) runs without Riverpod. `Poller` takes a `GitHubApi` and `SharedPreferences` directly, so the same code runs in both isolates.
+- **Heavy work off the UI thread:** trees over 5,000 entries are built with `Isolate.run`, saved responses over 50 KB are
+  decoded with `compute` (Dio already does this for network JSON), and the file viewer splits a file once per content.
 - **Long-lived things** (`sshSessionsProvider`, `consoleProvider`) are deliberately not auto-disposed, so an SSH session or console scrollback survives navigation.
 
 ## GitHub access
@@ -54,6 +56,10 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 - Sends `Authorization: Bearer <token>` when signed in (nothing when signed out) and `X-GitHub-Api-Version: 2022-11-28`. `githubApiProvider` is always available; `isSignedInProvider` says which mode it's in.
 - Uses **conditional requests**: it stores `ETag`s (LRU, 300 entries) and sends `If-None-Match`. A `304` reuses the cached body and doesn't count against the rate limit.
 - `getPage` / `getAll` follow `Link: rel="next"`.
+- The background notification check also passes an `EtagCache` (`FileEtagCache`), so its conditional requests survive
+  between runs (each run is a fresh isolate with an empty memory cache).
+- `getBytes` (tarballs) streams and stops at 300 MB rather than holding an unbounded archive in memory. Redirects to
+  `codeload.github.com` don't carry the token: Dart's `HttpClient` drops `Authorization` on cross-origin redirects.
 - Maps errors to `GitHubException` (`isUnauthorized`, `isNotFound`, `isRateLimited`, `isRetryable`). `ErrorView` turns these into readable messages.
 - **Offline copies** (`features/offline/`, decision D11): the client takes an optional `ResponseCache`. In `CacheMode.replay` (screens, via `githubApiProvider`) a saved response is returned before any network call. In `CacheMode.record` (`BranchDownloader`) every response is fetched and saved. Keys come from `GitHubClient.cacheKey` (owner/name case-insensitive). `OfflineStore` keeps one folder per repo with an `index.json` that files each response under a group (`repo`, `branch:<name>`, `commit:<sha>`, `pr:<n>`, `files:<branch>`) for sizes and selective deletes. `liveGithubApiProvider` skips the cache (the notification poller uses it). Both take their transport from `githubAdapterProvider` (null means the real network). Tests and the store screenshots override it with canned responses, so the offline layer and everything above it run unchanged. **Offline mode** (`offlineModeProvider`, a remembered per-repo set) adds `cacheOnly` to the screens' client: for those repos a missing response throws `GitHubException.notDownloaded` (never retried) instead of going to the network. The repo list merges `savedReposInfoProvider` (repo details read back from the saved copies) into your repos, so downloads show up even with no network.
 

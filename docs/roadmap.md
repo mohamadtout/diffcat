@@ -26,5 +26,4 @@ firing (Xcode → Debug → Simulate Background Fetch).*
 - Mosh / Eternal Terminal for flaky mobile networks; jump-host support.
 - Share-sheet / github.com link handling (Android App Links, iOS Universal Links), which maps straight onto `Routes`.
 - Notification preferences per repo (branches filter, PR-only).
-- Persist ETags for the poller's requests so unchanged repos cost 0 rate limit (304s are free).
 - i18n.

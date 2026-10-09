@@ -164,6 +164,11 @@ class SavedRepo {
   };
 }
 
+/// Saved responses longer than this are decoded on a background isolate.
+const _isolateDecodeChars = 50 * 1024;
+
+Object? _decode(String text) => jsonDecode(text);
+
 /// Offline copies of GitHub responses, one folder per repo:
 /// `<root>/<owner>__<name>/index.json` plus one file per response.
 ///
@@ -218,7 +223,9 @@ class OfflineStore extends ChangeNotifier implements ResponseCache {
     final entry = repo?.entries[key];
     if (repo == null || entry == null) return null;
     try {
-      final j = jsonDecode(await File('${_dir(repo.fullName).path}/${entry.file}').readAsString());
+      final text = await File('${_dir(repo.fullName).path}/${entry.file}').readAsString();
+      // Big saved diffs decode off the UI thread, like Dio does for network responses.
+      final j = text.length > _isolateDecodeChars ? await compute(_decode, text) : jsonDecode(text);
       return CachedResponse(data: (j as Map<String, dynamic>)['data'], link: j['link'] as String?);
     } on Object {
       // Missing or corrupt file: forget it and fall back to the network.
