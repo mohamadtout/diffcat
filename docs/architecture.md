@@ -96,6 +96,7 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 | `/terminal`, `/terminal/edit?id=`, `/terminal/:hostId` | SSH hosts, host editor, live session |
 | `/settings`, `/settings/commands` | settings, custom buttons |
 | `/settings/terminal` | terminal appearance |
+| `/settings/code` | code view (font, full files, diff colors) |
 | `/settings/downloads`, `/settings/downloads/:owner/:name` | offline storage: all repos, one repo by branch/commit/PR |
 
 Because repo routes are nested under `/repos`, `router.go(route)` from a notification builds a proper back stack (repo list → repo → commit).
@@ -115,6 +116,11 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 
 - It's lazy, so a 5,000-line commit scrolls smoothly, and `ListController.jumpToItem` powers "jump to file".
 - **No-wrap mode** pans only the code column horizontally (a shared `AnimationController` plus `Transform.translate`, with fling), so line numbers stay visible. Wrap mode is a toggle and persists.
+- **Full files:** `fullFileLines` merges the new file's content with the hunks (context lines between them get both
+  line numbers) and returns null if the content doesn't match, e.g. a compare whose head branch moved. A file header
+  requests its content after it's built, so only files scrolled near cost a request.
+- **Colors** come from the `DiffColors` theme extension, which `app.dart` builds from `diffColorsProvider` (a palette
+  plus per-slot overrides for light and dark), so every `DiffColors.of(context)` follows the user's choice.
 - Files with more than 1200 changed lines start collapsed. The toolbar shows the file currently on screen; tap it for the file list.
 
 ## SSH terminal

@@ -65,3 +65,42 @@ List<DiffHunk> parsePatch(String patch) {
   flush();
   return hunks;
 }
+
+/// The whole new version of a file ([content]) with [hunks] in place:
+/// unchanged lines between hunks become context lines with both line numbers.
+///
+/// Returns null when [content] doesn't match the hunks' new side (e.g. the
+/// file was fetched at a ref that has moved since the diff was made), so the
+/// caller can fall back to the hunks instead of showing a wrong picture.
+List<DiffLine>? fullFileLines(String content, List<DiffHunk> hunks) {
+  final lines = content.split('\n');
+  if (lines.isNotEmpty && lines.last.isEmpty) lines.removeLast(); // trailing newline
+  String at(int newNo) {
+    final l = lines[newNo - 1];
+    return l.endsWith('\r') ? l.substring(0, l.length - 1) : l;
+  }
+
+  final out = <DiffLine>[];
+  var newNo = 1, oldNo = 1;
+  for (final h in hunks) {
+    // An empty side starts at 0 (`@@ -0,0 +1,3 @@`), where it means "before line 1".
+    final hunkNew = h.newStart == 0 ? 1 : h.newStart;
+    if (hunkNew < newNo || hunkNew - 1 > lines.length) return null;
+    while (newNo < hunkNew) {
+      out.add(DiffLine(DiffLineKind.context, at(newNo), oldNo: oldNo++, newNo: newNo++));
+    }
+    if (h.oldStart != 0 && h.oldStart != oldNo) return null;
+    for (final l in h.lines) {
+      if (l.newNo case final n?) {
+        if (n > lines.length || at(n) != l.text) return null;
+        newNo = n + 1;
+      }
+      if (l.oldNo case final o?) oldNo = o + 1;
+      out.add(l);
+    }
+  }
+  while (newNo <= lines.length) {
+    out.add(DiffLine(DiffLineKind.context, at(newNo), oldNo: oldNo++, newNo: newNo++));
+  }
+  return out;
+}

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/diff/diff_colors.dart';
 import 'features/notifications/local_notifications.dart';
 import 'features/notifications/watch_controller.dart';
 import 'features/settings/settings_screen.dart';
@@ -43,12 +44,15 @@ class _GitReviewerAppState extends ConsumerState<GitReviewerApp> {
   }
 
   @override
-  Widget build(BuildContext context) => MaterialApp.router(
-    title: 'Diffcat',
-    debugShowCheckedModeBanner: false,
-    theme: AppTheme.light(),
-    darkTheme: AppTheme.dark(),
-    themeMode: ref.watch(themeModeProvider),
-    routerConfig: ref.watch(routerProvider),
-  );
+  Widget build(BuildContext context) {
+    final colors = ref.watch(diffColorsProvider);
+    return MaterialApp.router(
+      title: 'Diffcat',
+      debugShowCheckedModeBanner: false,
+      theme: AppTheme.light(diff: colors.lightColors),
+      darkTheme: AppTheme.dark(diff: colors.darkColors),
+      themeMode: ref.watch(themeModeProvider),
+      routerConfig: ref.watch(routerProvider),
+    );
+  }
 }

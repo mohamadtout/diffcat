@@ -79,6 +79,13 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.code),
+              title: const Text('Code view'),
+              subtitle: const Text('Font, full files, diff colors'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.codeView),
+            ),
+            ListTile(
               leading: const Icon(Icons.terminal),
               title: const Text('Terminal appearance'),
               subtitle: const Text('Colors, font, background, git status bar'),

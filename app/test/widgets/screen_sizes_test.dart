@@ -60,6 +60,7 @@ final _screens = <String>[
   Routes.settings,
   Routes.commands,
   Routes.terminalAppearance,
+  Routes.codeView,
   Routes.downloads,
   Routes.savedRepo(_r),
   Routes.setup,
