@@ -9,6 +9,7 @@ import '../../features/commands/commands_screen.dart';
 import '../../features/commits/commit_screen.dart';
 import '../../features/compare/changed_since_screen.dart';
 import '../../features/compare/compare_screen.dart';
+import '../../features/diff/code_view_settings_screen.dart';
 import '../../features/files/file_history_screen.dart';
 import '../../features/files/file_view_screen.dart';
 import '../../features/notifications/local_notifications.dart';
@@ -141,6 +142,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(path: 'commands', builder: (_, _) => const CommandsScreen()),
                   GoRoute(path: 'terminal', builder: (_, _) => const TerminalAppearanceScreen()),
+                  GoRoute(path: 'code', builder: (_, _) => const CodeViewSettingsScreen()),
                   GoRoute(
                     path: 'downloads',
                     builder: (_, _) => const DownloadsScreen(),

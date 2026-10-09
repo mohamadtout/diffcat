@@ -134,7 +134,7 @@ class CodeLines extends ConsumerWidget {
     final settings = ref.watch(diffSettingsProvider);
     final lines = content.replaceAll('\t', '    ').split('\n');
     if (lines.isNotEmpty && lines.last.isEmpty) lines.removeLast();
-    final mono = AppTheme.mono(context, size: settings.fontSize);
+    final mono = settings.codeStyle(context);
     final gutterStyle = mono.copyWith(color: DiffColors.of(context).gutter);
     final tp = TextPainter(
       text: TextSpan(text: 'MMMMMMMMMM', style: mono),

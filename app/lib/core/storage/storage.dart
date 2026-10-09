@@ -37,6 +37,9 @@ abstract final class StoreKeys {
   static const terminalAppearance = 'terminal_appearance';
   static const diffWrap = 'diff_wrap';
   static const diffFontSize = 'diff_wrap_font';
+  static const diffFont = 'diff_font';
+  static const diffFullFile = 'diff_full_file';
+  static const diffColors = 'diff_colors';
   static const splitCollapsed = 'split_collapsed';
 }
 

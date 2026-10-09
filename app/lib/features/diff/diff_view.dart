@@ -14,6 +14,7 @@ import '../../core/widgets/async_view.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/text_size_sheet.dart';
 import '../../data/github/models/models.dart';
+import '../auth/auth_controller.dart';
 import 'diff_document.dart';
 import 'diff_parser.dart';
 import 'diff_settings.dart';
@@ -34,6 +35,7 @@ class DiffView extends ConsumerStatefulWidget {
     required this.fileRef,
     this.focusPath,
     this.header,
+    this.preview = false,
   });
 
   final RepoRef repo;
@@ -47,6 +49,9 @@ class DiffView extends ConsumerStatefulWidget {
 
   /// Scrolls away with the content (commit message, PR summary…).
   final Widget? header;
+
+  /// A sample in settings: no toolbar, no file actions, no network.
+  final bool preview;
 
   @override
   ConsumerState<DiffView> createState() => _DiffViewState();
@@ -64,6 +69,15 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
   late DiffDocument _doc;
   int? _focusIndex;
 
+  // Full-file mode (DiffSettings.fullFile, or toggled per file).
+  bool _fullDefault = false;
+
+  /// Files toggled away from [_fullDefault].
+  final Set<int> _fullToggled = {};
+  final Map<int, List<DiffLine>> _full = {};
+  final Set<int> _fullLoading = {};
+  final Map<int, String> _fullFailed = {};
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +94,10 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
     super.didUpdateWidget(old);
     if (!identical(old.files, widget.files)) {
       _collapsed.clear();
+      _fullToggled.clear();
+      _full.clear();
+      _fullLoading.clear();
+      _fullFailed.clear();
       _prepare();
     }
   }
@@ -108,7 +126,63 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
   }
 
   void _rebuildDoc() {
-    _doc = DiffDocument.build(widget.files, collapsed: _collapsed, parsed: _parsed);
+    final wanted = {
+      for (var i = 0; i < widget.files.length; i++)
+        if (_wantsFull(i)) i,
+    };
+    _doc = DiffDocument.build(
+      widget.files,
+      collapsed: _collapsed,
+      parsed: _parsed,
+      full: {for (final i in wanted) i: ?_full[i]},
+      notices: {
+        for (final i in wanted)
+          if (_fullFailed[i] case final why?) i: why else if (!_full.containsKey(i)) i: 'Loading the full file…',
+      },
+    );
+  }
+
+  /// Modified files can be shown whole; added and removed ones already are.
+  bool _canShowFull(int i) {
+    final f = widget.files[i];
+    return !widget.preview &&
+        _parsed[i] != null &&
+        _parsed[i]!.isNotEmpty &&
+        f.status != FileChangeStatus.added &&
+        f.status != FileChangeStatus.removed;
+  }
+
+  bool _wantsFull(int i) => _canShowFull(i) && (_fullDefault != _fullToggled.contains(i));
+
+  void _toggleFull(int i) => setState(() {
+    _fullToggled.contains(i) ? _fullToggled.remove(i) : _fullToggled.add(i);
+    _collapsed.remove(i);
+    _rebuildDoc();
+  });
+
+  /// Fetches file [i]'s content once its header is built (scrolled near), so
+  /// a long diff doesn't spend a request per file up front.
+  Future<void> _loadFull(int i) async {
+    if (!_wantsFull(i) || _full.containsKey(i) || _fullLoading.contains(i) || _fullFailed.containsKey(i)) return;
+    _fullLoading.add(i);
+    final file = widget.files[i];
+    final hunks = _parsed[i]!;
+    String? failed;
+    List<DiffLine>? lines;
+    try {
+      final content = await ref.read(githubApiProvider).fileContent(widget.repo, file.filename, widget.fileRef);
+      lines = content.contains('\u0000') ? null : fullFileLines(content, hunks);
+      if (lines == null) failed = "The file doesn't match this diff (its branch may have moved). Showing changes only.";
+    } on Object catch (e) {
+      failed = "Couldn't load the full file: $e";
+    }
+    if (!mounted || !identical(file, widget.files.elementAtOrNull(i))) return;
+    setState(() {
+      _fullLoading.remove(i);
+      if (lines != null) _full[i] = lines;
+      if (failed != null) _fullFailed[i] = failed;
+      _rebuildDoc();
+    });
   }
 
   void _onScroll() {
@@ -147,6 +221,11 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(diffSettingsProvider);
+    if (settings.fullFile != _fullDefault) {
+      _fullDefault = settings.fullFile;
+      _fullToggled.clear();
+      _rebuildDoc();
+    }
     if (widget.files.isEmpty) {
       return CustomScrollView(
         slivers: [
@@ -158,30 +237,34 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
         ],
       );
     }
-    final mono = AppTheme.mono(context, size: settings.fontSize);
+    final mono = settings.codeStyle(context);
     final charW = _charWidth(mono);
     final digits = math.max(3, _maxLineNo().toString().length);
     final metrics = _Metrics(mono: mono, gutter: digits * charW + 10, sign: charW + 6, wrap: settings.wrap);
 
     return Column(
       children: [
-        _Toolbar(
-          files: widget.files,
-          current: _currentFile,
-          wrap: settings.wrap,
-          onJump: _jumpTo,
-          onToggleWrap: () => ref.read(diffSettingsProvider.notifier).toggleWrap(),
-          onTextSize: () => showTextSizeSheet(
-            context,
-            value: settings.fontSize,
-            min: DiffSettings.minFontSize,
-            max: DiffSettings.maxFontSize,
-            onChanged: ref.read(diffSettingsProvider.notifier).setFontSize,
+        if (!widget.preview) ...[
+          _Toolbar(
+            files: widget.files,
+            current: _currentFile,
+            wrap: settings.wrap,
+            onJump: _jumpTo,
+            onToggleWrap: () => ref.read(diffSettingsProvider.notifier).toggleWrap(),
+            onTextSize: () => showTextSizeSheet(
+              context,
+              value: settings.fontSize,
+              min: DiffSettings.minFontSize,
+              max: DiffSettings.maxFontSize,
+              onChanged: ref.read(diffSettingsProvider.notifier).setFontSize,
+            ),
+            onExpandAll: () => _setAll(collapsed: false),
+            onCollapseAll: () => _setAll(collapsed: true),
+            fullFiles: settings.fullFile,
+            onToggleFullFiles: () => ref.read(diffSettingsProvider.notifier).setFullFile(!settings.fullFile),
           ),
-          onExpandAll: () => _setAll(collapsed: false),
-          onCollapseAll: () => _setAll(collapsed: true),
-        ),
-        const Divider(height: 1),
+          const Divider(height: 1),
+        ],
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -228,6 +311,10 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
 
   int _maxLineNo() {
     var max = 0;
+    for (final lines in _full.values) {
+      if (lines.isEmpty) continue;
+      max = math.max(max, math.max(lines.last.oldNo ?? 0, lines.last.newNo ?? 0));
+    }
     for (final h in _parsed) {
       if (h == null || h.isEmpty) continue;
       final last = h.last;
@@ -254,7 +341,11 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
       file: file,
       collapsed: collapsed,
       focused: fileIndex == _focusIndex,
+      actions: !widget.preview,
       onToggle: () => _toggle(fileIndex),
+      full: _canShowFull(fileIndex) ? _wantsFull(fileIndex) : null,
+      onToggleFull: () => _toggleFull(fileIndex),
+      onBuilt: collapsed || !_wantsFull(fileIndex) ? null : () => _loadFull(fileIndex),
       onOpenFile: file.status == FileChangeStatus.removed
           ? null
           : () => context.push(Routes.file(widget.repo, file.filename, widget.fileRef)),
@@ -292,8 +383,12 @@ class _Toolbar extends StatelessWidget {
     required this.onTextSize,
     required this.onExpandAll,
     required this.onCollapseAll,
+    required this.fullFiles,
+    required this.onToggleFullFiles,
   });
 
+  final bool fullFiles;
+  final VoidCallback onToggleFullFiles;
   final List<GhFileChange> files;
   final ValueNotifier<int> current;
   final bool wrap;
@@ -349,13 +444,15 @@ class _Toolbar extends StatelessWidget {
               'expand' => onExpandAll(),
               'collapse' => onCollapseAll(),
               'textSize' => onTextSize(),
+              'full' => onToggleFullFiles(),
               _ => null,
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'expand', child: Text('Expand all files')),
-              PopupMenuItem(value: 'collapse', child: Text('Collapse all files')),
-              PopupMenuDivider(),
-              PopupMenuItem(value: 'textSize', child: Text('Text size…')),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'expand', child: Text('Expand all files')),
+              const PopupMenuItem(value: 'collapse', child: Text('Collapse all files')),
+              CheckedPopupMenuItem(value: 'full', checked: fullFiles, child: const Text('Full files')),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: 'textSize', child: Text('Text size…')),
             ],
           ),
         ],
@@ -423,8 +520,20 @@ class _FileHeader extends StatelessWidget {
     required this.onToggle,
     required this.onHistory,
     this.onOpenFile,
+    this.actions = true,
+    this.full,
+    this.onToggleFull,
+    this.onBuilt,
   });
 
+  final bool actions;
+
+  /// Whether the file shows whole; null when it can't.
+  final bool? full;
+  final VoidCallback? onToggleFull;
+
+  /// Called after each build (the row is on or near the screen).
+  final VoidCallback? onBuilt;
   final GhFileChange file;
   final bool collapsed;
   final bool focused;
@@ -436,6 +545,7 @@ class _FileHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    if (onBuilt case final built?) WidgetsBinding.instance.addPostFrameCallback((_) => built());
     return Material(
       color: scheme.surfaceContainerHigh,
       shape: Border(
@@ -481,27 +591,34 @@ class _FileHeader extends StatelessWidget {
                 ),
               ),
               LineCounts(additions: file.additions, deletions: file.deletions),
-              PopupMenuButton<String>(
-                tooltip: 'File actions',
-                onSelected: (v) {
-                  switch (v) {
-                    case 'open':
-                      onOpenFile?.call();
-                    case 'history':
-                      onHistory();
-                    case 'path':
-                      Clipboard.setData(ClipboardData(text: file.filename));
-                    case 'patch':
-                      Clipboard.setData(ClipboardData(text: file.patch ?? ''));
-                  }
-                },
-                itemBuilder: (_) => [
-                  if (onOpenFile != null) const PopupMenuItem(value: 'open', child: Text('View file')),
-                  const PopupMenuItem(value: 'history', child: Text('File history')),
-                  const PopupMenuItem(value: 'path', child: Text('Copy path')),
-                  if (file.patch != null) const PopupMenuItem(value: 'patch', child: Text('Copy patch')),
-                ],
-              ),
+              if (!actions)
+                const SizedBox(width: 12)
+              else
+                PopupMenuButton<String>(
+                  tooltip: 'File actions',
+                  onSelected: (v) {
+                    switch (v) {
+                      case 'open':
+                        onOpenFile?.call();
+                      case 'history':
+                        onHistory();
+                      case 'full':
+                        onToggleFull?.call();
+                      case 'path':
+                        Clipboard.setData(ClipboardData(text: file.filename));
+                      case 'patch':
+                        Clipboard.setData(ClipboardData(text: file.patch ?? ''));
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    if (full != null)
+                      PopupMenuItem(value: 'full', child: Text(full! ? 'Show changes only' : 'Show full file')),
+                    if (onOpenFile != null) const PopupMenuItem(value: 'open', child: Text('View file')),
+                    const PopupMenuItem(value: 'history', child: Text('File history')),
+                    const PopupMenuItem(value: 'path', child: Text('Copy path')),
+                    if (file.patch != null) const PopupMenuItem(value: 'patch', child: Text('Copy patch')),
+                  ],
+                ),
             ],
           ),
         ),
