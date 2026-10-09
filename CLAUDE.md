@@ -12,8 +12,15 @@ docs/        Focused docs — read the one relevant to your task
 SETUP.md     Manual, owner-only configuration (token, SSH, signing)
 store/       App Store / Google Play listings and screenshots → store/README.md
 PRIVACY.md   Privacy policy (linked from both stores)
+CHANGELOG.md What's in each version; branching and versioning rules
 Makefile     Entry points: make check | fmt | run | apk
 ```
+
+## Branches and versions
+
+`main` is what's released (tagged `vX.Y.Z`). Unreleased work lands on `development` through one PR per feature from
+`feature/<name>` branches. Version in `app/pubspec.yaml`: minor bump for features, patch for fixes, and the `+build`
+number always goes up (stores reject reused numbers). Record changes in CHANGELOG.md.
 
 ## Before you finish any change
 
