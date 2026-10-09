@@ -12,6 +12,7 @@ abstract final class Routes {
   static const settings = '/settings';
   static const commands = '/settings/commands';
   static const downloads = '/settings/downloads';
+  static const terminalAppearance = '/settings/terminal';
 
   /// Storage of one downloaded repo.
   static String savedRepo(RepoRef r) => '$downloads/${r.owner}/${r.name}';

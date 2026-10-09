@@ -34,6 +34,7 @@ abstract final class StoreKeys {
   static const customCommands = 'custom_commands';
   static const sshHosts = 'ssh_hosts';
   static const knownHosts = 'known_hosts';
+  static const terminalAppearance = 'terminal_appearance';
   static const diffWrap = 'diff_wrap';
   static const diffFontSize = 'diff_wrap_font';
   static const splitCollapsed = 'split_collapsed';

@@ -78,6 +78,13 @@ class SettingsScreen extends ConsumerWidget {
                 onSelectionChanged: (s) => ref.read(themeModeProvider.notifier).set(s.first),
               ),
             ),
+            ListTile(
+              leading: const Icon(Icons.terminal),
+              title: const Text('Terminal appearance'),
+              subtitle: const Text('Colors, font, background, git status bar'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.terminalAppearance),
+            ),
             section('Offline'),
             const _DownloadsTile(),
             section('Notifications'),
