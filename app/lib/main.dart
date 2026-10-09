@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/storage/storage.dart';
+import 'core/theme/code_fonts.dart';
 import 'data/github/github_exception.dart';
 import 'features/notifications/background.dart';
 import 'features/notifications/local_notifications.dart';
@@ -17,6 +18,7 @@ import 'features/offline/offline_store.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _installErrorSafetyNet();
+  CodeFont.registerLicenses();
   final prefs = await SharedPreferences.getInstance();
   final notifications = await LocalNotifications.init();
   final offline = await _openOfflineStore();

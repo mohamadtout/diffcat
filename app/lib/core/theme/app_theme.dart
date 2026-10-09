@@ -23,9 +23,11 @@ abstract final class AppTheme {
   /// Platform monospace font, no bundled asset needed.
   static String get monoFamily => Platform.isIOS ? 'Menlo' : 'monospace';
 
+  static const monoFallback = ['Menlo', 'Roboto Mono', 'Courier'];
+
   static TextStyle mono(BuildContext context, {double size = 12.5}) => TextStyle(
     fontFamily: monoFamily,
-    fontFamilyFallback: const ['Menlo', 'Roboto Mono', 'Courier'],
+    fontFamilyFallback: monoFallback,
     fontSize: size,
     height: 1.35,
     color: Theme.of(context).colorScheme.onSurface,

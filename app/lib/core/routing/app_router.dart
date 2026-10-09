@@ -19,6 +19,7 @@ import '../../features/repos/repos_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/terminal/host_edit_screen.dart';
 import '../../features/terminal/hosts_screen.dart';
+import '../../features/terminal/terminal_appearance_screen.dart';
 import '../../features/terminal/terminal_screen.dart';
 import 'root_scaffold.dart';
 import 'routes.dart';
@@ -139,6 +140,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (_, _) => const SettingsScreen(),
                 routes: [
                   GoRoute(path: 'commands', builder: (_, _) => const CommandsScreen()),
+                  GoRoute(path: 'terminal', builder: (_, _) => const TerminalAppearanceScreen()),
                   GoRoute(
                     path: 'downloads',
                     builder: (_, _) => const DownloadsScreen(),

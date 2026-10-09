@@ -12,6 +12,7 @@ import 'package:git_reviewer/features/offline/offline_store.dart';
 import 'package:git_reviewer/features/repo/ref_picker.dart';
 import 'package:git_reviewer/features/terminal/host_edit_screen.dart';
 import 'package:git_reviewer/features/terminal/host_key_dialog.dart';
+import 'package:git_reviewer/features/terminal/terminal_appearance_screen.dart';
 
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
@@ -58,6 +59,7 @@ final _screens = <String>[
   Routes.terminalSession(demoHosts.first.id),
   Routes.settings,
   Routes.commands,
+  Routes.terminalAppearance,
   Routes.downloads,
   Routes.savedRepo(_r),
   Routes.setup,
@@ -163,6 +165,7 @@ void main() {
           'download sheet, new branch',
           (c) => showDownloadSheet(c, repo: _r, branch: DemoGitHub.featureBranch),
         );
+        await show('shell integration sheet', showShellIntegrationSheet);
         await show('text size sheet', (c) => showTextSizeSheet(c, value: 13, min: 8, max: 24, onChanged: (_) {}));
         overlay = 'branch picker';
         await tester.tap(find.byType(RefPickerButton).first);

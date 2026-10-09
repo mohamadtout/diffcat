@@ -95,6 +95,7 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 | `/repos/:owner/:name/since?ref=&base=` | "files changed since commit X" |
 | `/terminal`, `/terminal/edit?id=`, `/terminal/:hostId` | SSH hosts, host editor, live session |
 | `/settings`, `/settings/commands` | settings, custom buttons |
+| `/settings/terminal` | terminal appearance |
 | `/settings/downloads`, `/settings/downloads/:owner/:name` | offline storage: all repos, one repo by branch/commit/PR |
 
 Because repo routes are nested under `/repos`, `router.go(route)` from a notification builds a proper back stack (repo list → repo → commit).
@@ -125,3 +126,9 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 - On-screen toolbar: Esc/Tab/arrows/PgUp…, plus sticky **Ctrl/Alt** that modify the next typed key.
 - Custom buttons and the startup command use key notation (docs/commands.md) and go through `Terminal.keyInput`, so arrow keys respect application-cursor mode (important for lazygit).
 - Sessions live in `SshSessionRegistry`, so leaving the screen doesn't drop the connection while the app is in the foreground.
+- **Status bar / shell integration** (`shell_integration.dart`): the shell's folder arrives as OSC 7 (`Terminal.onPrivateOSC`).
+  After each report the session runs `git status --porcelain=v2 --branch` in that folder on a separate exec channel
+  (`SSHClient.run`, `GIT_OPTIONAL_LOCKS=0`), never in the user's shell. With shell integration on, the hook is typed
+  once the login output settles; `EchoHider` hides its echo up to a private OSC marker and fails open after 4 s.
+- **Appearance** (`terminalAppearanceProvider`) is one JSON blob in prefs. A picked background image is copied to
+  app support storage (`terminal/`) and the old copy deleted. Bundled fonts' licenses are registered in `main.dart`.

@@ -50,6 +50,7 @@ dependencies:
   path_provider: ^2.1.6
   archive: ^4.3.0
   crypto: ^3.0.7
+  image_picker: ^1.2.4
 
 dev_dependencies:
   flutter_test:
@@ -78,6 +79,36 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Code fonts for the terminal and code views (core/theme/code_fonts.dart).
+  # All SIL OFL 1.1; license texts ship alongside and appear in the app's
+  # licenses page. JetBrains Mono is the Nerd Font build, so prompt glyphs
+  # (starship, powerlevel10k) render; it has no bold file (Flutter emboldens).
+  assets:
+    - assets/fonts/OFL-JetBrainsMono.txt
+    - assets/fonts/LICENSE-NerdFonts.txt
+    - assets/fonts/OFL-FiraCode.txt
+    - assets/fonts/OFL-SourceCodePro.txt
+    - assets/fonts/OFL-IBMPlexMono.txt
+  fonts:
+    - family: JetBrainsMonoNerd
+      fonts:
+        - asset: assets/fonts/JetBrainsMonoNerdFontMono-Regular.ttf
+    - family: FiraCode
+      fonts:
+        - asset: assets/fonts/FiraCode-Regular.ttf
+        - asset: assets/fonts/FiraCode-Bold.ttf
+          weight: 700
+    - family: SourceCodePro
+      fonts:
+        - asset: assets/fonts/SourceCodePro-Regular.ttf
+        - asset: assets/fonts/SourceCodePro-Bold.ttf
+          weight: 700
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+        - asset: assets/fonts/IBMPlexMono-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

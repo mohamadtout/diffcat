@@ -70,3 +70,13 @@ uses one path-filtered history per branch (1 request per 30 commits per branch) 
 
 Branches cost requests, so open PR branches are added automatically only when signed in (at most 3), and at most 5
 branches are drawn, which is about as many lanes as fit beside the text on a phone.
+### D13: Terminal git status via OSC 7 and a side channel, hook typing opt-in
+The status bar needs the shell's folder. Parsing prompts or guessing from `/proc` breaks across shells and OSes;
+OSC 7 is the standard way for a shell to report it (fish/VTE setups already do). The git status is then read on a
+separate SSH exec channel, so the user's shell, scrollback and history are untouched. Shells that don't report OSC 7
+need a hook: typing one into someone's shell is surprising (and it would land on production boxes too), so it's
+off by default, its echo is hidden, and the same hook is offered to paste into an rc file instead.
+
+Fonts are bundled (about 3.8 MB) rather than downloaded at runtime (Google Fonts), which would add a network
+dependency and a third party to the privacy policy. JetBrains Mono is the Nerd Font build, regular weight only,
+because prompt themes (starship, powerlevel10k) need its glyphs.
