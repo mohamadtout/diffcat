@@ -181,7 +181,70 @@ class DemoGitHub implements HttpClientAdapter {
     {'filename': 'docs/retry-timeline.png', 'status': 'added', 'additions': 0, 'deletions': 0, 'sha': 'f4'},
   ];
 
-  Map<String, dynamic> _pull(int n, String title, String state, int author, {String? merged, bool draft = false}) => {
+  /// History of [retryGo] per branch, for the file history graph: main and
+  /// two branches forked from it. One main commit is a rebased copy of a
+  /// feature commit (same author date and message, new sha); one reverts
+  /// another. (id, title, author index, hours since authored, hours since committed)
+  static const _retryHistory = {
+    'main': [
+      (101, 'Revert "Retry on 409 Conflict"', 3, 2, 2),
+      (102, 'Add exponential backoff to webhook retries', 0, 30, 5),
+      (103, 'Retry on 409 Conflict', 1, 20, 20),
+      (104, 'Log request IDs in error responses', 3, 27, 27),
+      (105, 'Make retry count configurable', 2, 46, 46),
+      (106, 'Add refund webhook handler', 1, 95, 95),
+      (107, 'Document the retry policy', 0, 120, 120),
+      (108, 'Initial webhook retries', 2, 260, 260),
+    ],
+    featureBranch: [
+      (111, 'Cap backoff at one minute', 0, 3, 3),
+      (112, 'Add exponential backoff to webhook retries', 0, 30, 30),
+      (105, 'Make retry count configurable', 2, 46, 46),
+      (106, 'Add refund webhook handler', 1, 95, 95),
+      (107, 'Document the retry policy', 0, 120, 120),
+      (108, 'Initial webhook retries', 2, 260, 260),
+    ],
+    'fix/currency-rounding': [
+      (121, 'Honor Retry-After headers', 1, 8, 8),
+      (103, 'Retry on 409 Conflict', 1, 20, 20),
+      (104, 'Log request IDs in error responses', 3, 27, 27),
+      (105, 'Make retry count configurable', 2, 46, 46),
+      (106, 'Add refund webhook handler', 1, 95, 95),
+      (107, 'Document the retry policy', 0, 120, 120),
+      (108, 'Initial webhook retries', 2, 260, 260),
+    ],
+  };
+
+  List<Map<String, dynamic>>? _fileHistory(String? branch, String path) {
+    if (path != retryGo) return [_commit(0)];
+    final list = _retryHistory[branch ?? 'main'];
+    if (list == null) return null;
+    return [
+      for (final (i, (id, title, author, authored, committed)) in list.indexed)
+        {
+          'sha': sha(id),
+          'commit': {
+            'message': title,
+            'author': {'name': _people[author].$2, 'date': _ago(Duration(hours: authored))},
+            'committer': {'name': _people[author].$2, 'date': _ago(Duration(hours: committed))},
+          },
+          'author': {'login': _people[author].$1, 'avatar_url': null},
+          'parents': [
+            {'sha': i + 1 < list.length ? sha(list[i + 1].$1) : sha(99)},
+          ],
+        },
+    ];
+  }
+
+  Map<String, dynamic> _pull(
+    int n,
+    String title,
+    String state,
+    int author, {
+    String? merged,
+    bool draft = false,
+    String head = featureBranch,
+  }) => {
     'number': n,
     'title': title,
     'body':
@@ -191,7 +254,11 @@ class DemoGitHub implements HttpClientAdapter {
     'draft': draft,
     'merged_at': merged,
     'user': {'login': _people[author].$1, 'avatar_url': null},
-    'head': {'ref': featureBranch, 'sha': sha(1)},
+    'head': {
+      'ref': head,
+      'sha': sha(1),
+      'repo': {'full_name': '$owner/$repoName'},
+    },
     'base': {'ref': 'main', 'sha': sha(3)},
     'created_at': _ago(const Duration(hours: 30)),
     'updated_at': _ago(Duration(hours: n == openPullNumber ? 1 : 50)),
@@ -204,7 +271,7 @@ class DemoGitHub implements HttpClientAdapter {
 
   List<Map<String, dynamic>> get _pulls => [
     _pull(openPullNumber, openPullTitle, 'open', 0),
-    _pull(41, 'Round zero-decimal currencies to whole units', 'open', 1, draft: true),
+    _pull(41, 'Round zero-decimal currencies to whole units', 'open', 1, draft: true, head: 'fix/currency-rounding'),
     _pull(39, 'Reconcile ledger in batches', 'closed', 2, merged: _ago(const Duration(hours: 9))),
     _pull(37, 'Try a Redis-backed rate limiter', 'closed', 3),
   ];
@@ -304,6 +371,9 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
             'commit': {'sha': sha(i * 4 + 3)},
           },
       ];
+    }
+    if (path == '$base/commits' && query['path'] != null) {
+      return _fileHistory(query['sha'] as String?, '${query['path']}');
     }
     if (path == '$base/commits') {
       final perPage = int.tryParse('${query['per_page'] ?? ''}') ?? 30;

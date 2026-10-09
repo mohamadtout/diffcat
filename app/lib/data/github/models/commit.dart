@@ -7,17 +7,19 @@ class GhCommit {
     required this.authorName,
     required this.date,
     required this.parents,
+    DateTime? committedDate,
     this.authorLogin,
     this.authorAvatarUrl,
     this.additions,
     this.deletions,
     this.files = const [],
     this.htmlUrl,
-  });
+  }) : committedDate = committedDate ?? date;
 
   factory GhCommit.fromJson(Map<String, dynamic> j) {
     final commit = j['commit'] as Map<String, dynamic>;
     final author = commit['author'] as Map<String, dynamic>?;
+    final committer = commit['committer'] as Map<String, dynamic>?;
     final ghAuthor = j['author'] as Map<String, dynamic>?;
     final stats = j['stats'] as Map<String, dynamic>?;
     final files = j['files'] as List<dynamic>?;
@@ -26,6 +28,7 @@ class GhCommit {
       message: (commit['message'] as String?) ?? '',
       authorName: (author?['name'] as String?) ?? 'unknown',
       date: DateTime.tryParse((author?['date'] as String?) ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+      committedDate: DateTime.tryParse((committer?['date'] as String?) ?? ''),
       parents: [
         for (final p in (j['parents'] as List<dynamic>? ?? const [])) (p as Map<String, dynamic>)['sha'] as String,
       ],
@@ -43,7 +46,13 @@ class GhCommit {
   final String authorName;
   final String? authorLogin;
   final String? authorAvatarUrl;
+
+  /// When it was authored. A rebase or cherry-pick keeps this.
   final DateTime date;
+
+  /// When it was committed (equal to [date] unless rebased, amended or
+  /// cherry-picked). History is ordered by this.
+  final DateTime committedDate;
   final List<String> parents;
   final int? additions;
   final int? deletions;
@@ -68,6 +77,7 @@ class GhCommit {
     authorLogin: authorLogin,
     authorAvatarUrl: authorAvatarUrl,
     date: date,
+    committedDate: committedDate,
     parents: parents,
     additions: additions,
     deletions: deletions,
