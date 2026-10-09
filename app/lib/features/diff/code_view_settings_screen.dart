@@ -136,6 +136,12 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
               onChanged: (_) => notifier.toggleWrap(),
             ),
             SwitchListTile(
+              title: const Text('Syntax highlighting'),
+              subtitle: const Text('Colors code by language, and marks the exact words that changed in a line'),
+              value: settings.syntax,
+              onChanged: notifier.setSyntax,
+            ),
+            SwitchListTile(
               title: const Text('Show full files'),
               subtitle: const Text(
                 'Changed files show whole, with changes in place, instead of only the changed parts. '

@@ -51,6 +51,7 @@ dependencies:
   archive: ^4.3.0
   crypto: ^3.0.7
   image_picker: ^1.2.4
+  re_highlight: ^0.0.3
 
 dev_dependencies:
   flutter_test:

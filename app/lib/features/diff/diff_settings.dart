@@ -13,6 +13,7 @@ class DiffSettings {
     this.fontSize = defaultFontSize,
     this.font = CodeFont.system,
     this.fullFile = false,
+    this.syntax = true,
   });
 
   static const defaultFontSize = 12.5;
@@ -27,11 +28,15 @@ class DiffSettings {
   /// the changed hunks. Each file costs one more request when it's shown.
   final bool fullFile;
 
-  DiffSettings copyWith({bool? wrap, double? fontSize, CodeFont? font, bool? fullFile}) => DiffSettings(
+  /// Syntax highlighting and word-level emphasis of changed lines.
+  final bool syntax;
+
+  DiffSettings copyWith({bool? wrap, double? fontSize, CodeFont? font, bool? fullFile, bool? syntax}) => DiffSettings(
     wrap: wrap ?? this.wrap,
     fontSize: fontSize ?? this.fontSize,
     font: font ?? this.font,
     fullFile: fullFile ?? this.fullFile,
+    syntax: syntax ?? this.syntax,
   );
 
   /// Monospace style for code at these settings.
@@ -50,6 +55,7 @@ class DiffSettingsNotifier extends Notifier<DiffSettings> {
       fontSize: prefs.getDouble(StoreKeys.diffFontSize) ?? DiffSettings.defaultFontSize,
       font: CodeFont.byName(prefs.getString(StoreKeys.diffFont)),
       fullFile: prefs.getBool(StoreKeys.diffFullFile) ?? false,
+      syntax: prefs.getBool(StoreKeys.diffSyntax) ?? true,
     );
   }
 
@@ -68,6 +74,11 @@ class DiffSettingsNotifier extends Notifier<DiffSettings> {
   void setFont(CodeFont font) {
     state = state.copyWith(font: font);
     ref.read(sharedPrefsProvider).setString(StoreKeys.diffFont, font.name);
+  }
+
+  void setSyntax(bool on) {
+    state = state.copyWith(syntax: on);
+    ref.read(sharedPrefsProvider).setBool(StoreKeys.diffSyntax, on);
   }
 
   void setFullFile(bool on) {

@@ -18,6 +18,8 @@ import '../auth/auth_controller.dart';
 import 'diff_document.dart';
 import 'diff_parser.dart';
 import 'diff_settings.dart';
+import 'syntax.dart';
+import 'syntax_style.dart';
 
 /// Diffs with more changed lines than this start collapsed.
 const _autoCollapseLines = 1200;
@@ -65,6 +67,13 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
   double _maxH = 0;
 
   late List<List<DiffHunk>?> _parsed;
+
+  // Syntax highlighting and word emphasis, computed per file the first time
+  // one of its lines is built, and looked up per line.
+  final Set<int> _prepared = {};
+  var _segs = Expando<List<HlSeg>>();
+  var _emph = Expando<List<Span>>();
+  bool _syntax = true;
   final Set<int> _collapsed = {};
   late DiffDocument _doc;
   int? _focusIndex;
@@ -180,6 +189,7 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
     setState(() {
       _fullLoading.remove(i);
       if (lines != null) _full[i] = lines;
+      _prepared.remove(i);
       if (failed != null) _fullFailed[i] = failed;
       _rebuildDoc();
     });
@@ -191,6 +201,30 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
     if (range == null || _doc.rows.isEmpty) return;
     final idx = range.$1.clamp(0, _doc.rows.length - 1);
     _currentFile.value = _doc.rows[idx].fileIndex;
+  }
+
+  List<HlSeg>? _segsFor(int file, DiffLine line) {
+    if (_syntax && _prepared.add(file)) _prepareFile(file);
+    return _segs[line];
+  }
+
+  void _prepareFile(int i) {
+    final hunks = _parsed[i];
+    if (hunks == null) return;
+    final full = _full[i];
+    final lines = full ?? [for (final h in hunks) ...h.lines];
+    final language = languageForPath(widget.files[i].filename);
+    if (language != null) {
+      final hl = highlightDiffLines(lines, language);
+      for (var k = 0; k < lines.length; k++) {
+        _segs[lines[k]] = hl[k];
+      }
+    }
+    for (final block in full == null ? [for (final h in hunks) h.lines] : [full]) {
+      for (final e in pairedWordDiffs(block).entries) {
+        _emph[block[e.key]] = e.value;
+      }
+    }
   }
 
   void _clampH() {
@@ -221,6 +255,12 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(diffSettingsProvider);
+    if (settings.syntax != _syntax) {
+      _syntax = settings.syntax;
+      _prepared.clear();
+      _segs = Expando();
+      _emph = Expando();
+    }
     if (settings.fullFile != _fullDefault) {
       _fullDefault = settings.fullFile;
       _fullToggled.clear();
@@ -352,7 +392,13 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
       onHistory: () => context.push(Routes.history(widget.repo, file.filename, widget.fileRef)),
     ),
     HunkHeaderRow(:final header) => _HunkHeader(header: header, mono: m.mono),
-    LineRow(:final line) => _LineView(line: line, m: m, h: _h),
+    LineRow(:final fileIndex, :final line) => _LineView(
+      line: line,
+      m: m,
+      h: _h,
+      segs: _segsFor(fileIndex, line),
+      changed: _emph[line] ?? const [],
+    ),
     NoticeRow(:final message) => Padding(
       padding: const EdgeInsets.all(16),
       child: Text(
@@ -650,9 +696,15 @@ class _HunkHeader extends StatelessWidget {
 }
 
 class _LineView extends StatelessWidget {
-  const _LineView({required this.line, required this.m, required this.h});
+  const _LineView({required this.line, required this.m, required this.h, this.segs, this.changed = const []});
 
   final DiffLine line;
+
+  /// Syntax-highlighted pieces, or null for plain text.
+  final List<HlSeg>? segs;
+
+  /// Words that changed against the paired removed/added line.
+  final List<Span> changed;
   final _Metrics m;
   final ValueListenable<double> h;
 
@@ -668,14 +720,25 @@ class _LineView extends StatelessWidget {
     final isMeta = line.kind == DiffLineKind.noNewline;
     final text = line.text.replaceAll('\t', '    ');
     final codeStyle = isMeta ? m.mono.copyWith(color: c.gutter, fontStyle: FontStyle.italic) : m.mono;
+    final rich = isMeta || (segs == null && changed.isEmpty)
+        ? null
+        : codeSpan(
+            lineRuns(segs ?? [HlSeg(line.text)], changed),
+            codeStyle,
+            syntaxTheme(context),
+            changedBg: (line.kind == DiffLineKind.delete ? c.delFg : c.addFg).withValues(alpha: 0.28),
+          );
+    Text textWidget({bool wrap = true}) => rich == null
+        ? Text(text, style: codeStyle, softWrap: wrap, overflow: wrap ? null : TextOverflow.visible)
+        : Text.rich(rich, softWrap: wrap, overflow: wrap ? null : TextOverflow.visible);
 
     final Widget code = m.wrap
-        ? Text(text, style: codeStyle)
+        ? textWidget()
         : ClipRect(
             child: ValueListenableBuilder<double>(
               valueListenable: h,
               builder: (context, dx, child) => Transform.translate(offset: Offset(-dx, 0), child: child),
-              child: Text(text, softWrap: false, overflow: TextOverflow.visible, style: codeStyle),
+              child: textWidget(wrap: false),
             ),
           );
 

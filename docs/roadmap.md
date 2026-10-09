@@ -15,7 +15,6 @@ firing (Xcode → Debug → Simulate Background Fetch).*
 
 ## Backlog
 
-- Syntax highlighting in diffs and the file viewer (e.g. `re_highlight`), plus word-level intra-line diff.
 - Sticky file header while scrolling a diff.
 - Review actions: approve / request changes / comment on lines (GitHub review API).
 - PR "files changed since last review" (track the last-seen head SHA per PR).
