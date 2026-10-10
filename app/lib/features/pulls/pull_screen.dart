@@ -12,6 +12,7 @@ import '../auth/auth_controller.dart';
 import '../commits/commit_list_view.dart';
 import '../diff/diff_parser.dart';
 import '../diff/diff_view.dart';
+import '../offline/download_button.dart';
 import '../offline/offline_providers.dart';
 import 'pulls_providers.dart';
 import 'pulls_tab.dart';
@@ -50,7 +51,7 @@ class PullView extends ConsumerWidget {
         initialIndex: 1,
         child: Column(
           children: [
-            _PullHeader(pull: pull),
+            _PullHeader(pull: pull, repo: repo),
             TabBar(
               tabs: [
                 const Tab(text: 'Overview'),
@@ -81,7 +82,10 @@ class PullView extends ConsumerWidget {
                 ],
               ),
             ),
-            if (_canReview(ref, pull, repo)) ReviewBar(pullKey: key, headSha: pull.headSha),
+            if (_canReview(ref, pull, repo))
+              ReviewBar(pullKey: key, headSha: pull.headSha)
+            else if (_reviewableOnline(ref, pull) && ref.watch(isOfflineProvider(repo)))
+              _OfflineReviewNote(repo: repo),
           ],
         ),
       ),
@@ -91,9 +95,44 @@ class PullView extends ConsumerWidget {
 
 /// Reviewing writes to GitHub: signed in, online, and only open PRs.
 bool _canReview(WidgetRef ref, GhPull pull, RepoRef repo) =>
-    ref.watch(isSignedInProvider) &&
-    !ref.watch(isOfflineProvider(repo)) &&
-    (pull.state == PullState.open || pull.state == PullState.draft);
+    _reviewableOnline(ref, pull) && !ref.watch(isOfflineProvider(repo));
+
+bool _reviewableOnline(WidgetRef ref, GhPull pull) =>
+    ref.watch(isSignedInProvider) && (pull.state == PullState.open || pull.state == PullState.draft);
+
+/// In place of the review bar in offline mode: a downloaded PR can be read,
+/// but commenting and approving need GitHub.
+class _OfflineReviewNote extends ConsumerWidget {
+  const _OfflineReviewNote({required this.repo});
+  final RepoRef repo;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerHigh,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+          child: Row(
+            children: [
+              Icon(Icons.cloud_off, size: 18, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Offline: comments and reviews need online mode.', style: theme.textTheme.bodySmall),
+              ),
+              TextButton(
+                onPressed: () => ref.read(offlineModeProvider.notifier).set(repo, offline: false),
+                child: const Text('Go online'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// The files diff with review threads and pending comments under their
 /// lines; tapping a line comments on it.
@@ -194,8 +233,9 @@ class _ReviewableDiff extends ConsumerWidget {
 }
 
 class _PullHeader extends StatelessWidget {
-  const _PullHeader({required this.pull});
+  const _PullHeader({required this.pull, required this.repo});
   final GhPull pull;
+  final RepoRef repo;
 
   @override
   Widget build(BuildContext context) {
@@ -224,6 +264,7 @@ class _PullHeader extends StatelessWidget {
               ],
             ),
           ),
+          PullDownloadButton(repo: repo, number: pull.number),
         ],
       ),
     );

@@ -15,9 +15,15 @@ class GitHubApi {
 
   Future<GhUser> viewer() async => GhUser.fromJson(await client.getJson('/user') as Map<String, dynamic>);
 
-  Future<GhPage<GhRepo>> myRepos({int page = 1}) => client.getPage(
+  /// The user's repos, most recently pushed first. [affiliation]: which kinds
+  /// (`owner`, `collaborator`, `organization_member`, comma-separated).
+  Future<GhPage<GhRepo>> myRepos({
+    int page = 1,
+    int perPage = 100,
+    String affiliation = 'owner,collaborator,organization_member',
+  }) => client.getPage(
     '/user/repos',
-    query: {'sort': 'pushed', 'per_page': 50, 'page': page, 'affiliation': 'owner,collaborator,organization_member'},
+    query: {'sort': 'pushed', 'per_page': perPage, 'page': page, 'affiliation': affiliation},
     parse: GhRepo.fromJson,
   );
 
@@ -35,6 +41,13 @@ class GitHubApi {
         query: {'sha': ?ref, 'path': ?path, 'page': page, 'per_page': perPage},
         parse: GhCommit.fromJson,
       );
+
+  /// How many commits [ref] has (`git rev-list --count`): one request, using
+  /// the page count of a one-per-page listing.
+  Future<int> commitCount(RepoRef r, String ref) async {
+    final p = await commits(r, ref: ref, perPage: 1);
+    return p.lastPage ?? p.items.length;
+  }
 
   /// `git show <sha>` including every changed file (GitHub caps at 3000).
   ///
@@ -117,6 +130,15 @@ query($owner: String!, $name: String!, $ref: String!, $path: String!) {
       );
     }
     return (res['data'] as Map<String, dynamic>?) ?? const {};
+  }
+
+  /// The user's notifications inbox, unread threads newest first.
+  /// [participating]: only threads they're directly involved in (review
+  /// requests, mentions, their own PRs and threads they commented on).
+  /// Needs a classic token (`repo` or `notifications`); fine-grained tokens get 403.
+  Future<List<GhNotification>> notifications({bool participating = true}) async {
+    final j = await client.getJson('/notifications', query: {'participating': participating, 'per_page': 50});
+    return [for (final n in j as List<dynamic>) GhNotification.fromJson(n as Map<String, dynamic>)];
   }
 
   /// Open pull requests across GitHub matching search [qualifiers]

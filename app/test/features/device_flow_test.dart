@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -12,7 +13,7 @@ import 'package:git_reviewer/data/github/models/models.dart';
 import 'package:git_reviewer/features/auth/auth_controller.dart';
 import 'package:git_reviewer/features/auth/device_flow.dart';
 import 'package:git_reviewer/features/auth/token_screen.dart';
-import 'package:git_reviewer/features/repos/repos_screen.dart';
+import 'package:git_reviewer/features/repos/repos_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Answers the device code request, then [polls] in order (last one repeats).
@@ -25,6 +26,11 @@ class _GitHubLogin implements HttpClientAdapter {
   @override
   Future<ResponseBody> fetch(RequestOptions o, Stream<Uint8List>? _, Future<void>? _) async {
     bodies.add(o.data as Map<String, dynamic>);
+    if (o.path != '/login/device/code' && polls.first.containsKey('offline')) {
+      polls.removeAt(0);
+      // What a backgrounded Android app gets: no network, no DNS.
+      throw DioException.connectionError(requestOptions: o, reason: "Failed host lookup: 'github.com'");
+    }
     final Map<String, Object> body = o.path == '/login/device/code'
         ? {
             'device_code': 'dev123',
@@ -70,6 +76,40 @@ void main() {
     expect(server.bodies.first, {'client_id': 'Ov23test', 'scope': deviceFlowScopes});
     expect(server.bodies.last['grant_type'], 'urn:ietf:params:oauth:grant-type:device_code');
     expect(server.bodies.last['device_code'], 'dev123');
+  });
+
+  test('losing the network while the user approves in the browser keeps it waiting', () async {
+    final server = _GitHubLogin([
+      {'error': 'authorization_pending'},
+      {'offline': true},
+      {'offline': true},
+      {'access_token': 'gho_back', 'token_type': 'bearer'},
+    ]);
+    final flow = _flow(server);
+    expect(await flow.waitForToken(await flow.start()), 'gho_back');
+
+    // A GitHub error with a response still ends it.
+    final refused = _flow(
+      _GitHubLogin([
+        {'error': 'incorrect_client_credentials', 'error_description': 'Bad client'},
+      ]),
+    );
+    await expectLater(refused.waitForToken(await refused.start()), throwsA(predicate((e) => '$e' == 'Bad client')));
+  });
+
+  test('pollNow asks GitHub right away instead of finishing the wait', () async {
+    final server = _GitHubLogin([
+      {'access_token': 'gho_now', 'token_type': 'bearer'},
+    ]);
+    final flow = DeviceFlow(
+      clientId: 'Ov23test',
+      dio: Dio(BaseOptions(baseUrl: 'https://github.com'))..httpClientAdapter = server,
+      sleep: (_) => Completer<void>().future, // a wait that never ends on its own
+    );
+    final token = flow.waitForToken(await flow.start());
+    await Future<void>.delayed(Duration.zero);
+    flow.pollNow();
+    expect(await token, 'gho_now');
   });
 
   test('denied, expired and cancelled sign-ins stop with a message', () async {

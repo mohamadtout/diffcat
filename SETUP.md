@@ -8,7 +8,7 @@ The app needs no server, no cloud project and no account: public repos work righ
 | 2 | [Run the app](#2-run-the-app) | — | 2 min |
 | 3 | [Notifications](#3-notifications) | new-commit / PR alerts | 1 min |
 | 4 | [SSH host for terminal / lazygit](#4-ssh-host-for-terminal--lazygit-optional) *(optional)* | Terminal tab | 10 min |
-| 5 | [Release signing](#5-android-release-signing-optional) *(optional)* | installing a release APK | 5 min |
+| 5 | [Release signing](#5-android-release-signing-optional) *(optional)* | installing a release APK, GitHub releases | 5 min |
 | 6 | [iOS / iPadOS](#6-ios--ipados-later) *(later)* | Apple devices | 15 min |
 | 7 | [Source control & CI](#7-source-control--ci) | CI | 2 min |
 
@@ -35,17 +35,21 @@ Collaborator on someone's repo? Accept the invitation first (github.com/notifica
 
 Paste the token on the Sign in screen. It's stored in Android Keystore / iOS Keychain and only sent to `api.github.com`. **Never keep it in a file inside the project.**
 
-### 1b. "Sign in with GitHub" (OAuth device flow) *(owner, once)*
+### 1b. "Sign in with GitHub" (OAuth device flow) *(done; forks only)*
 
-Builds can offer a **Sign in with GitHub** button instead of token pasting: the app shows a short code, you approve it on
+Builds offer a **Sign in with GitHub** button instead of token pasting: the app shows a short code, you approve it on
 github.com/login/device, and GitHub hands the app a token. No client secret and no server are involved.
+
+Diffcat's OAuth App already exists and its client ID is built in (`githubClientId` in
+`app/lib/features/auth/device_flow.dart`), so every build has the button. A fork should register its own app, so
+GitHub's approval page shows the fork's name:
 
 1. GitHub → Settings → Developer settings → **OAuth Apps → New OAuth App**. Name *Diffcat*, homepage the repo URL,
    callback URL anything (e.g. the repo URL; the device flow doesn't use it).
 2. On the app's page, tick **Enable Device Flow** and save. Copy the **Client ID** (`Ov23…`). It's public, not a secret;
    don't create a client secret.
 3. Build with it: `make run GITHUB_CLIENT_ID=Ov23…` (also `make apk`, `make device-test`), or
-   `flutter run --dart-define=GITHUB_CLIENT_ID=Ov23…`. Without it the button is hidden and tokens are pasted as above.
+   `flutter run --dart-define=GITHUB_CLIENT_ID=Ov23…`. An empty value (`GITHUB_CLIENT_ID=`) hides the button.
 
 The app asks for the `repo` and `read:user` scopes (private repos, reviews, your name). Users can revoke it any time at
 github.com → Settings → Applications.
@@ -124,6 +128,20 @@ are signed with your own key. The Gradle side is already wired up in `app/androi
 
 Listing text, screenshots, privacy answers and a checklist for each store are in [store/README.md](store/README.md).
 The privacy policy is [PRIVACY.md](PRIVACY.md), public at <https://github.com/mohamadtout/diffcat/blob/main/PRIVACY.md>.
+
+## 6c. GitHub release with the APK
+
+Each release on `main` is also a GitHub release with the signed APK, for people who don't use Google Play.
+
+1. Merge `development` into `main`, then tag the merge and push the tag: `git tag v1.1.1 && git push origin v1.1.1`.
+2. With the tag checked out, `make release-apk`. It refuses to run without `app/android/key.properties` (the APK would
+   be debug-signed, and every later update would fail to install over it). It writes
+   `app/build/release/diffcat-<version>.apk` and its `.sha256`.
+3. GitHub → **Releases** → **Draft a new release** → pick the tag. Title `Diffcat 1.1.1`. Notes: that version's
+   CHANGELOG section, plus the SHA-256 line. Attach the APK and publish.
+   With the GitHub CLI instead: `gh release create v1.1.1 app/build/release/diffcat-1.1.1.apk --title "Diffcat 1.1.1" --notes-file <notes>`.
+
+Always sign with the same key: Android only installs an update over an APK signed by the same one.
 
 ## 7. Source control & CI
 

@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:git_reviewer/core/storage/storage.dart';
 import 'package:git_reviewer/core/theme/code_fonts.dart';
 import 'package:git_reviewer/features/terminal/shell_integration.dart';
 import 'package:git_reviewer/features/terminal/terminal_appearance.dart';
 import 'package:git_reviewer/features/terminal/terminal_themes.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xterm/xterm.dart';
 
 void main() {
@@ -50,6 +54,29 @@ void main() {
         const TerminalAppearance(background: BackgroundKind.gradient, backgroundOpacity: 0).hasBackground,
         isFalse,
       );
+    });
+
+    test('removing the background image deletes the copy and goes back to plain', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(overrides: [sharedPrefsProvider.overrideWithValue(prefs)]);
+      addTearDown(container.dispose);
+      final tmp = await Directory.systemTemp.createTemp('appearance');
+      addTearDown(() => tmp.delete(recursive: true));
+      final picked = await File('${tmp.path}/photo.jpg').writeAsBytes([1, 2, 3]);
+      final notifier = container.read(terminalAppearanceProvider.notifier);
+
+      await notifier.setImage(picked, Directory('${tmp.path}/terminal'));
+      final copy = container.read(terminalAppearanceProvider).imagePath!;
+      expect(File(copy).existsSync(), isTrue);
+
+      await notifier.removeImage();
+      final a = container.read(terminalAppearanceProvider);
+      expect(a.imagePath, isNull);
+      expect(a.background, BackgroundKind.none);
+      expect(File(copy).existsSync(), isFalse);
+      expect(picked.existsSync(), isTrue, reason: "the user's own photo is never touched");
+      expect((jsonDecode(prefs.getString(StoreKeys.terminalAppearance)!) as Map<String, dynamic>)['imagePath'], isNull);
     });
 
     test('presets: unknown ids follow the app', () {

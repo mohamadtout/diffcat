@@ -41,7 +41,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 
 - **Server data** uses `FutureProvider.autoDispose.family` keyed by Dart **records** (`({RepoRef repo, String sha})`). Records give structural equality for free.
 - **Paged lists** use `AsyncNotifierProvider.autoDispose.family` + `Paged<T>` with `loadMore()` (see `CommitListNotifier`).
-- **Local, persisted state** uses `Notifier`s backed by `sharedPrefsProvider` (custom commands, SSH hosts, watched/pinned repos, theme, diff settings).
+- **Local, persisted state** uses `Notifier`s backed by `sharedPrefsProvider` (custom commands, SSH hosts, watched/pinned repos, the repo library (`RepoLibrary`: folders, archived, unarchived, hidden, sources), theme, diff settings). The poller reads the library's hidden repos straight from prefs, as it has no Riverpod.
 - **Screen-local UI state** (the selected branch, selected item in split view) lives in `StatefulWidget`s, not providers. This keeps pushed screens independent: "browse at commit X" doesn't change the branch on the screen below it.
 - **Retries:** `ProviderScope.retry` in `main.dart` retries only transient errors (`GitHubException.isRetryable`).
 - **Background isolate:** the WorkManager task (`backgroundPollDispatcher`) runs without Riverpod. `Poller` takes a `GitHubApi` and `SharedPreferences` directly, so the same code runs in both isolates.
@@ -61,7 +61,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 - `getBytes` (tarballs) streams and stops at 300 MB rather than holding an unbounded archive in memory. Redirects to
   `codeload.github.com` don't carry the token: Dart's `HttpClient` drops `Authorization` on cross-origin redirects.
 - Maps errors to `GitHubException` (`isUnauthorized`, `isNotFound`, `isRateLimited`, `isRetryable`). `ErrorView` turns these into readable messages.
-- **Offline copies** (`features/offline/`, decision D11): the client takes an optional `ResponseCache`. In `CacheMode.replay` (screens, via `githubApiProvider`) a saved response is returned before any network call. In `CacheMode.record` (`BranchDownloader`) every response is fetched and saved. Keys come from `GitHubClient.cacheKey` (owner/name case-insensitive). `OfflineStore` keeps one folder per repo with an `index.json` that files each response under a group (`repo`, `branch:<name>`, `commit:<sha>`, `pr:<n>`, `files:<branch>`) for sizes and selective deletes. `liveGithubApiProvider` skips the cache (the notification poller uses it). Both take their transport from `githubAdapterProvider` (null means the real network). Tests and the store screenshots override it with canned responses, so the offline layer and everything above it run unchanged. **Offline mode** (`offlineModeProvider`, a remembered per-repo set) adds `cacheOnly` to the screens' client: for those repos a missing response throws `GitHubException.notDownloaded` (never retried) instead of going to the network. The repo list merges `savedReposInfoProvider` (repo details read back from the saved copies) into your repos, so downloads show up even with no network.
+- **Offline copies** (`features/offline/`, decision D11): the client takes an optional `ResponseCache`. In `CacheMode.replay` (screens, via `githubApiProvider`) the client's `preferSaved` decides per request: with **data saver** on (`dataSaverProvider`, null) every saved response is returned before any network call; otherwise (the default, "fresh") only keys that can't change (`isImmutableKey`: a commit's diff, a tree, file or compare pinned to a sha) are, the rest go to the network first and a saved copy is the fallback when GitHub can't be reached or the rate limit is used up. In `CacheMode.record` (`BranchDownloader`, and `PullDownloader` for one PR from its screen) every response is fetched and saved. Keys come from `GitHubClient.cacheKey` (owner/name case-insensitive). `OfflineStore` keeps one folder per repo with an `index.json` that files each response under a group (`repo`, `branch:<name>`, `commit:<sha>`, `pr:<n>` with its files, commits, reviews and line comments, `files:<branch>`) for sizes and selective deletes. `liveGithubApiProvider` skips the cache (the notification poller uses it). Both take their transport from `githubAdapterProvider` (null means the real network). Tests and the store screenshots override it with canned responses, so the offline layer and everything above it run unchanged. **Offline mode** (`offlineModeProvider`, a remembered per-repo set) adds `cacheOnly` to the screens' client: for those repos a missing response throws `GitHubException.notDownloaded` (never retried) instead of going to the network. The repo list merges `savedReposInfoProvider` (repo details read back from the saved copies) into your repos, so downloads show up even with no network.
 
 ### git → GitHub API mapping
 
@@ -107,6 +107,7 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 | `/settings`, `/settings/commands` | settings, custom buttons |
 | `/settings/terminal` | terminal appearance |
 | `/settings/code` | code view (font, full files, diff colors) |
+| `/settings/repos`, `/settings/repos/folders` | repository list: sources, order, hidden repos and accounts; folders |
 | `/settings/downloads`, `/settings/downloads/:owner/:name` | offline storage: all repos, one repo by branch/commit/PR |
 
 Because repo routes are nested under `/repos`, `router.go(route)` from a notification builds a proper back stack (repo list → repo → commit).
@@ -129,8 +130,10 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 - **Full files:** `fullFileLines` merges the new file's content with the hunks (context lines between them get both
   line numbers) and returns null if the content doesn't match, e.g. a compare whose head branch moved. A file header
   requests its content after it's built, so only files scrolled near cost a request.
-- **Colors** come from the `DiffColors` theme extension, which `app.dart` builds from `diffColorsProvider` (a palette
-  plus per-slot overrides for light and dark), so every `DiffColors.of(context)` follows the user's choice.
+- **Colors** come from the `DiffColors` theme extension, which `app.dart` builds from `diffColorsProvider`, so every
+  `DiffColors.of(context)` follows the user's choice. `DiffColorSettings` holds the selected palette, per-slot
+  overrides on a preset (light and dark, dropped when switching), the user's profiles (full palettes that own their
+  edits) and the ids of deleted presets.
 - **Syntax and word diffs** (`syntax.dart`, pure): `highlightDiffLines` highlights each side of a file's diff as one
   text (new side: context + added; old side: context + removed), so block comments and strings spanning lines color
   right, then splits the result back into lines. `pairedWordDiffs` pairs the i-th removed with the i-th added line of a
@@ -147,6 +150,8 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 - On-screen toolbar: Esc/Tab/arrows/PgUp…, plus sticky **Ctrl/Alt** that modify the next typed key.
 - Custom buttons and the startup command use key notation (docs/commands.md) and go through `Terminal.keyInput`, so arrow keys respect application-cursor mode (important for lazygit).
 - Sessions live in `SshSessionRegistry`, so leaving the screen doesn't drop the connection while the app is in the foreground.
+  The registry is a `ChangeNotifier` that forwards each session's changes, which keeps the host list's connected
+  (green) icon current however the terminal screen was left.
 - **Status bar / shell integration** (`shell_integration.dart`): the shell's folder arrives as OSC 7 (`Terminal.onPrivateOSC`).
   After each report the session runs `git status --porcelain=v2 --branch` in that folder on a separate exec channel
   (`SSHClient.run`, `GIT_OPTIONAL_LOCKS=0`), never in the user's shell. With shell integration on, the hook is typed

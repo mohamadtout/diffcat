@@ -51,8 +51,9 @@ MADE FOR IPAD
 • Works in every orientation and multitasking size
 
 WORKS OFFLINE
-• Download a branch with its recent commits, diffs and open pull requests, or every file
-• Read it on a plane, a train or a slow connection
+• Download a branch: its latest commits, everything since a commit, or its whole history, with diffs, pull requests (open or closed) and optionally every file
+• Save any single pull request, review threads included
+• Read it on a plane, a train or a slow connection, and turn on Data saver to spend fewer GitHub requests
 • See exactly how much space each repo, branch and commit uses, and delete what you don't need
 
 YOUR OWN MACHINE, OVER SSH
@@ -66,7 +67,7 @@ STAY UP TO DATE
 
 PRIVATE BY DESIGN
 • No account needed: open any public repository right away
-• Sign in with a GitHub token to see your private repos (optional)
+• Sign in with GitHub, or with a token, to see your private repos (optional)
 • Your token and SSH keys stay in the Keychain. No analytics, no ads, no tracking.
 
 Diffcat is an independent app. It is not affiliated with or endorsed by GitHub, Inc. or the Git project.

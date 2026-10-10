@@ -1,18 +1,18 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/core/routing/app_router.dart';
 import 'package:git_reviewer/core/routing/routes.dart';
+import 'package:git_reviewer/data/github/github_api.dart';
+import 'package:git_reviewer/data/github/github_client.dart';
+import 'package:git_reviewer/data/github/response_cache.dart';
+import 'package:git_reviewer/features/offline/downloader.dart';
+import 'package:git_reviewer/features/offline/offline_providers.dart';
 
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
-
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
-    await tester.pump(const Duration(milliseconds: 50));
-    if (!tester.binding.hasScheduledFrame) return;
-  }
-}
+import '../support/settle.dart';
 
 Future<DemoEnv> _openPull(WidgetTester tester, {bool signedIn = true}) async {
   tester.view
@@ -21,11 +21,11 @@ Future<DemoEnv> _openPull(WidgetTester tester, {bool signedIn = true}) async {
   addTearDown(tester.view.reset);
   final env = await DemoEnv.create(signedIn: signedIn);
   await tester.pumpWidget(env.app());
-  await _settle(tester);
+  await settle(tester);
   ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
       .read(routerProvider)
       .go(Routes.pull(DemoGitHub.repo, DemoGitHub.openPullNumber));
-  await _settle(tester);
+  await settle(tester);
   return env;
 }
 
@@ -41,19 +41,19 @@ void main() {
     expect(find.text('Tap a line to comment'), findsOneWidget);
 
     await tester.tap(find.textContaining('rand.Int63n').first);
-    await _settle(tester);
+    await settle(tester);
     await tester.enterText(find.byType(TextField), 'Seed the random source?');
     await tester.tap(find.text('Add to review'));
-    await _settle(tester);
+    await settle(tester);
     expect(find.text('Pending'), findsOneWidget);
     expect(find.text('1 pending comment'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Review'));
-    await _settle(tester);
+    await settle(tester);
     await tester.enterText(find.byType(TextField), 'Nice work');
     await tester.tap(find.text('Approve'));
     await tester.tap(find.text('Submit review'));
-    await _settle(tester);
+    await settle(tester);
 
     final (path, body) = env.github.posted.single;
     expect(path, '/repos/demo/payments-api/pulls/42/reviews');
@@ -70,5 +70,89 @@ void main() {
   testWidgets('signed out, the PR is read-only', (tester) async {
     await _openPull(tester, signedIn: false);
     expect(find.text('Tap a line to comment'), findsNothing);
+  });
+
+  testWidgets('offline, a downloaded PR reads fully, and reviewing waits for online mode', (tester) async {
+    tester.view
+      ..physicalSize = const Size(900, 2000)
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final github = DemoGitHub();
+    final store = (await tester.runAsync(() => tempOfflineStore('review_offline')))!;
+    await tester.runAsync(() => seedOfflineCopy(store, github));
+    final env = await DemoEnv.create(store: store, github: github);
+    await tester.pumpWidget(env.app());
+    // Saved copies are real files: give their reads real time.
+    Future<void> settleIo() async {
+      for (var i = 0; i < 15; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await settleIo();
+    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    container.read(offlineModeProvider.notifier).set(DemoGitHub.repo, offline: true);
+    container.read(routerProvider).go(Routes.pull(DemoGitHub.repo, DemoGitHub.openPullNumber));
+    await settleIo();
+
+    expect(find.text('Offline: comments and reviews need online mode.'), findsOneWidget);
+    expect(find.text('Tap a line to comment'), findsNothing);
+    expect(find.byTooltip('Download #${DemoGitHub.openPullNumber} for offline'), findsNothing);
+    expect(find.textContaining('Not downloaded'), findsNothing, reason: 'the PR and its threads were saved');
+    expect(github.unknown, isEmpty);
+
+    await tester.tap(find.text('Go online'));
+    await settleIo();
+    expect(find.text('Offline: comments and reviews need online mode.'), findsNothing);
+    expect(find.byTooltip('Update the offline copy of #${DemoGitHub.openPullNumber}'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(() => store.root.delete(recursive: true));
+  });
+
+  testWidgets('offline, pull requests downloaded one by one are listed', (tester) async {
+    tester.view
+      ..physicalSize = const Size(900, 2000)
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final github = DemoGitHub();
+    final store = (await tester.runAsync(() => tempOfflineStore('pull_alone')))!;
+    // Only the PR, from its screen: no branch download, so no saved PR list.
+    await tester.runAsync(
+      () => PullDownloader(
+        store: store,
+        repo: DemoGitHub.repo,
+        number: DemoGitHub.openPullNumber,
+        onProgress: (_) {},
+        api: GitHubApi(
+          GitHubClient(
+            dio: Dio(GitHubClient.baseOptions('demo-token'))..httpClientAdapter = github,
+            cache: store,
+            cacheMode: CacheMode.record,
+          ),
+        ),
+      ).run(),
+    );
+    final env = await DemoEnv.create(store: store, github: github);
+    await tester.pumpWidget(env.app());
+    Future<void> settleIo() async {
+      for (var i = 0; i < 15; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await settleIo();
+    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    container.read(offlineModeProvider.notifier).set(DemoGitHub.repo, offline: true);
+    container.read(routerProvider).go(Routes.repo(DemoGitHub.repo, tab: 'pulls'));
+    await settleIo();
+    expect(find.text(DemoGitHub.openPullTitle), findsOneWidget);
+
+    await tester.tap(find.text('Closed'));
+    await settleIo();
+    expect(find.textContaining('Not downloaded'), findsOneWidget, reason: 'nothing closed was saved');
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(() => store.root.delete(recursive: true));
   });
 }

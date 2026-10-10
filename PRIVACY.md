@@ -1,6 +1,6 @@
 # Privacy Policy
 
-*Diffcat · Last updated: October 8, 2026*
+*Diffcat · Last updated: October 10, 2026*
 
 Diffcat is a mobile app for reading code changes on GitHub. It has no server, no account system of its own, no
 analytics, no advertising and no tracking. The developer of Diffcat does not collect, receive, store, sell or share
@@ -29,6 +29,8 @@ copies are excluded from iCloud backup). Uninstalling the app deletes all of it.
 - **GitHub** (`api.github.com`), to load the repositories, commits, pull requests and files you open, and to check
   repositories you choose to watch for notifications. If you are signed in, requests carry your token. GitHub handles
   this traffic under its own privacy statement: <https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement>.
+  If you use **Sign in with GitHub**, the app also asks `github.com` for a sign-in code and, once you approve it on
+  GitHub's website, for your token. Nothing else is sent; the app never sees your GitHub password.
 - **SSH servers you add yourself**, only when you open a terminal session to them. To show the git branch in the
   terminal's status bar, the app runs `git status` on that server over the same SSH connection.
 

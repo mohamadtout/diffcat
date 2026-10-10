@@ -7,7 +7,7 @@ import 'package:git_reviewer/core/storage/storage.dart';
 import 'package:git_reviewer/data/github/models/models.dart';
 import 'package:git_reviewer/features/auth/auth_controller.dart';
 import 'package:git_reviewer/features/auth/token_screen.dart';
-import 'package:git_reviewer/features/repos/repos_screen.dart';
+import 'package:git_reviewer/features/repos/repos_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> _pumpApp(WidgetTester tester) async {
@@ -31,6 +31,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
 Future<void> _signIn(WidgetTester tester) async {
   expect(find.byType(TokenScreen), findsOneWidget);
   await tester.enterText(find.byType(TextField), 'ghp_test');
+  await tester.ensureVisible(find.widgetWithText(FilledButton, 'Sign in')); // below "Sign in with GitHub"
   await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
   await tester.pumpAndSettle();
 }

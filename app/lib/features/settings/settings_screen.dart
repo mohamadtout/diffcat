@@ -34,12 +34,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final viewer = ref.watch(viewerProvider).value;
     final watched = ref.watch(watchedReposProvider);
-    final theme = Theme.of(context);
-
-    Widget section(String title) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-      child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -47,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
         builder: (sides) => ListView(
           padding: sides,
           children: [
-            section('GitHub account'),
+            const SectionHeader('GitHub account'),
             if (ref.watch(isSignedInProvider))
               ListTile(
                 leading: UserAvatar(url: viewer?.avatarUrl, fallback: viewer?.login ?? '?'),
@@ -65,7 +59,7 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: const Text('Public repos only, up to 60 GitHub requests an hour.'),
                 trailing: FilledButton.tonal(onPressed: () => context.push(Routes.setup), child: const Text('Sign in')),
               ),
-            section('Appearance'),
+            const SectionHeader('Appearance'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SegmentedButton<ThemeMode>(
@@ -86,15 +80,23 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.codeView),
             ),
             ListTile(
+              leading: const Icon(Icons.folder_copy_outlined),
+              title: const Text('Repository list'),
+              subtitle: const Text('Folders, sort, hidden repos and accounts, what to load'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.repoList),
+            ),
+            ListTile(
               leading: const Icon(Icons.terminal),
               title: const Text('Terminal appearance'),
               subtitle: const Text('Colors, font, background, git status bar'),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push(Routes.terminalAppearance),
             ),
-            section('Offline'),
+            const SectionHeader('Offline'),
             const _DownloadsTile(),
-            section('Notifications'),
+            const _DataSaverTile(),
+            const SectionHeader('Notifications'),
             const _NotificationsSection(),
             for (final r in watched)
               ListTile(
@@ -110,7 +112,7 @@ class SettingsScreen extends ConsumerWidget {
                   },
                 ),
               ),
-            section('Tools'),
+            const SectionHeader('Tools'),
             ListTile(
               leading: const Icon(Icons.smart_button_outlined),
               title: const Text('Command buttons'),
@@ -176,11 +178,12 @@ class _NotificationsSection extends ConsumerWidget {
             ),
         SwitchListTile(
           secondary: const Icon(Icons.rate_review_outlined),
-          title: const Text('Review requests'),
+          title: const Text('Pull requests that need you'),
           subtitle: Text(
             ref.watch(isSignedInProvider)
-                ? 'Notify when someone asks for your review, on any repo'
-                : 'Sign in to be notified when someone asks for your review',
+                ? 'Review requests, mentions and replies on any repo, from your GitHub notifications. '
+                      'Checked about every minute while Diffcat is open'
+                : 'Sign in to be notified about review requests, mentions and replies',
           ),
           value: ref.watch(notifyReviewRequestsProvider) && ref.watch(isSignedInProvider),
           onChanged: ref.watch(isSignedInProvider)
@@ -230,6 +233,28 @@ class _NotificationsSection extends ConsumerWidget {
         '"Unrestricted" (Settings → Apps → Diffcat → Battery).',
   ),
 };
+
+class _DataSaverTile extends ConsumerWidget {
+  const _DataSaverTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(dataSaverProvider);
+    return SwitchListTile(
+      secondary: const Icon(Icons.data_saver_on_outlined),
+      title: const Text('Data saver'),
+      subtitle: Text(
+        on
+            ? 'Downloaded repos open from the device, as of their last update; only what isn\'t downloaded '
+                  'uses GitHub requests. Update a download to refresh it.'
+            : 'Commits, branches and pull requests load live. Downloaded diffs and files still cost no '
+                  'requests, and downloads stand in when GitHub can\'t be reached.',
+      ),
+      value: on,
+      onChanged: ref.read(dataSaverProvider.notifier).set,
+    );
+  }
+}
 
 class _DownloadsTile extends ConsumerWidget {
   const _DownloadsTile();

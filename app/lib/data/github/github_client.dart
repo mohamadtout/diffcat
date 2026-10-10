@@ -8,10 +8,14 @@ import 'response_cache.dart';
 
 /// One page of a paginated GitHub list endpoint.
 class GhPage<T> {
-  const GhPage(this.items, {required this.hasNext});
+  const GhPage(this.items, {required this.hasNext, this.lastPage});
 
   final List<T> items;
   final bool hasNext;
+
+  /// Number of the last page (from `Link: rel="last"`), when there's more
+  /// than one. With `per_page=1` it's the total count.
+  final int? lastPage;
 }
 
 /// Low-level HTTP client for the GitHub REST API.
@@ -25,9 +29,16 @@ class GhPage<T> {
 /// [token] is optional: without it, public repos still work but GitHub allows
 /// only 60 requests/hour instead of 5,000.
 class GitHubClient {
-  GitHubClient({String? token, Dio? dio, this.cache, this.cacheMode = CacheMode.replay, this.cacheOnly, this.etags})
-    : isAnonymous = token == null,
-      _dio = dio ?? Dio(baseOptions(token));
+  GitHubClient({
+    String? token,
+    Dio? dio,
+    this.cache,
+    this.cacheMode = CacheMode.replay,
+    this.cacheOnly,
+    this.preferSaved,
+    this.etags,
+  }) : isAnonymous = token == null,
+       _dio = dio ?? Dio(baseOptions(token));
 
   /// Offline copies (features/offline). Null: network only.
   final ResponseCache? cache;
@@ -41,6 +52,11 @@ class GitHubClient {
   /// responses are used: anything else fails with
   /// [GitHubException.notDownloaded] and never touches the network.
   final bool Function(String key)? cacheOnly;
+
+  /// For keys where this returns false, the network is asked first and a
+  /// saved response is only the fallback when GitHub can't be reached (or the
+  /// rate limit is used up). Null: saved responses always come first.
+  final bool Function(String key)? preferSaved;
 
   /// Identifies a GET for caching. Offline downloads use it to file responses
   /// under exactly the key a later read will look up.
@@ -73,6 +89,10 @@ class GitHubClient {
   final Map<String, _CacheEntry> _cache = {};
   static const _maxCacheEntries = 300;
 
+  /// Seconds GitHub asks pollers to wait (`X-Poll-Interval`, sent by the
+  /// notifications endpoint), from the latest response that had it.
+  int? pollInterval;
+
   /// Last known rate limit state, updated on every response.
   int? rateLimitRemaining;
   DateTime? rateLimitReset;
@@ -91,7 +111,12 @@ class GitHubClient {
     final res = await _get(path, query: query);
     final list = (res.data as List<dynamic>).cast<Map<String, dynamic>>();
     final link = res.headers.value('link') ?? '';
-    return GhPage(list.map(parse).toList(), hasNext: link.contains('rel="next"'));
+    final last = RegExp(r'[?&]page=(\d+)[^>]*>;\s*rel="last"').firstMatch(link);
+    return GhPage(
+      list.map(parse).toList(),
+      hasNext: link.contains('rel="next"'),
+      lastPage: last == null ? null : int.parse(last[1]!),
+    );
   }
 
   /// Fetches consecutive pages until exhausted or [maxPages] is reached.
@@ -158,18 +183,21 @@ class GitHubClient {
     ResponseType? responseType,
   }) async {
     final key = cacheKey(path, query: query, accept: accept);
-    final saved = cacheMode == CacheMode.replay ? await cache?.read(key) : null;
-    if (saved != null) {
-      return Response(
-        requestOptions: RequestOptions(path: path, queryParameters: query),
-        statusCode: 200,
-        data: saved.data,
-        headers: Headers.fromMap({
-          if (saved.link != null) 'link': [saved.link!],
-        }),
-      );
+    final replay = cacheMode == CacheMode.replay && cache != null;
+    final only = replay && (cacheOnly?.call(key) ?? false);
+    final savedFirst = only || (replay && (preferSaved?.call(key) ?? true));
+    Response<dynamic> fromSaved(CachedResponse saved) => Response(
+      requestOptions: RequestOptions(path: path, queryParameters: query),
+      statusCode: 200,
+      data: saved.data,
+      headers: Headers.fromMap({
+        if (saved.link != null) 'link': [saved.link!],
+      }),
+    );
+    if (savedFirst) {
+      if (await cache!.read(key) case final saved?) return fromSaved(saved);
     }
-    if (cacheMode == CacheMode.replay && (cacheOnly?.call(key) ?? false)) throw GitHubException.notDownloaded();
+    if (only) throw GitHubException.notDownloaded();
     var cached = _cache[key];
     if (cached == null && etags != null) {
       final stored = await etags!.read(key);
@@ -205,7 +233,12 @@ class GitHubClient {
       }
       return res;
     } on DioException catch (e) {
-      throw _mapError(e);
+      final error = _mapError(e);
+      // Fresh data was asked for but can't be had: the saved copy beats an error.
+      if (replay && !savedFirst && (error.statusCode == null || error.isRateLimited)) {
+        if (await cache!.read(key) case final saved?) return fromSaved(saved);
+      }
+      throw error;
     }
   }
 
@@ -222,6 +255,7 @@ class GitHubClient {
   }
 
   void _trackRateLimit(Headers h) {
+    pollInterval = int.tryParse(h.value('x-poll-interval') ?? '') ?? pollInterval;
     final remaining = int.tryParse(h.value('x-ratelimit-remaining') ?? '');
     final reset = int.tryParse(h.value('x-ratelimit-reset') ?? '');
     if (remaining != null) rateLimitRemaining = remaining;

@@ -49,10 +49,13 @@ abstract final class StoreKeys {
   static const viewerLogin = 'viewer_login';
   static const notifyIncludeOwn = 'notify_include_own';
   static const notifyReviewRequests = 'notify_review_requests';
+  static const inboxSeen = 'inbox_seen';
   static const reviewRequestsSeen = 'review_requests_seen';
+  static const repoLibrary = 'repo_library';
   static const pinnedRepos = 'pinned_repos';
   static const recentRepos = 'recent_repos';
   static const offlineModeRepos = 'offline_mode_repos';
+  static const dataSaver = 'data_saver';
   static const customCommands = 'custom_commands';
   static const sshHosts = 'ssh_hosts';
   static const knownHosts = 'known_hosts';

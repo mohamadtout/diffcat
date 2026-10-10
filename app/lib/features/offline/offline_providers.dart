@@ -51,6 +51,30 @@ class OfflineMode extends Notifier<Set<String>> {
   }
 }
 
+/// Data saver: downloaded repos load from their saved copy, and only what
+/// wasn't downloaded uses the network. Off (the default, "fresh"): lists,
+/// branches and pull requests load live and saved copies are used for what
+/// can't change (a commit's diff) or when GitHub can't be reached.
+final dataSaverProvider = NotifierProvider<DataSaver, bool>(DataSaver.new);
+
+class DataSaver extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(sharedPrefsProvider).getBool(StoreKeys.dataSaver) ?? false;
+
+  void set(bool on) {
+    state = on;
+    ref.read(sharedPrefsProvider).setBool(StoreKeys.dataSaver, on);
+  }
+}
+
+/// Whether [repo]'s screens show its saved copy rather than live data:
+/// offline mode, or data saver with a download.
+final showsSavedCopyProvider = Provider.family<bool, RepoRef>(
+  (ref, repo) =>
+      ref.watch(isOfflineProvider(repo)) ||
+      (ref.watch(dataSaverProvider) && ref.watch(savedRepoProvider(repo.fullName)) != null),
+);
+
 /// Whether [repo] is shown in offline mode right now (it must still be saved).
 final isOfflineProvider = Provider.family<bool, RepoRef>(
   (ref, repo) =>
@@ -80,13 +104,29 @@ final savedReposInfoProvider = FutureProvider<List<GhRepo>>((ref) async {
   ];
 });
 
+typedef BranchTarget = ({RepoRef repo, String branch});
+
+/// How many commits a branch has (for a full-history download). One request,
+/// never saved.
+final commitCountProvider = FutureProvider.autoDispose.family<int, BranchTarget>(
+  (ref, t) => ref.watch(liveGithubApiProvider).commitCount(t.repo, t.branch),
+);
+
+/// What "All files" would store for a branch, from its file tree's sizes.
+final filesEstimateProvider = FutureProvider.autoDispose.family<FilesEstimate, BranchTarget>(
+  (ref, t) async => estimateTextFiles(await ref.watch(githubApiProvider).tree(t.repo, t.branch)),
+);
+
 String downloadKey(RepoRef repo, String branch) => '${repo.fullName.toLowerCase()}@$branch';
 
-/// Running and failed downloads by [downloadKey]. Finished ones drop out.
+String pullDownloadKey(RepoRef repo, int number) => '${repo.fullName.toLowerCase()}#$number';
+
+/// Running and failed downloads by [downloadKey] or [pullDownloadKey].
+/// Finished ones drop out.
 final downloadsProvider = NotifierProvider<DownloadsController, Map<String, DownloadProgress>>(DownloadsController.new);
 
 class DownloadsController extends Notifier<Map<String, DownloadProgress>> {
-  final _running = <String, BranchDownloader>{};
+  final _running = <String, void Function()>{}; // cancel, by key
 
   @override
   Map<String, DownloadProgress> build() => const {};
@@ -96,7 +136,7 @@ class DownloadsController extends Notifier<Map<String, DownloadProgress>> {
     final store = ref.read(offlineStoreProvider);
     final key = downloadKey(repo, branch);
     if (store == null || _running.containsKey(key)) return null;
-    final downloader = _running[key] = BranchDownloader(
+    final downloader = BranchDownloader(
       store: store,
       repo: repo,
       branch: branch,
@@ -104,8 +144,28 @@ class DownloadsController extends Notifier<Map<String, DownloadProgress>> {
       token: ref.read(authTokenProvider).value,
       onProgress: (p) => state = {...state, key: p},
     );
+    return _run(key, downloader.run, downloader.cancel);
+  }
+
+  /// Downloads (or updates) one pull request, open or closed.
+  Future<String?> startPull(RepoRef repo, int number) async {
+    final store = ref.read(offlineStoreProvider);
+    final key = pullDownloadKey(repo, number);
+    if (store == null || _running.containsKey(key)) return null;
+    final downloader = PullDownloader(
+      store: store,
+      repo: repo,
+      number: number,
+      token: ref.read(authTokenProvider).value,
+      onProgress: (p) => state = {...state, key: p},
+    );
+    return _run(key, downloader.run, downloader.cancel);
+  }
+
+  Future<String?> _run(String key, Future<void> Function() run, void Function() cancel) async {
+    _running[key] = cancel;
     try {
-      await downloader.run();
+      await run();
       state = {...state}..remove(key);
       return null;
     } on Object catch (e) {
@@ -127,7 +187,7 @@ class DownloadsController extends Notifier<Map<String, DownloadProgress>> {
     return null;
   }
 
-  void cancel(String key) => _running[key]?.cancel();
+  void cancel(String key) => _running[key]?.call();
 
   void dismiss(String key) => state = {...state}..remove(key);
 }

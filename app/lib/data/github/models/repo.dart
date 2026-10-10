@@ -5,6 +5,12 @@ extension RepoRefX on RepoRef {
   String get fullName => '$owner/$name';
 }
 
+/// Parses `owner/name` or a github.com URL.
+RepoRef? parseRepoInput(String input) {
+  final m = RegExp(r'^\s*(?:https?://github\.com/)?([\w.-]+)/([\w.-]+?)(?:\.git)?/?\s*$').firstMatch(input);
+  return m == null ? null : (owner: m.group(1)!, name: m.group(2)!);
+}
+
 class GhUser {
   const GhUser({required this.login, this.avatarUrl, this.name});
 
@@ -26,6 +32,7 @@ class GhRepo {
     this.language,
     this.pushedAt,
     this.ownerAvatarUrl,
+    this.archived = false,
   });
 
   factory GhRepo.fromJson(Map<String, dynamic> j) {
@@ -39,6 +46,7 @@ class GhRepo {
       description: j['description'] as String?,
       language: j['language'] as String?,
       pushedAt: DateTime.tryParse((j['pushed_at'] as String?) ?? ''),
+      archived: (j['archived'] as bool?) ?? false,
     );
   }
 
@@ -50,6 +58,9 @@ class GhRepo {
   final String? language;
   final DateTime? pushedAt;
   final String? ownerAvatarUrl;
+
+  /// Archived on GitHub (read-only there).
+  final bool archived;
 
   RepoRef get ref => (owner: owner, name: name);
   String get fullName => '$owner/$name';

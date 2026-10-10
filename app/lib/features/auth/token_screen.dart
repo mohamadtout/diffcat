@@ -9,8 +9,8 @@ import '../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
 import 'device_flow.dart';
 
-/// Starts a GitHub device-flow sign-in, or null when the build has no OAuth
-/// client ID (then only pasting a token is offered). Overridden in tests.
+/// Starts a GitHub device-flow sign-in, or null when the build's OAuth
+/// client ID is empty (then only pasting a token is offered). Overridden in tests.
 final deviceFlowProvider = Provider<DeviceFlow Function()?>(
   (ref) => githubClientId.isEmpty ? null : () => DeviceFlow(clientId: githubClientId),
 );
@@ -79,6 +79,7 @@ class _TokenScreenState extends ConsumerState<TokenScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final deviceFlow = ref.watch(deviceFlowProvider);
     return Scaffold(
       appBar: AppBar(leading: BackButton(onPressed: _leave)),
       body: SafeArea(
@@ -97,13 +98,13 @@ class _TokenScreenState extends ConsumerState<TokenScreen> {
                   Text(
                     'Signing in is optional. It lets you list your repos, open private ones, and raises '
                     "GitHub's limit from 60 to 5,000 requests an hour.\n\n"
-                    'Paste a personal access token. It is stored in the device keystore and only sent to '
-                    'api.github.com.',
+                    '${deviceFlow == null ? 'Paste a personal access token' : 'Sign in with GitHub or paste a personal access token'}. '
+                    'The token is stored in the device keystore and only sent to GitHub.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 24),
-                  if (ref.watch(deviceFlowProvider) case final flow?) ...[
+                  if (deviceFlow case final flow?) ...[
                     FilledButton.icon(
                       icon: const Icon(Icons.login),
                       label: const Text('Sign in with GitHub'),
@@ -180,14 +181,20 @@ class _DeviceCodeDialogState extends State<DeviceCodeDialog> {
   DeviceCode? _code;
   String? _error;
 
+  /// Back from approving in the browser: ask GitHub now instead of at the
+  /// next poll.
+  late final _lifecycle = AppLifecycleListener(onResume: widget.flow.pollNow);
+
   @override
   void initState() {
     super.initState();
+    _lifecycle; // start listening
     _run();
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     widget.flow.cancel();
     super.dispose();
   }

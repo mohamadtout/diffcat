@@ -29,12 +29,18 @@ class _GitReviewerAppState extends ConsumerState<GitReviewerApp> {
         .read(localNotificationsProvider)
         .openedRoutes
         .listen((route) => ref.read(routerProvider).go(route));
-    // Opening the app is a free chance to check (and the only one on iOS for now).
-    _lifecycle = AppLifecycleListener(onResume: _checkIfStale);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _checkIfStale());
+    // Opening the app is a free chance to check (and the only one on iOS for now),
+    // and while it's open the inbox is checked about every minute.
+    _lifecycle = AppLifecycleListener(onResume: _foreground, onHide: _background);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _foreground());
   }
 
-  void _checkIfStale() => ref.read(pollControllerProvider.notifier).checkIfStale();
+  void _foreground() {
+    final polls = ref.read(pollControllerProvider.notifier)..setForeground(true);
+    polls.checkIfStale();
+  }
+
+  void _background() => ref.read(pollControllerProvider.notifier).setForeground(false);
 
   @override
   void dispose() {

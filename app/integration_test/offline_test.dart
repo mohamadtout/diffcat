@@ -64,7 +64,7 @@ void main() {
         store: store,
         repo: _repo,
         branch: branch,
-        options: const DownloadOptions(commits: 30, pulls: false, files: true),
+        options: const DownloadOptions(commits: 30, pulls: PullScope.none, files: true),
         onProgress: (p) => last = p,
         token: token,
       ).run(),

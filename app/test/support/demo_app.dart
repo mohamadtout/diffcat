@@ -10,6 +10,7 @@ import 'package:git_reviewer/app.dart';
 import 'package:git_reviewer/core/storage/storage.dart';
 import 'package:git_reviewer/data/github/github_api.dart';
 import 'package:git_reviewer/data/github/github_client.dart';
+import 'package:git_reviewer/data/github/github_exception.dart';
 import 'package:git_reviewer/data/github/response_cache.dart';
 import 'package:git_reviewer/features/auth/auth_controller.dart';
 import 'package:git_reviewer/features/auth/device_flow.dart';
@@ -63,6 +64,7 @@ class DemoEnv {
 
   Widget app({LocalNotifications? notifications, Key? key}) => ProviderScope(
     key: key,
+    retry: retryTransient, // as in main()
     overrides: [
       sharedPrefsProvider.overrideWithValue(prefs),
       localNotificationsProvider.overrideWithValue(notifications ?? LocalNotifications.disabled()),
@@ -81,7 +83,7 @@ Future<void> seedOfflineCopy(OfflineStore store, DemoGitHub github) => BranchDow
   store: store,
   repo: DemoGitHub.repo,
   branch: 'main',
-  options: const DownloadOptions(commits: 30, pulls: true, files: false),
+  options: const DownloadOptions(commits: 30, pulls: PullScope.open, files: false),
   onProgress: (_) {},
   api: GitHubApi(
     GitHubClient(

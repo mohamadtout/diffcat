@@ -64,18 +64,22 @@ Dio? _dio(Ref ref, String? token) {
 /// GitHub API, authenticated when signed in. Signing in is optional: public
 /// repos work without a token (at GitHub's lower anonymous rate limit).
 ///
-/// Repos downloaded for offline use are served from their saved copy.
-///
-/// Repos in offline mode ([offlineModeProvider]) never touch the network.
+/// Downloads (features/offline): with data saver on, everything saved is
+/// served from the device. Otherwise only what can't change (a commit's diff,
+/// a file at a sha) is, and saved copies of the rest stand in when GitHub
+/// can't be reached. Repos in offline mode ([offlineModeProvider]) never touch
+/// the network.
 final githubApiProvider = Provider<GitHubApi>((ref) {
   final store = ref.watch(offlineStoreProvider);
   final offline = ref.watch(offlineModeProvider);
+  final dataSaver = ref.watch(dataSaverProvider);
   final token = ref.watch(authTokenProvider).value;
   return GitHubApi(
     GitHubClient(
       token: token,
       dio: _dio(ref, token),
       cache: store,
+      preferSaved: dataSaver ? null : isImmutableKey,
       cacheOnly: store == null || offline.isEmpty
           ? null
           : (key) {

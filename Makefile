@@ -1,11 +1,11 @@
 # One-word entry points for humans and agents. `make check` before every PR.
-.PHONY: setup check fmt run apk device-test ssh-test offline-test store-screenshots store-frames
+.PHONY: setup check fmt run apk release-apk device-test ssh-test offline-test store-screenshots store-frames
 
 setup:            ## Install dependencies
 	cd app && flutter pub get
 
-# OAuth App client ID for "Sign in with GitHub" (SETUP.md § 1b). Public, not a secret.
-DART_DEFINES := $(if $(GITHUB_CLIENT_ID),--dart-define=GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID))
+# Overrides the built-in OAuth App client ID (forks, SETUP.md § 1b). Public, not a secret.
+DART_DEFINES := $(if $(filter undefined,$(origin GITHUB_CLIENT_ID)),,--dart-define=GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID))
 
 check:            ## Everything CI runs: format, analyze, test
 	cd app && dart format --output=none --set-exit-if-changed lib test integration_test test_driver tool
@@ -40,5 +40,20 @@ store-frames:     ## Captioned store images from the raw screenshots → store/s
 	cd app && flutter test tool/store/frame_test.dart
 	python3 store/check_lengths.py
 
+# `flutter test` regenerates the plugin registrant with test-only plugins (integration_test), which a release build
+# can't compile; deleting it (git-ignored, generated) makes the build write a fresh one.
+REGISTRANT := app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
 apk:              ## Release APK (see SETUP.md § Release signing)
+	rm -f $(REGISTRANT)
 	cd app && flutter build apk --release $(DART_DEFINES)
+
+VERSION := $(shell sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)
+
+release-apk:      ## The APK attached to a GitHub release: app/build/release/diffcat-<version>.apk + .sha256
+	@test -f app/android/key.properties || { echo "app/android/key.properties is missing: the APK would be debug-signed (SETUP.md § 5)"; exit 1; }
+	$(MAKE) apk
+	mkdir -p app/build/release
+	cp app/build/app/outputs/flutter-apk/app-release.apk app/build/release/diffcat-$(VERSION).apk
+	cd app/build/release && shasum -a 256 diffcat-$(VERSION).apk > diffcat-$(VERSION).apk.sha256
+	@cat app/build/release/diffcat-$(VERSION).apk.sha256

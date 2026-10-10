@@ -8,13 +8,7 @@ import 'package:git_reviewer/features/files/history_graph_view.dart';
 
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
-
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
-    await tester.pump(const Duration(milliseconds: 50));
-    if (!tester.binding.hasScheduledFrame) return;
-  }
-}
+import '../support/settle.dart';
 
 Future<DemoEnv> _open(WidgetTester tester, {bool signedIn = true}) async {
   tester.view
@@ -23,11 +17,11 @@ Future<DemoEnv> _open(WidgetTester tester, {bool signedIn = true}) async {
   addTearDown(tester.view.reset);
   final env = await DemoEnv.create(signedIn: signedIn);
   await tester.pumpWidget(env.app());
-  await _settle(tester);
+  await settle(tester);
   ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
       .read(routerProvider)
       .go(Routes.history(DemoGitHub.repo, DemoGitHub.retryGo, 'main'));
-  await _settle(tester);
+  await settle(tester);
   return env;
 }
 
@@ -46,13 +40,13 @@ void main() {
   testWidgets('compare mode diffs two picked versions of the file', (tester) async {
     await _open(tester);
     await tester.tap(find.byTooltip('Compare two versions'));
-    await _settle(tester);
+    await settle(tester);
     expect(find.text('Tap two versions to compare'), findsOneWidget);
     await tester.tap(find.text('Cap backoff at one minute'));
     await tester.tap(find.text('Retry on 409 Conflict'));
-    await _settle(tester);
+    await settle(tester);
     await tester.tap(find.widgetWithText(FilledButton, 'Compare'));
-    await _settle(tester);
+    await settle(tester);
     final compare = tester.widget<CompareScreen>(find.byType(CompareScreen));
     expect(compare.base, DemoGitHub.sha(103), reason: 'older version first');
     expect(compare.head, DemoGitHub.sha(111));
@@ -65,10 +59,10 @@ void main() {
     expect(find.descendant(of: legend, matching: find.text(DemoGitHub.featureBranch)), findsNothing);
 
     await tester.tap(find.widgetWithText(ActionChip, 'Branches'));
-    await _settle(tester);
+    await settle(tester);
     await tester.tap(find.text(DemoGitHub.featureBranch));
     await tester.tap(find.widgetWithText(FilledButton, 'Show'));
-    await _settle(tester);
+    await settle(tester);
     expect(find.descendant(of: legend, matching: find.text(DemoGitHub.featureBranch)), findsOneWidget);
     expect(find.text('Cap backoff at one minute'), findsOneWidget);
   });
