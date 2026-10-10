@@ -49,6 +49,7 @@ abstract final class StoreKeys {
   static const viewerLogin = 'viewer_login';
   static const notifyIncludeOwn = 'notify_include_own';
   static const notifyReviewRequests = 'notify_review_requests';
+  static const inboxSeen = 'inbox_seen';
   static const reviewRequestsSeen = 'review_requests_seen';
   static const pinnedRepos = 'pinned_repos';
   static const recentRepos = 'recent_repos';

@@ -126,6 +126,15 @@ query($owner: String!, $name: String!, $ref: String!, $path: String!) {
     return (res['data'] as Map<String, dynamic>?) ?? const {};
   }
 
+  /// The user's notifications inbox, unread threads newest first.
+  /// [participating]: only threads they're directly involved in (review
+  /// requests, mentions, their own PRs and threads they commented on).
+  /// Needs a classic token (`repo` or `notifications`); fine-grained tokens get 403.
+  Future<List<GhNotification>> notifications({bool participating = true}) async {
+    final j = await client.getJson('/notifications', query: {'participating': participating, 'per_page': 50});
+    return [for (final n in j as List<dynamic>) GhNotification.fromJson(n as Map<String, dynamic>)];
+  }
+
   /// Open pull requests across GitHub matching search [qualifiers]
   /// (`review-requested:@me`…), most recently updated first. Needs a token
   /// for `@me`.

@@ -3,7 +3,8 @@
 There's no server, webhook or Firebase. The phone itself asks GitHub what's new and posts local notifications.
 
 ```
-Android WorkManager (every ~15 min, network required)      App opened / resumed (if last check > 10 min)
+Android WorkManager (every ~15 min, network required)      App opened / resumed (if last check > 10 min);
+                                                            while open: inbox ~every 60 s, repos every 5 min
         │  background isolate: backgroundPollDispatcher           │  Settings → Check now
         └──────────────────────┬────────────────────────────────┘
                                ▼
@@ -29,10 +30,20 @@ Android WorkManager (every ~15 min, network required)      App opened / resumed 
   its ETags on disk (`FileEtagCache`, `<app support>/poll_etags`, cleared on sign-in and sign-out), so a repo with no
   changes answers 304 and costs no rate limit at all. Repos are checked four at a time (iOS allows a background refresh
   about 30 seconds).
-- **Review requests** (opt-in, signed in: Settings → Notifications → Review requests, or the Inbox hint): one search
-  (`review-requested:@me`) per check finds PRs waiting for you on any repo, watched or not. The first check records a
-  baseline; afterwards each new request notifies and opens the PR. Seen keys are under `StoreKeys.reviewRequestsSeen`.
+- **Pull requests that need you** (opt-in, signed in: Settings → Notifications, or the Inbox hint): one conditional
+  request to the user's GitHub notifications inbox (`GET /notifications?participating=true`, `Poller.inbox()`) finds
+  review requests, mentions, assignments and replies on PRs, on any repo, watched or not. Unchanged answers are 304s and
+  cost no rate limit. Pure rules in `inboxEvents` (`poll_state.dart`): unread `PullRequest` threads only (the app has no
+  issue screen); the first check is a silent baseline; a thread notifies again when GitHub updates it, under the same
+  tag (`inbox:<thread id>`) so it replaces its earlier notification; threads read on github.com are forgotten. State
+  is `StoreKeys.inboxSeen` (thread id → `updated_at`). Fine-grained tokens can't read the inbox (403): for them it falls
+  back to the review-request search (`review-requested:@me`, seen keys under `StoreKeys.reviewRequestsSeen`). Plain
+  commit pushes never appear in GitHub's inbox, which is why watched repos are still checked branch by branch.
   Background checks are scheduled while anything is watched **or** this is on (`backgroundChecksWanted`).
+- **While the app is open** (`PollController.setForeground`, driven by `app.dart`'s lifecycle listener): the inbox is
+  checked every 60 s or GitHub's `X-Poll-Interval` if longer (kept on `GitHubClient.pollInterval`), and watched repos
+  when the last full check is over 5 minutes old. The timer stops when the app is hidden; background checks take over.
+  Instant push with the app closed needs a server: see [instant-push.md](instant-push.md).
 - **State:** each repo's branch heads, PR snapshots and last-check time are stored as JSON under `StoreKeys.pollState`. The last result (time, event count, per-repo errors) is under `StoreKeys.lastPoll` and shown in Settings.
 
 | Event | Notification | Tap opens |

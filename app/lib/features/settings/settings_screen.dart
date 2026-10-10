@@ -177,11 +177,12 @@ class _NotificationsSection extends ConsumerWidget {
             ),
         SwitchListTile(
           secondary: const Icon(Icons.rate_review_outlined),
-          title: const Text('Review requests'),
+          title: const Text('Pull requests that need you'),
           subtitle: Text(
             ref.watch(isSignedInProvider)
-                ? 'Notify when someone asks for your review, on any repo'
-                : 'Sign in to be notified when someone asks for your review',
+                ? 'Review requests, mentions and replies on any repo, from your GitHub notifications. '
+                      'Checked about every minute while Diffcat is open'
+                : 'Sign in to be notified about review requests, mentions and replies',
           ),
           value: ref.watch(notifyReviewRequestsProvider) && ref.watch(isSignedInProvider),
           onChanged: ref.watch(isSignedInProvider)

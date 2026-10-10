@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +9,7 @@ import '../../data/github/models/repo.dart';
 import '../auth/auth_controller.dart';
 import 'background.dart';
 import 'local_notifications.dart';
+import 'poller.dart';
 
 /// Repos (`owner/name`, lowercase) this device checks for new commits & PRs.
 final watchedReposProvider = NotifierProvider<WatchedRepos, Set<String>>(WatchedRepos.new);
@@ -89,8 +92,45 @@ class PollStatus {
 final pollControllerProvider = NotifierProvider<PollController, PollStatus>(PollController.new);
 
 class PollController extends Notifier<PollStatus> {
+  Timer? _foreground;
+
   @override
-  PollStatus build() => PollStatus(last: _readLast());
+  PollStatus build() {
+    ref.onDispose(() => _foreground?.cancel());
+    return PollStatus(last: _readLast());
+  }
+
+  /// While the app is open: the notifications inbox about every minute (or
+  /// as often as GitHub's `X-Poll-Interval` allows; unchanged answers cost no
+  /// rate limit), and watched repos every 5 minutes. Background checks take
+  /// over when the app leaves the foreground.
+  void setForeground(bool active) {
+    _foreground?.cancel();
+    _foreground = null;
+    if (active) _scheduleForeground();
+  }
+
+  void _scheduleForeground() {
+    final seconds = max(60, ref.read(liveGithubApiProvider).client.pollInterval ?? 60);
+    _foreground = Timer(Duration(seconds: seconds), () async {
+      await foregroundTick();
+      if (_foreground != null && ref.mounted) _scheduleForeground();
+    });
+  }
+
+  /// One foreground check. Never throws.
+  Future<void> foregroundTick() async {
+    if (await checkIfStale(maxAge: const Duration(minutes: 5)) || state.running) return; // the full check did the inbox
+    final poller = Poller(api: ref.read(liveGithubApiProvider), prefs: ref.read(sharedPrefsProvider));
+    if (!poller.inboxWanted) return;
+    try {
+      for (final e in (await poller.inbox()).take(5)) {
+        await ref.read(localNotificationsProvider).show(e);
+      }
+    } catch (_) {
+      // Offline or GitHub trouble: the next tick tries again.
+    }
+  }
 
   LastPoll? _readLast() {
     final raw = ref.read(sharedPrefsProvider).getString(StoreKeys.lastPoll);
@@ -125,12 +165,15 @@ class PollController extends Notifier<PollStatus> {
     if (ref.mounted) state = PollStatus(last: last);
   }
 
-  /// Called when the app returns to the foreground.
-  Future<void> checkIfStale({Duration maxAge = const Duration(minutes: 10)}) async {
-    if (!backgroundChecksWanted(ref.read(sharedPrefsProvider)) || !ref.read(authTokenProvider).hasValue) return;
+  /// Called when the app returns to the foreground. Returns whether it ran a
+  /// full check.
+  Future<bool> checkIfStale({Duration maxAge = const Duration(minutes: 10)}) async {
+    if (!backgroundChecksWanted(ref.read(sharedPrefsProvider)) || !ref.read(authTokenProvider).hasValue) return false;
     await ref.read(sharedPrefsProvider).reload();
     final last = _readLast();
     state = PollStatus(last: last, running: state.running);
-    if (last == null || DateTime.now().difference(last.at) > maxAge) await checkNow();
+    if (last != null && DateTime.now().difference(last.at) <= maxAge) return false;
+    await checkNow();
+    return true;
   }
 }

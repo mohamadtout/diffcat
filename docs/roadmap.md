@@ -24,3 +24,10 @@ firing (Xcode → Debug → Simulate Background Fetch).*
 - Share-sheet / github.com link handling (Android App Links, iOS Universal Links), which maps straight onto `Routes`.
 - Notification preferences per repo (branches filter, PR-only).
 - i18n.
+
+## Instant push notifications (planned, not built)
+
+Notifications within seconds with the app closed, for repos the user or their organizations own: a GitHub App
+installed on those repos, a Cloudflare Worker on the free plan and Firebase Cloud Messaging / APNs. Costs, limits,
+setup and the app changes are in [instant-push.md](instant-push.md).
+
