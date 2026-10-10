@@ -37,6 +37,7 @@ number always goes up (stores reject reused numbers). Record changes in CHANGELO
 | Feature → file map, UX behaviors | [docs/features.md](docs/features.md) |
 | API console commands, SSH key notation, custom buttons | [docs/commands.md](docs/commands.md) |
 | Background polling → local notifications | [docs/notifications.md](docs/notifications.md) |
+| Instant push plan (not built): GitHub App + Cloudflare Worker + FCM/APNs | [docs/instant-push.md](docs/instant-push.md) |
 | Code style, patterns, testing, adding a feature | [docs/conventions.md](docs/conventions.md) |
 | Why things are the way they are | [docs/decisions.md](docs/decisions.md) |
 | iOS/iPadOS plan and backlog | [docs/roadmap.md](docs/roadmap.md) |

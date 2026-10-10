@@ -173,3 +173,40 @@ List<GitEvent> reviewRequestEvents(Set<String>? seen, List<GhSearchPull> now) =>
               tag: 'review:${p.key}',
             ),
       ];
+
+/// What the inbox check remembers: when each thread last notified.
+/// Thread id → `updated_at` (ISO 8601).
+typedef InboxSeen = Map<String, String>;
+
+/// New activity on pull requests the user takes part in, from their GitHub
+/// notifications inbox. [seen] null is the first check: a silent baseline.
+/// Returns the events and what to remember next (unread PR threads only, so
+/// threads read on github.com drop out).
+({List<GitEvent> events, InboxSeen seen}) inboxEvents(InboxSeen? seen, List<GhNotification> now) {
+  final next = <String, String>{};
+  final events = <GitEvent>[];
+  for (final n in now) {
+    if (!n.unread || n.type != 'PullRequest' || n.number == null) continue;
+    final at = n.updatedAt.toUtc().toIso8601String();
+    next[n.id] = at;
+    final before = seen?[n.id];
+    if (seen == null || (before != null && before.compareTo(at) >= 0)) continue;
+    final what = switch (n.reason) {
+      'review_requested' => 'Review requested',
+      'mention' || 'team_mention' => 'Mentioned',
+      'assign' => 'Assigned',
+      'author' => 'Your pull request',
+      _ => 'New activity',
+    };
+    events.add(
+      GitEvent(
+        title: '$what: ${n.repo.name} #${n.number}',
+        body: n.title,
+        route: Routes.pull(n.repo, n.number!),
+        // Same thread, same notification: a newer update replaces it.
+        tag: 'inbox:${n.id}',
+      ),
+    );
+  }
+  return (events: events, seen: next);
+}

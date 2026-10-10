@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/storage/storage.dart';
 import '../../data/github/github_api.dart';
+import '../../data/github/github_exception.dart';
 import '../../data/github/models/models.dart';
 import 'poll_state.dart';
 
@@ -74,9 +75,9 @@ class Poller {
     await Future.wait([for (var i = 0; i < _parallelRepos; i++) worker()]);
     // In watched order, whatever order the checks finished in.
     final events = [for (final r in watched) ...?perRepo[r]];
-    if ((prefs.getBool(StoreKeys.notifyReviewRequests) ?? false) && !api.client.isAnonymous) {
+    if (inboxWanted) {
       try {
-        events.addAll((await _reviewRequests()).take(_maxEventsPerRepo));
+        events.addAll((await inbox()).take(_maxEventsPerRepo));
       } catch (e) {
         errors['Review requests'] = e.toString();
       }
@@ -140,6 +141,30 @@ class Poller {
       commits: cmp.commits.where(keep).toList(),
       forced: cmp.status == 'diverged',
     );
+  }
+
+  /// Whether pull request notifications from the user's inbox are on (Settings
+  /// → Notifications; needs a token).
+  bool get inboxWanted => (prefs.getBool(StoreKeys.notifyReviewRequests) ?? false) && !api.client.isAnonymous;
+
+  /// New activity on pull requests the user takes part in, on any repo: review
+  /// requests, mentions, replies. One conditional request to the notifications
+  /// inbox (free when nothing changed). Fine-grained tokens can't read the
+  /// inbox, so for them it falls back to searching for review requests.
+  Future<List<GitEvent>> inbox() async {
+    await prefs.reload();
+    final List<GhNotification> threads;
+    try {
+      threads = await api.notifications();
+    } on GitHubException catch (e) {
+      if (e.statusCode == 403 || e.statusCode == 404) return _reviewRequests();
+      rethrow;
+    }
+    final raw = prefs.getString(StoreKeys.inboxSeen);
+    final seen = raw == null ? null : (jsonDecode(raw) as Map<String, dynamic>).cast<String, String>();
+    final r = inboxEvents(seen, threads);
+    await prefs.setString(StoreKeys.inboxSeen, jsonEncode(r.seen));
+    return r.events;
   }
 
   /// New requests for the user's review, on any repo (one search request).

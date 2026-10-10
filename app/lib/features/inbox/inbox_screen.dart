@@ -176,7 +176,7 @@ class _NotifyHint extends ConsumerWidget {
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       child: ListTile(
         leading: const Icon(Icons.notifications_active_outlined),
-        title: const Text('Get notified about review requests'),
+        title: const Text('Get notified about review requests and mentions'),
         trailing: TextButton(
           onPressed: () => ref.read(notifyReviewRequestsProvider.notifier).set(true),
           child: const Text('Turn on'),

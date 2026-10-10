@@ -89,6 +89,10 @@ class GitHubClient {
   final Map<String, _CacheEntry> _cache = {};
   static const _maxCacheEntries = 300;
 
+  /// Seconds GitHub asks pollers to wait (`X-Poll-Interval`, sent by the
+  /// notifications endpoint), from the latest response that had it.
+  int? pollInterval;
+
   /// Last known rate limit state, updated on every response.
   int? rateLimitRemaining;
   DateTime? rateLimitReset;
@@ -251,6 +255,7 @@ class GitHubClient {
   }
 
   void _trackRateLimit(Headers h) {
+    pollInterval = int.tryParse(h.value('x-poll-interval') ?? '') ?? pollInterval;
     final remaining = int.tryParse(h.value('x-ratelimit-remaining') ?? '');
     final reset = int.tryParse(h.value('x-ratelimit-reset') ?? '');
     if (remaining != null) rateLimitRemaining = remaining;
