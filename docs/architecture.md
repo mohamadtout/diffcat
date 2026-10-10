@@ -147,6 +147,8 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 - On-screen toolbar: Esc/Tab/arrows/PgUp…, plus sticky **Ctrl/Alt** that modify the next typed key.
 - Custom buttons and the startup command use key notation (docs/commands.md) and go through `Terminal.keyInput`, so arrow keys respect application-cursor mode (important for lazygit).
 - Sessions live in `SshSessionRegistry`, so leaving the screen doesn't drop the connection while the app is in the foreground.
+  The registry is a `ChangeNotifier` that forwards each session's changes, which keeps the host list's connected
+  (green) icon current however the terminal screen was left.
 - **Status bar / shell integration** (`shell_integration.dart`): the shell's folder arrives as OSC 7 (`Terminal.onPrivateOSC`).
   After each report the session runs `git status --porcelain=v2 --branch` in that folder on a separate exec channel
   (`SSHClient.run`, `GIT_OPTIONAL_LOCKS=0`), never in the user's shell. With shell integration on, the hook is typed
