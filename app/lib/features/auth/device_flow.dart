@@ -1,9 +1,10 @@
 import 'package:dio/dio.dart';
 
-/// The OAuth App's client ID (public, not a secret). Set at build time:
-/// `--dart-define=GITHUB_CLIENT_ID=Ov23…` (see SETUP.md § 2). Empty: the
-/// "Sign in with GitHub" button is hidden and tokens are pasted instead.
-const githubClientId = String.fromEnvironment('GITHUB_CLIENT_ID');
+/// Diffcat's OAuth App client ID. Public by design (the device flow has no
+/// secret), so it ships in the code like other open-source GitHub clients.
+/// Forks register their own app and pass `--dart-define=GITHUB_CLIENT_ID=…`
+/// (SETUP.md § 1b); an empty value hides "Sign in with GitHub".
+const githubClientId = String.fromEnvironment('GITHUB_CLIENT_ID', defaultValue: 'Ov23liRYJOTAGbpb8MDU');
 
 /// Scopes asked for: `repo` to read private repos and submit reviews,
 /// `read:user` for the account name.

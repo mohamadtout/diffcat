@@ -9,8 +9,8 @@ import '../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
 import 'device_flow.dart';
 
-/// Starts a GitHub device-flow sign-in, or null when the build has no OAuth
-/// client ID (then only pasting a token is offered). Overridden in tests.
+/// Starts a GitHub device-flow sign-in, or null when the build's OAuth
+/// client ID is empty (then only pasting a token is offered). Overridden in tests.
 final deviceFlowProvider = Provider<DeviceFlow Function()?>(
   (ref) => githubClientId.isEmpty ? null : () => DeviceFlow(clientId: githubClientId),
 );

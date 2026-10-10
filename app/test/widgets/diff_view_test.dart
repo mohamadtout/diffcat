@@ -59,6 +59,8 @@ void main() {
     await tester.tap(find.text('Sign in for your own and private repos'));
     await tester.pumpAndSettle();
     expect(find.text('Personal access token'), findsOneWidget);
+    // Below "Sign in with GitHub" and the token field: scroll to it like a user would.
+    await tester.ensureVisible(find.text('Not now'));
     await tester.tap(find.text('Not now'));
     await tester.pumpAndSettle();
     expect(find.text('Browse any public repo'), findsOneWidget);

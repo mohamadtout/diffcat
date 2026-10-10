@@ -28,6 +28,11 @@ For a single-user app, a fine-grained PAT is the simplest secure option, with no
 GitHub** through the device flow. It needs no client secret or redirect, so the app stays backend-free; the client ID
 is public. Pasting a PAT still works, and is the only option in builds without the ID (forks, CI).
 
+*Amended 2026-10-10:* the owner registered Diffcat's OAuth App and its client ID is now the built-in default, so
+every build (store, `flutter run`, CI) offers the button. That's how other open-source GitHub clients ship theirs:
+the device flow has no secret, and the ID only names the app on GitHub's approval page. Forks override it with
+`--dart-define=GITHUB_CLIENT_ID` (empty hides the button).
+
 Signing in is optional (2026-10-08): public repos are readable without a token, so the app opens to a public-repo browser and the token only unlocks your repo list, private repos and the 5,000/hour limit (60/hour signed out). Notifications also work signed out, within the lower limit.
 
 ### D7: Riverpod 3 without codegen, hand-written models
