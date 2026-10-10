@@ -36,7 +36,7 @@ The captions live in `app/tool/store/frame_test.dart`:
 
 | # | Phone | Tablet |
 |---|---|---|
-| 1 | All your repos, in your pocket | Commits and diffs, side by side |
+| 1 | All your repos, your way | Commits and diffs, side by side |
 | 2 | Diffs made for small screens | Go full width |
 | 3 | Review pull requests anywhere | Review pull requests anywhere |
 | 4 | Download once, read offline | Browse code at any branch or tag |
