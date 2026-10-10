@@ -14,6 +14,10 @@ Releases are tagged `vX.Y.Z` on `main`.
 - Download a single pull request, open or closed, from its screen; offline it shows in the PR list and reads fully.
 - Diff color profiles: create, rename and delete your own; presets can be deleted and restored with Reset colors.
 - Terminal: remove a background image without picking another one.
+- Organize the repo list: colored folders, an Archived section, hiding repos or whole accounts, bulk select with
+  Undo, and a choice of which repos to load from GitHub at all. Loads up to 1,000 repos.
+- Notifications about pull requests that need you now come from your GitHub notifications inbox: review requests,
+  mentions and replies, checked about every minute while the app is open.
 - Fixes: the palette chips in Code view overflowed with smaller system text; the terminal host's connected icon
   didn't update after leaving with the system back gesture.
 
