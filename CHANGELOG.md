@@ -6,6 +6,10 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+Nothing yet. Add changes here as they land on `development`.
+
+## 1.1.2 (build 5), 2026-10-10
+
 - Fix: on a landscape 7" tablet the keyboard squeezed the navigation rail until its bottom tab was cut off.
 
 ## 1.1.1 (build 4), 2026-10-10
