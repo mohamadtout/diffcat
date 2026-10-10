@@ -18,6 +18,7 @@ import 'package:git_reviewer/features/terminal/terminal_appearance_screen.dart';
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
 import '../support/fonts.dart';
+import '../support/settle.dart';
 
 /// Every screen at phone, foldable, tablet and desktop sizes, in portrait and
 /// landscape, with normal and large text. Fails on any layout error (e.g. a
@@ -112,18 +113,18 @@ void main() {
         );
         try {
           await tester.pumpWidget(env.app());
-          await _settle(tester);
+          await settle(tester);
           final router = ProviderScope.containerOf(tester.element(find.byType(MaterialApp))).read(routerProvider);
           for (final s in signedIn ? _screens : [Routes.repos, Routes.inbox, Routes.settings, Routes.setup]) {
             screen = s;
             router.go(s);
-            await _settle(tester);
+            await settle(tester);
             final e = tester.takeException();
             if (e != null) problems.add('$s: $e');
           }
           // Leave the tree so pending timers and sessions shut down inside the test.
           await tester.pumpWidget(const SizedBox());
-          await _settle(tester);
+          await settle(tester);
         } finally {
           FlutterError.onError = previous;
         }
@@ -152,19 +153,19 @@ void main() {
       FlutterError.onError = (d) => problems.add('$overlay: ${d.exceptionAsString().split('\n').first}');
       try {
         await tester.pumpWidget(env.app());
-        await _settle(tester);
+        await settle(tester);
         final router = ProviderScope.containerOf(tester.element(find.byType(MaterialApp))).read(routerProvider);
         router.go(Routes.repo(_r));
-        await _settle(tester);
+        await settle(tester);
         BuildContext ctx() => tester.element(find.byType(Scaffold).last);
 
         Future<void> show(String what, void Function(BuildContext) open) async {
           overlay = what;
           open(ctx());
-          await _settle(tester);
+          await settle(tester);
           expect(_overlayShown(), isTrue, reason: '$what did not open');
           Navigator.of(ctx(), rootNavigator: true).pop();
-          await _settle(tester);
+          await settle(tester);
         }
 
         await show('download sheet', (c) => showDownloadSheet(c, repo: _r, branch: 'main'));
@@ -187,10 +188,10 @@ void main() {
         await show('text size sheet', (c) => showTextSizeSheet(c, value: 13, min: 8, max: 24, onChanged: (_) {}));
         overlay = 'branch picker';
         await tester.tap(find.byType(RefPickerButton).first);
-        await _settle(tester);
+        await settle(tester);
         expect(_overlayShown(), isTrue, reason: 'branch picker did not open');
         Navigator.of(ctx(), rootNavigator: true).pop();
-        await _settle(tester);
+        await settle(tester);
         await show(
           'host key changed dialog',
           (c) => confirmHostKey(
@@ -210,13 +211,13 @@ void main() {
         );
         overlay = 'open by name';
         router.go(Routes.repos);
-        await _settle(tester);
+        await settle(tester);
         await tester.tap(find.byTooltip('Open by name'));
-        await _settle(tester);
+        await settle(tester);
         expect(_overlayShown(), isTrue, reason: 'open by name did not open');
         Navigator.of(ctx(), rootNavigator: true).pop();
         await tester.pumpWidget(const SizedBox());
-        await _settle(tester);
+        await settle(tester);
       } finally {
         FlutterError.onError = previous;
       }
@@ -226,11 +227,3 @@ void main() {
 }
 
 bool _overlayShown() => find.byType(BottomSheet).evaluate().isNotEmpty || find.byType(Dialog).evaluate().isNotEmpty;
-
-/// pumpAndSettle can spin forever on progress indicators; cap the wait.
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
-    await tester.pump(const Duration(milliseconds: 50));
-    if (!tester.binding.hasScheduledFrame) return;
-  }
-}

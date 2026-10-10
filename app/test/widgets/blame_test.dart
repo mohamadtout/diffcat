@@ -8,13 +8,7 @@ import 'package:git_reviewer/features/commits/commit_screen.dart';
 
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
-
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
-    await tester.pump(const Duration(milliseconds: 50));
-    if (!tester.binding.hasScheduledFrame) return;
-  }
-}
+import '../support/settle.dart';
 
 Future<void> _open(WidgetTester tester, {required bool signedIn}) async {
   tester.view
@@ -23,11 +17,11 @@ Future<void> _open(WidgetTester tester, {required bool signedIn}) async {
   addTearDown(tester.view.reset);
   final env = await DemoEnv.create(signedIn: signedIn);
   await tester.pumpWidget(env.app());
-  await _settle(tester);
+  await settle(tester);
   ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
       .read(routerProvider)
       .go(Routes.file(DemoGitHub.repo, DemoGitHub.retryGo, 'main', blame: true));
-  await _settle(tester);
+  await settle(tester);
 }
 
 void main() {
@@ -43,7 +37,7 @@ void main() {
     expect(find.textContaining('lena-k'), findsNWidgets(2), reason: 'lines 1-9 and 10-16');
     expect(find.textContaining('priya-shah'), findsOneWidget);
     await tester.tap(find.textContaining('priya-shah'));
-    await _settle(tester);
+    await settle(tester);
     final commit = tester.widget<CommitScreen>(find.byType(CommitScreen));
     expect(commit.sha, DemoGitHub.sha(102));
     expect(commit.focusPath, DemoGitHub.retryGo);

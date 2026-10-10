@@ -34,12 +34,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final viewer = ref.watch(viewerProvider).value;
     final watched = ref.watch(watchedReposProvider);
-    final theme = Theme.of(context);
-
-    Widget section(String title) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-      child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -47,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
         builder: (sides) => ListView(
           padding: sides,
           children: [
-            section('GitHub account'),
+            const SectionHeader('GitHub account'),
             if (ref.watch(isSignedInProvider))
               ListTile(
                 leading: UserAvatar(url: viewer?.avatarUrl, fallback: viewer?.login ?? '?'),
@@ -65,7 +59,7 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: const Text('Public repos only, up to 60 GitHub requests an hour.'),
                 trailing: FilledButton.tonal(onPressed: () => context.push(Routes.setup), child: const Text('Sign in')),
               ),
-            section('Appearance'),
+            const SectionHeader('Appearance'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SegmentedButton<ThemeMode>(
@@ -99,10 +93,10 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push(Routes.terminalAppearance),
             ),
-            section('Offline'),
+            const SectionHeader('Offline'),
             const _DownloadsTile(),
             const _DataSaverTile(),
-            section('Notifications'),
+            const SectionHeader('Notifications'),
             const _NotificationsSection(),
             for (final r in watched)
               ListTile(
@@ -118,7 +112,7 @@ class SettingsScreen extends ConsumerWidget {
                   },
                 ),
               ),
-            section('Tools'),
+            const SectionHeader('Tools'),
             ListTile(
               leading: const Icon(Icons.smart_button_outlined),
               title: const Text('Command buttons'),

@@ -76,8 +76,6 @@ class CustomCommandsNotifier extends Notifier<List<CustomCommand>> {
     return prefs.readJsonList(StoreKeys.customCommands).map(CustomCommand.fromJson).toList();
   }
 
-  List<CustomCommand> forTarget(CommandTarget t) => state.where((c) => c.target == t).toList();
-
   Future<void> upsert(CustomCommand c) => _save([
     for (final e in state)
       if (e.id == c.id) c else e,

@@ -40,5 +40,10 @@ store-frames:     ## Captioned store images from the raw screenshots → store/s
 	cd app && flutter test tool/store/frame_test.dart
 	python3 store/check_lengths.py
 
+# `flutter test` regenerates the plugin registrant with test-only plugins (integration_test), which a release build
+# can't compile; deleting it (git-ignored, generated) makes the build write a fresh one.
+REGISTRANT := app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
+
 apk:              ## Release APK (see SETUP.md § Release signing)
+	rm -f $(REGISTRANT)
 	cd app && flutter build apk --release $(DART_DEFINES)

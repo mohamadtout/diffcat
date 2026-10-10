@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/core/routing/routes.dart';
 import 'package:git_reviewer/core/utils/relative_time.dart';
 import 'package:git_reviewer/data/github/models/models.dart';
-import 'package:git_reviewer/features/repos/repos_screen.dart';
 import 'package:git_reviewer/features/settings/settings_screen.dart';
 
 void main() {

@@ -12,13 +12,7 @@ import 'package:git_reviewer/features/offline/offline_providers.dart';
 
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
-
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
-    await tester.pump(const Duration(milliseconds: 50));
-    if (!tester.binding.hasScheduledFrame) return;
-  }
-}
+import '../support/settle.dart';
 
 Future<DemoEnv> _openPull(WidgetTester tester, {bool signedIn = true}) async {
   tester.view
@@ -27,11 +21,11 @@ Future<DemoEnv> _openPull(WidgetTester tester, {bool signedIn = true}) async {
   addTearDown(tester.view.reset);
   final env = await DemoEnv.create(signedIn: signedIn);
   await tester.pumpWidget(env.app());
-  await _settle(tester);
+  await settle(tester);
   ProviderScope.containerOf(tester.element(find.byType(MaterialApp)))
       .read(routerProvider)
       .go(Routes.pull(DemoGitHub.repo, DemoGitHub.openPullNumber));
-  await _settle(tester);
+  await settle(tester);
   return env;
 }
 
@@ -47,19 +41,19 @@ void main() {
     expect(find.text('Tap a line to comment'), findsOneWidget);
 
     await tester.tap(find.textContaining('rand.Int63n').first);
-    await _settle(tester);
+    await settle(tester);
     await tester.enterText(find.byType(TextField), 'Seed the random source?');
     await tester.tap(find.text('Add to review'));
-    await _settle(tester);
+    await settle(tester);
     expect(find.text('Pending'), findsOneWidget);
     expect(find.text('1 pending comment'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(FilledButton, 'Review'));
-    await _settle(tester);
+    await settle(tester);
     await tester.enterText(find.byType(TextField), 'Nice work');
     await tester.tap(find.text('Approve'));
     await tester.tap(find.text('Submit review'));
-    await _settle(tester);
+    await settle(tester);
 
     final (path, body) = env.github.posted.single;
     expect(path, '/repos/demo/payments-api/pulls/42/reviews');

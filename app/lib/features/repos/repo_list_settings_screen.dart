@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/layout/readable_width.dart';
 import '../../core/routing/routes.dart';
+import '../../core/widgets/common.dart';
+import '../../core/widgets/text_input_dialog.dart';
 import 'repo_library.dart';
 import 'repo_library_widgets.dart';
 import 'repos_providers.dart';
@@ -21,18 +23,13 @@ class RepoListSettingsScreen extends ConsumerWidget {
     final sources = library.sources;
     void setSources(RepoSources s) => notifier.update((l) => l.copyWith(sources: s));
 
-    Widget section(String title) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-    );
-
     return Scaffold(
       appBar: AppBar(title: const Text('Repository list')),
       body: ReadableWidth(
         builder: (sides) => ListView(
           padding: sides + const EdgeInsets.only(bottom: 32),
           children: [
-            section('Load from GitHub'),
+            const SectionHeader('Load from GitHub'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
@@ -56,7 +53,7 @@ class RepoListSettingsScreen extends ConsumerWidget {
               onChanged: (v) => setSources(sources.copyWith(organizations: v)),
             ),
 
-            section('Order'),
+            const SectionHeader('Order'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SegmentedButton<RepoSort>(
@@ -82,7 +79,7 @@ class RepoListSettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.repoFolders),
             ),
 
-            section('Hidden accounts'),
+            const SectionHeader('Hidden accounts'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Text(
@@ -104,12 +101,20 @@ class RepoListSettingsScreen extends ConsumerWidget {
               leading: const Icon(Icons.person_off_outlined),
               title: const Text('Hide an account…'),
               onTap: () async {
-                final login = await showDialog<String>(context: context, builder: (_) => const _AccountDialog());
-                if (login != null) await notifier.hideOwner(login);
+                final login = await askText(
+                  context,
+                  title: 'Hide an account',
+                  action: 'Hide',
+                  label: 'User or organization',
+                  hint: 'octo-org',
+                  plain: true,
+                  validate: (t) => RegExp(r'^@?[A-Za-z0-9-]+$').hasMatch(t) ? null : 'Letters, digits and hyphens only',
+                );
+                if (login != null) await notifier.hideOwner(login.replaceFirst('@', ''));
               },
             ),
 
-            section('Hidden repositories'),
+            const SectionHeader('Hidden repositories'),
             if (library.hidden.isEmpty)
               const ListTile(
                 leading: Icon(Icons.visibility_outlined),
@@ -130,46 +135,6 @@ class RepoListSettingsScreen extends ConsumerWidget {
       ),
     );
   }
-}
-
-/// Asks for a GitHub login. Owns its controller (see _FolderDialog).
-class _AccountDialog extends StatefulWidget {
-  const _AccountDialog();
-
-  @override
-  State<_AccountDialog> createState() => _AccountDialogState();
-}
-
-class _AccountDialogState extends State<_AccountDialog> {
-  final _login = TextEditingController();
-
-  @override
-  void dispose() {
-    _login.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final login = _login.text.trim().replaceFirst('@', '');
-    if (RegExp(r'^[A-Za-z0-9-]+$').hasMatch(login)) Navigator.pop(context, login);
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Hide an account'),
-    content: TextField(
-      controller: _login,
-      autofocus: true,
-      autocorrect: false,
-      enableSuggestions: false,
-      decoration: const InputDecoration(labelText: 'User or organization', hintText: 'octo-org'),
-      onSubmitted: (_) => _submit(),
-    ),
-    actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-      FilledButton(onPressed: _submit, child: const Text('Hide')),
-    ],
-  );
 }
 
 /// Settings → Repository list → Folders: order, rename, recolor, delete.
