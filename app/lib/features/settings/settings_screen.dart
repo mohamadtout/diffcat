@@ -94,6 +94,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
             section('Offline'),
             const _DownloadsTile(),
+            const _DataSaverTile(),
             section('Notifications'),
             const _NotificationsSection(),
             for (final r in watched)
@@ -230,6 +231,28 @@ class _NotificationsSection extends ConsumerWidget {
         '"Unrestricted" (Settings → Apps → Diffcat → Battery).',
   ),
 };
+
+class _DataSaverTile extends ConsumerWidget {
+  const _DataSaverTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final on = ref.watch(dataSaverProvider);
+    return SwitchListTile(
+      secondary: const Icon(Icons.data_saver_on_outlined),
+      title: const Text('Data saver'),
+      subtitle: Text(
+        on
+            ? 'Downloaded repos open from the device, as of their last update; only what isn\'t downloaded '
+                  'uses GitHub requests. Update a download to refresh it.'
+            : 'Commits, branches and pull requests load live. Downloaded diffs and files still cost no '
+                  'requests, and downloads stand in when GitHub can\'t be reached.',
+      ),
+      value: on,
+      onChanged: ref.read(dataSaverProvider.notifier).set,
+    );
+  }
+}
 
 class _DownloadsTile extends ConsumerWidget {
   const _DownloadsTile();

@@ -117,11 +117,17 @@ Uint8List _tarball(Map<String, String> files) {
   return Uint8List.fromList(const GZipEncoder().encode(TarEncoder().encode(archive)));
 }
 
-GitHubApi _api(_FakeGitHub fake, {ResponseCache? cache, CacheMode mode = CacheMode.replay}) => GitHubApi(
+GitHubApi _api(
+  _FakeGitHub fake, {
+  ResponseCache? cache,
+  CacheMode mode = CacheMode.replay,
+  bool Function(String key)? preferSaved,
+}) => GitHubApi(
   GitHubClient(
     dio: Dio(BaseOptions(baseUrl: 'https://api.github.com'))..httpClientAdapter = fake,
     cache: cache,
     cacheMode: mode,
+    preferSaved: preferSaved,
   ),
 );
 
@@ -312,5 +318,73 @@ void main() {
 
     await expectLater(ui.repo((owner: 'other', name: 'x')), throwsA(isA<GitHubException>()));
     expect(fake.requests, ['/repos/other/x'], reason: 'other repos still use the network');
+  });
+
+  test('only requests pinned to a commit count as unchanging', () {
+    final sha = 'a' * 40;
+    String key(String path, [Map<String, dynamic>? q, String? accept]) =>
+        GitHubClient.cacheKey(path, query: q, accept: accept);
+    expect(isImmutableKey(key('/repos/o/r/commits/$sha')), isTrue);
+    expect(isImmutableKey(key('/repos/o/r/commits/abc1234')), isTrue, reason: 'a short sha names one commit too');
+    expect(isImmutableKey(key('/repos/o/r/commits/$sha', {'page': 2, 'per_page': 100})), isTrue);
+    expect(isImmutableKey(key('/repos/o/r/git/trees/$sha', {'recursive': '1'})), isTrue);
+    expect(isImmutableKey(key('/repos/o/r/contents/a/b.txt', {'ref': sha}, GitHubClient.rawAccept)), isTrue);
+    expect(isImmutableKey(key('/repos/o/r/compare/$sha...${'b' * 40}')), isTrue);
+
+    expect(isImmutableKey(key('/repos/o/r/commits', {'sha': sha})), isFalse, reason: 'history grows');
+    expect(isImmutableKey(key('/repos/o/r/commits/main')), isFalse, reason: 'a branch moves');
+    expect(isImmutableKey(key('/repos/o/r/git/trees/main', {'recursive': '1'})), isFalse);
+    expect(isImmutableKey(key('/repos/o/r/contents/a.txt', {'ref': 'main'}, GitHubClient.rawAccept)), isFalse);
+    expect(isImmutableKey(key('/repos/o/r/compare/main...$sha')), isFalse);
+    expect(isImmutableKey(key('/repos/o/r/pulls/7')), isFalse);
+    expect(isImmutableKey(key('/repos/o/r')), isFalse);
+  });
+
+  group('online with a download', () {
+    late OfflineStore store;
+    late _FakeGitHub fake;
+    const repo = (owner: 'o', name: 'r');
+
+    setUp(() async {
+      store = await OfflineStore.open(dir);
+      fake = _FakeGitHub();
+      await BranchDownloader(
+        store: store,
+        repo: repo,
+        branch: 'main',
+        options: const DownloadOptions(),
+        onProgress: (_) {},
+        api: _api(fake, cache: store, mode: CacheMode.record),
+      ).run();
+      fake
+        ..requests.clear()
+        ..commitCount = 4; // a new commit was pushed since the download
+    });
+
+    test('fresh: lists load live, a downloaded diff costs no request', () async {
+      final ui = _api(fake, cache: store, preferSaved: isImmutableKey);
+      expect((await ui.commits(repo, ref: 'main', perPage: 30)).items, hasLength(4), reason: 'live');
+      expect((await ui.commit(repo, _FakeGitHub.sha(1))).files.single.patch, contains('+b1'));
+      expect(fake.requests, ['/repos/o/r/commits'], reason: 'the saved diff was used');
+
+      await ui.commit(repo, _FakeGitHub.sha(3));
+      expect(fake.requests.last, '/repos/o/r/commits/${_FakeGitHub.sha(3)}', reason: 'not downloaded: network');
+    });
+
+    test('fresh: the download stands in when GitHub is unreachable', () async {
+      fake.online = false;
+      final ui = _api(fake, cache: store, preferSaved: isImmutableKey);
+      expect((await ui.commits(repo, ref: 'main', perPage: 30)).items, hasLength(3), reason: 'as downloaded');
+      expect(await ui.pulls(repo).then((p) => p.items.single.number), 7);
+      await expectLater(ui.repo((owner: 'other', name: 'x')), throwsA(isA<GitHubException>()));
+    });
+
+    test('data saver: everything downloaded loads from the device', () async {
+      final ui = _api(fake, cache: store); // preferSaved null: saved first
+      expect((await ui.commits(repo, ref: 'main', perPage: 30)).items, hasLength(3), reason: 'as downloaded');
+      await ui.pulls(repo);
+      await ui.commit(repo, _FakeGitHub.sha(1));
+      expect(fake.requests, isEmpty);
+    });
   });
 }

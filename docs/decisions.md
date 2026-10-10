@@ -66,6 +66,14 @@ Downloads (repo screen → download button, per branch) replay the same `GitHubA
 - The notification poller uses `liveGithubApiProvider`, which ignores saved copies.
 - **Offline mode** is a separate, explicit per-repo switch (Offline chip, cloud button, banner): online mode prefers saved copies but still fetches what's missing; offline mode never touches the network. Tapping a repo row always opens online, so offline is a deliberate choice.
 
+*Amended 2026-10-10:* serving every saved copy first made a downloaded repo a silent snapshot while online (new
+commits and PRs didn't show until an update). Now Settings → **Data saver** chooses. Off (default, "fresh"): only
+responses pinned to a commit sha (diffs, files and trees at a sha, compares of two shas) come from the download, since
+they can never change and asking again would only spend rate limit; lists, branches and PRs load live and fall back to
+the download when GitHub can't be reached or the rate limit runs out. On: the earlier behavior, everything saved first,
+and the repo title shows the download's age. Live responses aren't written back into downloads: a download stays a
+consistent snapshot of what the user chose to save.
+
 
 ### D12: The file history graph is built from per-branch path histories
 GitHub's `commits?path=` returns each commit's real parents, not the simplified ones `git log --graph -- path` draws
