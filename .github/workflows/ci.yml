@@ -22,6 +22,8 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: No Apple Team ID in the project file (it belongs in the git-ignored Signing.xcconfig)
+        run: "! grep -q DEVELOPMENT_TEAM ios/Runner.xcodeproj/project.pbxproj"
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test integration_test test_driver tool
       - run: flutter analyze

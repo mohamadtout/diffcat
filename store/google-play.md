@@ -122,5 +122,5 @@ declarations are needed.
 - [ ] Upload key: create one, set up `app/android/key.properties` (SETUP.md § 5) and enroll in Play App Signing.
 - [ ] Target API: Flutter 3.47 targets API 36, which meets the requirement for new apps and updates from Aug 31, 2026.
 - [ ] Set `version:` in `app/pubspec.yaml`. The build number (`+N`) must increase with every upload.
-- [ ] `cd app && flutter build appbundle --release`, then upload `build/app/outputs/bundle/release/app-release.aab`.
+- [ ] `make aab`, then upload `app/build/app/outputs/bundle/release/app-release.aab`.
 - [ ] Internal testing on your own devices, then the closed test, then production.
