@@ -8,10 +8,14 @@ import 'response_cache.dart';
 
 /// One page of a paginated GitHub list endpoint.
 class GhPage<T> {
-  const GhPage(this.items, {required this.hasNext});
+  const GhPage(this.items, {required this.hasNext, this.lastPage});
 
   final List<T> items;
   final bool hasNext;
+
+  /// Number of the last page (from `Link: rel="last"`), when there's more
+  /// than one. With `per_page=1` it's the total count.
+  final int? lastPage;
 }
 
 /// Low-level HTTP client for the GitHub REST API.
@@ -103,7 +107,12 @@ class GitHubClient {
     final res = await _get(path, query: query);
     final list = (res.data as List<dynamic>).cast<Map<String, dynamic>>();
     final link = res.headers.value('link') ?? '';
-    return GhPage(list.map(parse).toList(), hasNext: link.contains('rel="next"'));
+    final last = RegExp(r'[?&]page=(\d+)[^>]*>;\s*rel="last"').firstMatch(link);
+    return GhPage(
+      list.map(parse).toList(),
+      hasNext: link.contains('rel="next"'),
+      lastPage: last == null ? null : int.parse(last[1]!),
+    );
   }
 
   /// Fetches consecutive pages until exhausted or [maxPages] is reached.

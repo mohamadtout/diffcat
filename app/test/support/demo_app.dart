@@ -81,7 +81,7 @@ Future<void> seedOfflineCopy(OfflineStore store, DemoGitHub github) => BranchDow
   store: store,
   repo: DemoGitHub.repo,
   branch: 'main',
-  options: const DownloadOptions(commits: 30, pulls: true, files: false),
+  options: const DownloadOptions(commits: 30, pulls: PullScope.open, files: false),
   onProgress: (_) {},
   api: GitHubApi(
     GitHubClient(

@@ -167,7 +167,7 @@ class SavedRepoScreen extends ConsumerWidget {
                   title: Text('Downloading ${r.key.split('@').last}… ${r.value.phase}'),
                   subtitle: LinearProgressIndicator(value: r.value.fraction),
                 ),
-            const _Section('Branches'),
+            if (saved.branches.isNotEmpty) const _Section('Branches'),
             for (final b in saved.branches.entries) _BranchTile(repo: repo, saved: saved, branch: b.key, info: b.value),
             if (saved.pulls.isNotEmpty) ...[
               const _Section('Pull requests'),
@@ -246,6 +246,7 @@ class _BranchTile extends ConsumerWidget {
       leading: const Icon(Icons.call_split),
       title: Text(branch),
       subtitle: Text(
+        '${info.options.range == CommitRange.recent ? '' : '${info.options.rangeLabel} · '}'
         '$savedCommits/${info.commits.length} commits · '
         '${filesBytes > 0 ? 'all files ${formatBytes(filesBytes)}' : 'diffs only'} · '
         'updated ${relativeTime(info.updatedAt)}',

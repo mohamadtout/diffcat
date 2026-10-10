@@ -36,6 +36,13 @@ class GitHubApi {
         parse: GhCommit.fromJson,
       );
 
+  /// How many commits [ref] has (`git rev-list --count`): one request, using
+  /// the page count of a one-per-page listing.
+  Future<int> commitCount(RepoRef r, String ref) async {
+    final p = await commits(r, ref: ref, perPage: 1);
+    return p.lastPage ?? p.items.length;
+  }
+
   /// `git show <sha>` including every changed file (GitHub caps at 3000).
   ///
   /// Unpaginated, GitHub returns up to 300 files. Beyond that the file list
