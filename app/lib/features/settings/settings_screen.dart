@@ -86,6 +86,13 @@ class SettingsScreen extends ConsumerWidget {
               onTap: () => context.push(Routes.codeView),
             ),
             ListTile(
+              leading: const Icon(Icons.folder_copy_outlined),
+              title: const Text('Repository list'),
+              subtitle: const Text('Folders, sort, hidden repos and accounts, what to load'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.repoList),
+            ),
+            ListTile(
               leading: const Icon(Icons.terminal),
               title: const Text('Terminal appearance'),
               subtitle: const Text('Colors, font, background, git status bar'),

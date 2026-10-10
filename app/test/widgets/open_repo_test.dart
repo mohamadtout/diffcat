@@ -8,6 +8,7 @@ import 'package:git_reviewer/data/github/github_exception.dart';
 import 'package:git_reviewer/data/github/models/models.dart';
 import 'package:git_reviewer/features/auth/auth_controller.dart';
 import 'package:git_reviewer/features/repo/repo_screen.dart';
+import 'package:git_reviewer/features/repos/repos_providers.dart';
 import 'package:git_reviewer/features/repos/repos_screen.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';

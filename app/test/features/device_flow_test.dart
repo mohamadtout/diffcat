@@ -13,7 +13,7 @@ import 'package:git_reviewer/data/github/models/models.dart';
 import 'package:git_reviewer/features/auth/auth_controller.dart';
 import 'package:git_reviewer/features/auth/device_flow.dart';
 import 'package:git_reviewer/features/auth/token_screen.dart';
-import 'package:git_reviewer/features/repos/repos_screen.dart';
+import 'package:git_reviewer/features/repos/repos_providers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Answers the device code request, then [polls] in order (last one repeats).

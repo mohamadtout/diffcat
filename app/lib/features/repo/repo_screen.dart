@@ -15,7 +15,7 @@ import '../notifications/watch_controller.dart';
 import '../offline/download_button.dart';
 import '../offline/offline_providers.dart';
 import '../pulls/pulls_tab.dart';
-import '../repos/repos_screen.dart';
+import '../repos/repos_providers.dart';
 import 'ref_picker.dart';
 import 'repo_providers.dart';
 

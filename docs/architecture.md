@@ -41,7 +41,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 
 - **Server data** uses `FutureProvider.autoDispose.family` keyed by Dart **records** (`({RepoRef repo, String sha})`). Records give structural equality for free.
 - **Paged lists** use `AsyncNotifierProvider.autoDispose.family` + `Paged<T>` with `loadMore()` (see `CommitListNotifier`).
-- **Local, persisted state** uses `Notifier`s backed by `sharedPrefsProvider` (custom commands, SSH hosts, watched/pinned repos, theme, diff settings).
+- **Local, persisted state** uses `Notifier`s backed by `sharedPrefsProvider` (custom commands, SSH hosts, watched/pinned repos, the repo library (`RepoLibrary`: folders, archived, hidden, sources), theme, diff settings). The poller reads the library's hidden repos straight from prefs, as it has no Riverpod.
 - **Screen-local UI state** (the selected branch, selected item in split view) lives in `StatefulWidget`s, not providers. This keeps pushed screens independent: "browse at commit X" doesn't change the branch on the screen below it.
 - **Retries:** `ProviderScope.retry` in `main.dart` retries only transient errors (`GitHubException.isRetryable`).
 - **Background isolate:** the WorkManager task (`backgroundPollDispatcher`) runs without Riverpod. `Poller` takes a `GitHubApi` and `SharedPreferences` directly, so the same code runs in both isolates.
@@ -107,6 +107,7 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 | `/settings`, `/settings/commands` | settings, custom buttons |
 | `/settings/terminal` | terminal appearance |
 | `/settings/code` | code view (font, full files, diff colors) |
+| `/settings/repos`, `/settings/repos/folders` | repository list: sources, order, hidden repos and accounts; folders |
 | `/settings/downloads`, `/settings/downloads/:owner/:name` | offline storage: all repos, one repo by branch/commit/PR |
 
 Because repo routes are nested under `/repos`, `router.go(route)` from a notification builds a proper back stack (repo list → repo → commit).
