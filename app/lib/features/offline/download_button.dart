@@ -269,7 +269,8 @@ class _DownloadSheetState extends ConsumerState<_DownloadSheet> {
                       'list are saved, and opening a file needs the network.',
                 AsyncData(:final value) =>
                   'About ${value.truncated ? 'at least ' : ''}${formatBytes(value.bytes)} '
-                      'for ${_n(value.files)} text files at ${widget.branch}, as one archive download.',
+                      'for ${_n(value.files)} text file${value.files == 1 ? '' : 's'} at ${widget.branch}, '
+                      'as one archive download.',
                 AsyncError() => 'Every text file at ${widget.branch}, as one archive download (size unknown).',
                 _ => 'Estimating the size…',
               }),

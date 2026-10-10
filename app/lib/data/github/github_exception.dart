@@ -1,3 +1,9 @@
+/// Retry policy for providers (`ProviderScope.retry`): only transient
+/// failures, up to 3 times with backoff. 401/404/rate limits and missing
+/// offline data won't fix themselves.
+Duration? retryTransient(int count, Object error) =>
+    count < 3 && (error is! GitHubException || error.isRetryable) ? Duration(milliseconds: 400 * (1 << count)) : null;
+
 /// Error raised by [GitHubClient] for any non-successful GitHub API call.
 class GitHubException implements Exception {
   GitHubException(this.message, {this.statusCode, this.rateLimitResetAt, this.notDownloaded = false});

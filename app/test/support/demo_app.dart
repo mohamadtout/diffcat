@@ -10,6 +10,7 @@ import 'package:git_reviewer/app.dart';
 import 'package:git_reviewer/core/storage/storage.dart';
 import 'package:git_reviewer/data/github/github_api.dart';
 import 'package:git_reviewer/data/github/github_client.dart';
+import 'package:git_reviewer/data/github/github_exception.dart';
 import 'package:git_reviewer/data/github/response_cache.dart';
 import 'package:git_reviewer/features/auth/auth_controller.dart';
 import 'package:git_reviewer/features/auth/device_flow.dart';
@@ -63,6 +64,7 @@ class DemoEnv {
 
   Widget app({LocalNotifications? notifications, Key? key}) => ProviderScope(
     key: key,
+    retry: retryTransient, // as in main()
     overrides: [
       sharedPrefsProvider.overrideWithValue(prefs),
       localNotificationsProvider.overrideWithValue(notifications ?? LocalNotifications.disabled()),

@@ -1,8 +1,13 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/core/routing/app_router.dart';
 import 'package:git_reviewer/core/routing/routes.dart';
+import 'package:git_reviewer/data/github/github_api.dart';
+import 'package:git_reviewer/data/github/github_client.dart';
+import 'package:git_reviewer/data/github/response_cache.dart';
+import 'package:git_reviewer/features/offline/downloader.dart';
 import 'package:git_reviewer/features/offline/offline_providers.dart';
 
 import '../support/demo_app.dart';
@@ -107,6 +112,52 @@ void main() {
     await settleIo();
     expect(find.text('Offline: comments and reviews need online mode.'), findsNothing);
     expect(find.byTooltip('Update the offline copy of #${DemoGitHub.openPullNumber}'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(() => store.root.delete(recursive: true));
+  });
+
+  testWidgets('offline, pull requests downloaded one by one are listed', (tester) async {
+    tester.view
+      ..physicalSize = const Size(900, 2000)
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final github = DemoGitHub();
+    final store = (await tester.runAsync(() => tempOfflineStore('pull_alone')))!;
+    // Only the PR, from its screen: no branch download, so no saved PR list.
+    await tester.runAsync(
+      () => PullDownloader(
+        store: store,
+        repo: DemoGitHub.repo,
+        number: DemoGitHub.openPullNumber,
+        onProgress: (_) {},
+        api: GitHubApi(
+          GitHubClient(
+            dio: Dio(GitHubClient.baseOptions('demo-token'))..httpClientAdapter = github,
+            cache: store,
+            cacheMode: CacheMode.record,
+          ),
+        ),
+      ).run(),
+    );
+    final env = await DemoEnv.create(store: store, github: github);
+    await tester.pumpWidget(env.app());
+    Future<void> settleIo() async {
+      for (var i = 0; i < 15; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    await settleIo();
+    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    container.read(offlineModeProvider.notifier).set(DemoGitHub.repo, offline: true);
+    container.read(routerProvider).go(Routes.repo(DemoGitHub.repo, tab: 'pulls'));
+    await settleIo();
+    expect(find.text(DemoGitHub.openPullTitle), findsOneWidget);
+
+    await tester.tap(find.text('Closed'));
+    await settleIo();
+    expect(find.textContaining('Not downloaded'), findsOneWidget, reason: 'nothing closed was saved');
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(() => store.root.delete(recursive: true));
   });
