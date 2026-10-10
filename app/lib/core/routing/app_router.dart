@@ -17,6 +17,7 @@ import '../../features/notifications/local_notifications.dart';
 import '../../features/offline/downloads_screen.dart';
 import '../../features/pulls/pull_screen.dart';
 import '../../features/repo/repo_screen.dart';
+import '../../features/repos/repo_list_settings_screen.dart';
 import '../../features/repos/repos_screen.dart';
 import '../../features/settings/settings_screen.dart';
 import '../../features/terminal/host_edit_screen.dart';
@@ -148,6 +149,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(path: 'commands', builder: (_, _) => const CommandsScreen()),
                   GoRoute(path: 'terminal', builder: (_, _) => const TerminalAppearanceScreen()),
                   GoRoute(path: 'code', builder: (_, _) => const CodeViewSettingsScreen()),
+                  GoRoute(
+                    path: 'repos',
+                    builder: (_, _) => const RepoListSettingsScreen(),
+                    routes: [GoRoute(path: 'folders', builder: (_, _) => const RepoFoldersScreen())],
+                  ),
                   GoRoute(
                     path: 'downloads',
                     builder: (_, _) => const DownloadsScreen(),

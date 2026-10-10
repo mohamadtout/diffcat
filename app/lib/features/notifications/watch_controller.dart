@@ -34,6 +34,11 @@ class WatchedRepos extends Notifier<Set<String>> {
 
   Future<void> unwatch(RepoRef r) => _save({...state}..remove(r.fullName.toLowerCase()));
 
+  /// Stops watching several repos (lower-case `owner/name`), e.g. when hidden.
+  Future<void> unwatchAll(Set<String> keys) async {
+    if (state.any(keys.contains)) await _save(state.difference(keys));
+  }
+
   Future<void> _save(Set<String> s) async {
     state = s;
     await ref.read(sharedPrefsProvider).setStringList(StoreKeys.watchedRepos, s.toList()..sort());

@@ -15,9 +15,15 @@ class GitHubApi {
 
   Future<GhUser> viewer() async => GhUser.fromJson(await client.getJson('/user') as Map<String, dynamic>);
 
-  Future<GhPage<GhRepo>> myRepos({int page = 1}) => client.getPage(
+  /// The user's repos, most recently pushed first. [affiliation]: which kinds
+  /// (`owner`, `collaborator`, `organization_member`, comma-separated).
+  Future<GhPage<GhRepo>> myRepos({
+    int page = 1,
+    int perPage = 100,
+    String affiliation = 'owner,collaborator,organization_member',
+  }) => client.getPage(
     '/user/repos',
-    query: {'sort': 'pushed', 'per_page': 50, 'page': page, 'affiliation': 'owner,collaborator,organization_member'},
+    query: {'sort': 'pushed', 'per_page': perPage, 'page': page, 'affiliation': affiliation},
     parse: GhRepo.fromJson,
   );
 

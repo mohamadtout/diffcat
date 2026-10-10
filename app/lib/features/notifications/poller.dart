@@ -7,6 +7,7 @@ import '../../core/storage/storage.dart';
 import '../../data/github/github_api.dart';
 import '../../data/github/github_exception.dart';
 import '../../data/github/models/models.dart';
+import '../repos/repo_library.dart';
 import 'poll_state.dart';
 
 /// Max notifications per repo per check, so a big batch of branch updates
@@ -162,14 +163,22 @@ class Poller {
     }
     final raw = prefs.getString(StoreKeys.inboxSeen);
     final seen = raw == null ? null : (jsonDecode(raw) as Map<String, dynamic>).cast<String, String>();
-    final r = inboxEvents(seen, threads);
+    final library = RepoLibrary.parse(prefs.getString(StoreKeys.repoLibrary));
+    final r = inboxEvents(seen, [
+      for (final t in threads)
+        if (!library.isHidden(t.repo.fullName)) t,
+    ]);
     await prefs.setString(StoreKeys.inboxSeen, jsonEncode(r.seen));
     return r.events;
   }
 
   /// New requests for the user's review, on any repo (one search request).
   Future<List<GitEvent>> _reviewRequests() async {
-    final now = (await api.searchPulls('review-requested:@me')).items;
+    final library = RepoLibrary.parse(prefs.getString(StoreKeys.repoLibrary));
+    final now = [
+      for (final p in (await api.searchPulls('review-requested:@me')).items)
+        if (!library.isHidden(p.repo.fullName)) p,
+    ];
     final seen = prefs.getStringList(StoreKeys.reviewRequestsSeen)?.toSet();
     await prefs.setStringList(StoreKeys.reviewRequestsSeen, [for (final p in now) p.key]);
     return reviewRequestEvents(seen, now);
