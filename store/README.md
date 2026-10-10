@@ -32,6 +32,11 @@ Folder names the frame tool expects, and the devices that produce the right size
 | `android-tablet-7` | Medium tablet emulator (`Shots_Tablet7`) | 1200 × 1920 | Play 7", same size |
 | `android-tablet-10` | Pixel Tablet emulator (`Shots_Tablet10`) | 1600 × 2560 | Play 10", same size |
 
+- **Android tablets are shot in landscape** (in portrait they're narrower than the 840dp split view). Before the run:
+  `adb -s <id> shell settings put system accelerometer_rotation 0 && adb -s <id> shell settings put system user_rotation 1`.
+- **Start the emulators with `-gpu host`** (`emulator -avd Shots_Phone -gpu host`). With less than about 5 GB of free
+  memory the emulator otherwise falls back to software rendering, and the app dies mid-run ("Service has disappeared").
+
 The captions live in `app/tool/store/frame_test.dart`:
 
 | # | Phone | Tablet |

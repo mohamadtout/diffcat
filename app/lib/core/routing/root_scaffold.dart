@@ -48,6 +48,9 @@ class RootScaffold extends StatelessWidget {
       );
     }
     return Scaffold(
+      // The keyboard must not squeeze the rail (four destinations overflow a
+      // 600dp-tall landscape tablet). Each screen's own Scaffold makes room for it.
+      resizeToAvoidBottomInset: false,
       body: Row(
         children: [
           SafeArea(
