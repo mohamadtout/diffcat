@@ -40,13 +40,15 @@ store-frames:     ## Captioned store images from the raw screenshots → store/s
 	cd app && flutter test tool/store/frame_test.dart
 	python3 store/check_lengths.py
 
-# `flutter test` regenerates the plugin registrant with test-only plugins (integration_test), which a release build
-# can't compile; deleting it (git-ignored, generated) makes the build write a fresh one.
+# The plugin registrant (generated, git-ignored) lists test-only plugins (integration_test) after `flutter test` or
+# an editor's `pub get`, and a release build can't compile those. The build normally rewrites it for release, but
+# one written mid-build still breaks it, so on that failure build once more.
 REGISTRANT := app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 
 apk:              ## Release APK (see SETUP.md § Release signing)
 	rm -f $(REGISTRANT)
-	cd app && flutter build apk --release $(DART_DEFINES)
+	cd app && { flutter build apk --release $(DART_DEFINES) || { grep -q integration_test ../$(REGISTRANT) && \
+		echo "Building again: the plugin registrant had test-only plugins" && flutter build apk --release $(DART_DEFINES); }; }
 
 VERSION := $(shell sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)
 

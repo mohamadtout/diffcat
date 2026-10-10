@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +9,7 @@ import 'package:git_reviewer/core/routing/app_router.dart';
 import 'package:git_reviewer/core/routing/routes.dart';
 import 'package:git_reviewer/core/storage/storage.dart';
 import 'package:git_reviewer/features/notifications/local_notifications.dart';
+import 'package:git_reviewer/features/repos/repo_library.dart';
 import 'package:git_reviewer/features/settings/settings_screen.dart';
 import 'package:git_reviewer/features/terminal/ssh_session.dart';
 import 'package:integration_test/integration_test.dart';
@@ -33,6 +36,22 @@ void main() {
     });
     final env = await DemoEnv.create(store: store, github: github);
     await env.prefs.setBool(StoreKeys.diffWrap, true); // whole lines, no sideways scrolling
+    // An organized repo list: two colored folders, and an old repo archived.
+    String repo(String name) => '${DemoGitHub.owner}/$name';
+    final library = RepoLibrary(
+      folders: [
+        RepoFolder(id: 'product', name: 'Product', color: folderColors[7]),
+        RepoFolder(id: 'platform', name: 'Platform', color: folderColors[5]),
+      ],
+      folderOf: {
+        repo('mobile-app'): 'product',
+        repo('website'): 'product',
+        repo('infra'): 'platform',
+        repo('ml-experiments'): 'platform',
+      },
+      archived: {repo('dotfiles')},
+    );
+    await env.prefs.setString(StoreKeys.repoLibrary, jsonEncode(library.toJson()));
     // Real notifications plugin, so Settings shows what users see.
     await tester.pumpWidget(env.app(notifications: await LocalNotifications.init()));
     await _settle(tester);

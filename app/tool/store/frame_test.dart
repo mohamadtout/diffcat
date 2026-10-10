@@ -29,7 +29,7 @@ const _bezel = Color(0xFF0D1117);
 typedef _Shot = (String raw, String title, String subtitle);
 
 const _phone = <_Shot>[
-  ('01_repos', 'All your repos,\nin your pocket', 'Pin favorites. Open any public repo.'),
+  ('01_repos', 'All your repos,\nyour way', 'Colored folders, pins and an archive.'),
   ('03_diff', 'Diffs made for\nsmall screens', 'Wrapped lines and line numbers.'),
   ('04_pull', 'Review pull requests\nanywhere', 'Overview, changed files and commits.'),
   ('07_offline_mode', 'Download once,\nread offline', 'For flights, trains and slow networks.'),
