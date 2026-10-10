@@ -181,14 +181,20 @@ class _DeviceCodeDialogState extends State<DeviceCodeDialog> {
   DeviceCode? _code;
   String? _error;
 
+  /// Back from approving in the browser: ask GitHub now instead of at the
+  /// next poll.
+  late final _lifecycle = AppLifecycleListener(onResume: widget.flow.pollNow);
+
   @override
   void initState() {
     super.initState();
+    _lifecycle; // start listening
     _run();
   }
 
   @override
   void dispose() {
+    _lifecycle.dispose();
     widget.flow.cancel();
     super.dispose();
   }

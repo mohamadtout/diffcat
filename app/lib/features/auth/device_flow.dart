@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 
 /// Diffcat's OAuth App client ID. Public by design (the device flow has no
@@ -30,8 +32,11 @@ class DeviceCode {
 }
 
 class DeviceFlowException implements Exception {
-  const DeviceFlowException(this.message);
+  const DeviceFlowException(this.message, {this.network = false});
   final String message;
+
+  /// GitHub couldn't be reached (no response at all).
+  final bool network;
 
   @override
   String toString() => message;
@@ -61,8 +66,24 @@ class DeviceFlow {
   final Future<void> Function(Duration) sleep;
 
   bool _cancelled = false;
+  Completer<void>? _wake;
 
-  void cancel() => _cancelled = true;
+  void cancel() {
+    _cancelled = true;
+    pollNow();
+  }
+
+  /// Ends the current wait and asks GitHub right away, e.g. when the user
+  /// comes back to the app after approving in the browser.
+  void pollNow() {
+    final wake = _wake;
+    if (wake != null && !wake.isCompleted) wake.complete();
+  }
+
+  Future<void> _wait(Duration d) {
+    final wake = _wake = Completer<void>();
+    return Future.any([sleep(d), wake.future]);
+  }
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
     try {
@@ -73,7 +94,7 @@ class DeviceFlow {
       );
       return res.data is Map<String, dynamic> ? res.data as Map<String, dynamic> : const {};
     } on DioException catch (e) {
-      throw DeviceFlowException("Couldn't reach GitHub: ${e.message ?? e.type.name}");
+      throw DeviceFlowException("Couldn't reach GitHub: ${e.message ?? e.type.name}", network: e.response == null);
     }
   }
 
@@ -95,17 +116,32 @@ class DeviceFlow {
 
   /// Polls until the user approves (returns the token), denies, the code
   /// expires, or [cancel] is called (throws [DeviceFlowException]).
+  ///
+  /// Not reaching GitHub doesn't end it: while the user approves in the
+  /// browser, Android cuts a background app's network, so a poll fails with
+  /// "Failed host lookup". It keeps trying until the code expires.
   Future<String> waitForToken(DeviceCode code) async {
     var interval = code.interval;
+    DeviceFlowException? offline;
     while (true) {
-      await sleep(interval);
+      await _wait(interval);
       if (_cancelled) throw const DeviceFlowException('Cancelled');
-      if (_now().isAfter(code.expiresAt)) throw const DeviceFlowException('The code expired. Start again.');
-      final j = await _post('/login/oauth/access_token', {
-        'client_id': clientId,
-        'device_code': code.deviceCode,
-        'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
-      });
+      if (_now().isAfter(code.expiresAt)) {
+        throw DeviceFlowException('The code expired. Start again.${offline == null ? '' : ' (${offline.message})'}');
+      }
+      final Map<String, dynamic> j;
+      try {
+        j = await _post('/login/oauth/access_token', {
+          'client_id': clientId,
+          'device_code': code.deviceCode,
+          'grant_type': 'urn:ietf:params:oauth:grant-type:device_code',
+        });
+      } on DeviceFlowException catch (e) {
+        if (!e.network) rethrow;
+        offline = e;
+        continue;
+      }
+      offline = null;
       if (j['access_token'] case final String token) return token;
       switch (j['error']) {
         case 'authorization_pending':

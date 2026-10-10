@@ -33,6 +33,10 @@ every build (store, `flutter run`, CI) offers the button. That's how other open-
 the device flow has no secret, and the ID only names the app on GitHub's approval page. Forks override it with
 `--dart-define=GITHUB_CLIENT_ID` (empty hides the button).
 
+While the user approves in the browser, Android cuts the backgrounded app's network, so a poll fails with "Failed host
+lookup". Polling treats that as temporary (only a GitHub answer or the code expiring ends it) and polls again the
+moment the app returns to the foreground.
+
 Signing in is optional (2026-10-08): public repos are readable without a token, so the app opens to a public-repo browser and the token only unlocks your repo list, private repos and the 5,000/hour limit (60/hour signed out). Notifications also work signed out, within the lower limit.
 
 ### D7: Riverpod 3 without codegen, hand-written models
