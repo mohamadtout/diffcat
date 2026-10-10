@@ -8,7 +8,7 @@ The app needs no server, no cloud project and no account: public repos work righ
 | 2 | [Run the app](#2-run-the-app) | — | 2 min |
 | 3 | [Notifications](#3-notifications) | new-commit / PR alerts | 1 min |
 | 4 | [SSH host for terminal / lazygit](#4-ssh-host-for-terminal--lazygit-optional) *(optional)* | Terminal tab | 10 min |
-| 5 | [Release signing](#5-android-release-signing-optional) *(optional)* | installing a release APK | 5 min |
+| 5 | [Release signing](#5-android-release-signing-optional) *(optional)* | installing a release APK, GitHub releases | 5 min |
 | 6 | [iOS / iPadOS](#6-ios--ipados-later) *(later)* | Apple devices | 15 min |
 | 7 | [Source control & CI](#7-source-control--ci) | CI | 2 min |
 
@@ -128,6 +128,20 @@ are signed with your own key. The Gradle side is already wired up in `app/androi
 
 Listing text, screenshots, privacy answers and a checklist for each store are in [store/README.md](store/README.md).
 The privacy policy is [PRIVACY.md](PRIVACY.md), public at <https://github.com/mohamadtout/diffcat/blob/main/PRIVACY.md>.
+
+## 6c. GitHub release with the APK
+
+Each release on `main` is also a GitHub release with the signed APK, for people who don't use Google Play.
+
+1. Merge `development` into `main`, then tag the merge and push the tag: `git tag v1.1.1 && git push origin v1.1.1`.
+2. With the tag checked out, `make release-apk`. It refuses to run without `app/android/key.properties` (the APK would
+   be debug-signed, and every later update would fail to install over it). It writes
+   `app/build/release/diffcat-<version>.apk` and its `.sha256`.
+3. GitHub → **Releases** → **Draft a new release** → pick the tag. Title `Diffcat 1.1.1`. Notes: that version's
+   CHANGELOG section, plus the SHA-256 line. Attach the APK and publish.
+   With the GitHub CLI instead: `gh release create v1.1.1 app/build/release/diffcat-1.1.1.apk --title "Diffcat 1.1.1" --notes-file <notes>`.
+
+Always sign with the same key: Android only installs an update over an APK signed by the same one.
 
 ## 7. Source control & CI
 

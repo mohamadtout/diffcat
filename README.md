@@ -16,6 +16,16 @@ your own token if you sign in (optional: public repos work without an account), 
 - **Works offline:** download a branch (diffs, PRs, optionally every file) and read it with no connection.
 - **Responsive:** phone → foldable → tablet and iPad (list/detail split, full-width toggle). Android and iOS/iPadOS.
 
+## Install
+
+- **Android APK:** download `diffcat-<version>.apk` from the [latest release](https://github.com/mohamadtout/diffcat/releases/latest)
+  and open it (Android asks once to allow installs from your browser or file manager). Each release lists the file's
+  SHA-256 so you can check the download. Updates install over it, keeping your data.
+- **Google Play / App Store:** see the store listings once published.
+
+The APK and the Google Play version are signed differently (Google signs Play installs), so Android won't update one
+with the other: to switch, uninstall first, which clears the app's data.
+
 ```
 app/        Flutter app (Android, iOS, iPadOS)
 docs/       Architecture, features, commands, notifications, conventions, decisions, roadmap

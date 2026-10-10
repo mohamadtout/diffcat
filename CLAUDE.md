@@ -14,7 +14,7 @@ store/       App Store / Google Play / GitHub Marketplace listings and screensho
 marketplace-webhook/  Cloudflare Worker the Marketplace listing requires (stateless) → its README.md
 PRIVACY.md   Privacy policy (linked from both stores)
 CHANGELOG.md What's in each version; branching and versioning rules
-Makefile     Entry points: make check | fmt | run | apk
+Makefile     Entry points: make check | fmt | run | apk | release-apk
 ```
 
 ## Branches and versions
