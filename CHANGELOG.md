@@ -4,7 +4,11 @@ Versions follow [Semantic Versioning](https://semver.org): features bump the min
 number after `+` is the store build number (Android `versionCode`, iOS `CFBundleVersion`) and only ever goes up.
 Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the signed APK attached (SETUP.md § 6c).
 
-## 1.1.1 (build 4, unreleased, on `development`)
+## Unreleased
+
+Nothing yet. Add changes here as they land on `development`.
+
+## 1.1.1 (build 4), 2026-10-10
 
 - Sign in with GitHub in every build (Diffcat's OAuth App is now built in), not only builds made with a client ID.
 - Data saver (Settings): downloaded repos open from the device. Off (default), lists and pull requests load live
