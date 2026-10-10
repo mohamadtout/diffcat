@@ -123,6 +123,7 @@ class TerminalAppearance {
     BackgroundKind? background,
     String? gradient,
     String? imagePath,
+    bool clearImage = false,
     double? backgroundOpacity,
     double? backgroundBlur,
     bool? statusBar,
@@ -139,7 +140,7 @@ class TerminalAppearance {
     cursor: cursor ?? this.cursor,
     background: background ?? this.background,
     gradient: gradient ?? this.gradient,
-    imagePath: imagePath ?? this.imagePath,
+    imagePath: clearImage ? null : imagePath ?? this.imagePath,
     backgroundOpacity: backgroundOpacity ?? this.backgroundOpacity,
     backgroundBlur: backgroundBlur ?? this.backgroundBlur,
     statusBar: statusBar ?? this.statusBar,
@@ -205,6 +206,13 @@ class TerminalAppearanceNotifier extends Notifier<TerminalAppearance> {
     await source.copy(target.path);
     update((a) => a.copyWith(background: BackgroundKind.image, imagePath: target.path));
     if (old != null && old != target.path) await _delete(old);
+  }
+
+  /// Deletes the copied image and goes back to a plain background.
+  Future<void> removeImage() async {
+    final old = state.imagePath;
+    update((a) => a.copyWith(background: BackgroundKind.none, clearImage: true));
+    if (old != null) await _delete(old);
   }
 
   Future<void> reset() async {

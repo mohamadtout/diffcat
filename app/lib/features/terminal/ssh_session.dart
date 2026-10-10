@@ -383,34 +383,54 @@ TerminalKey _terminalKey(SpecialKey k) => switch (k) {
 };
 
 /// Keeps sessions alive while navigating around the app.
-class SshSessionRegistry {
+///
+/// Notifies when any session changes (connects, drops) or is closed, so the
+/// host list stays current however the terminal screen was left.
+class SshSessionRegistry extends ChangeNotifier {
   SshSessionRegistry(this._ref);
   final Ref _ref;
   final _sessions = <String, SshSessionController>{};
 
+  // Not notified here: obtain runs in the terminal screen's initState, during
+  // a build, and a new session is idle anyway.
   SshSessionController obtain(SshHost host) => _sessions.putIfAbsent(
     host.id,
     () => SshSessionController(
       host: host,
       secure: _ref.read(secureStoreProvider),
       knownHosts: _ref.read(knownHostsProvider),
-    ),
+    )..addListener(notifyListeners),
   );
 
   SshSessionController? existing(String hostId) => _sessions[hostId];
 
-  void close(String hostId) => _sessions.remove(hostId)?.dispose();
+  void close(String hostId) {
+    final session = _sessions.remove(hostId);
+    if (session == null) return;
+    session
+      ..removeListener(notifyListeners)
+      ..dispose();
+    notifyListeners();
+  }
 
   void closeAll() {
     for (final s in _sessions.values) {
-      s.dispose();
+      s
+        ..removeListener(notifyListeners)
+        ..dispose();
     }
     _sessions.clear();
+  }
+
+  @override
+  void dispose() {
+    closeAll();
+    super.dispose();
   }
 }
 
 final sshSessionsProvider = Provider<SshSessionRegistry>((ref) {
   final registry = SshSessionRegistry(ref);
-  ref.onDispose(registry.closeAll);
+  ref.onDispose(registry.dispose);
   return registry;
 });

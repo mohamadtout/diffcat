@@ -258,6 +258,13 @@ class _TerminalAppearanceScreenState extends ConsumerState<TerminalAppearanceScr
                 title: const Text('Choose image…'),
                 subtitle: const Text('Copied into the app; never uploaded'),
                 onTap: _pickImage,
+                trailing: a.imagePath == null
+                    ? null
+                    : IconButton(
+                        tooltip: 'Remove image',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: _notifier.removeImage,
+                      ),
               ),
             if (a.background != BackgroundKind.none) ...[
               slider(
