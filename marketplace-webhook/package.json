@@ -1,0 +1,5 @@
+{
+  "name": "diffcat-marketplace-webhook",
+  "private": true,
+  "type": "module"
+}

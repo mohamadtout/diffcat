@@ -103,3 +103,12 @@ Android backups are off (`allowBackup=false`, `data_extraction_rules.xml` for cl
 the offline folder is excluded from iCloud backup: offline copies can be private source code, which the privacy policy
 promises never leaves the device. Secure storage couldn't be restored on another device anyway (its key is in the
 Keystore/Keychain). The cost is that a new phone starts fresh: re-add the token and SSH hosts.
+
+### D15: One stateless Worker, only for the GitHub Marketplace webhook
+GitHub requires an active webhook on every Marketplace listing, free ones included (2026-10-10). Diffcat is free with
+no accounts, so `marketplace-webhook/` only verifies GitHub's signature, logs and answers 204. It stores nothing,
+never sees a token, and the app never calls it, so the app itself still has no backend (D5). It runs on Cloudflare's
+free Workers plan with no payment method on the account: past the free 100,000 requests a day it fails until the next
+day rather than costing anything. Instant push would extend the same Worker; that plan is in
+[instant-push.md](instant-push.md) and isn't built.
+

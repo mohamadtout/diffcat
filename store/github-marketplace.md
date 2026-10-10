@@ -117,14 +117,14 @@ Published plans can't be edited later.
 ## Webhook
 
 Required for every listing, free ones included: GitHub sends `marketplace_purchase` events (purchases,
-cancellations) to a payload URL, and **Active** must be on before submitting. Diffcat has no server (decision D5),
-so this needs an endpoint before the listing can be submitted. Settings once one exists:
+cancellations), and **Active** must be on before submitting. It goes to the stateless Cloudflare Worker in
+[`marketplace-webhook/`](../marketplace-webhook/README.md) (free plan, no card): set that up first, then:
 
 | Field | Value |
 |---|---|
-| Payload URL | the endpoint's URL |
+| Payload URL | `https://diffcat-marketplace.<your workers.dev subdomain>.workers.dev` |
 | Content type | `application/json` |
-| Secret | a random string, kept in the endpoint's configuration, never in this repo |
+| Secret | the secret stored in the Worker as `WEBHOOK_SECRET` (password manager, never this repo) |
 | Active | On |
 
 ## Submitting
