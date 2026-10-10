@@ -2,7 +2,7 @@
 
 Versions follow [Semantic Versioning](https://semver.org): features bump the minor version, fixes the patch. The
 number after `+` is the store build number (Android `versionCode`, iOS `CFBundleVersion`) and only ever goes up.
-Releases are tagged `vX.Y.Z` on `main`.
+Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the signed APK attached (SETUP.md § 6c).
 
 ## 1.1.1 (build 4, unreleased, on `development`)
 
@@ -18,6 +18,7 @@ Releases are tagged `vX.Y.Z` on `main`.
   Undo, and a choice of which repos to load from GitHub at all. Loads up to 1,000 repos.
 - Notifications about pull requests that need you now come from your GitHub notifications inbox: review requests,
   mentions and replies, checked about every minute while the app is open.
+- The Android APK is attached to each GitHub release, for installing without Google Play.
 - Fixes: the palette chips in Code view overflowed with smaller system text; the terminal host's connected icon
   didn't update after leaving with the system back gesture.
 

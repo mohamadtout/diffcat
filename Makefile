@@ -1,5 +1,5 @@
 # One-word entry points for humans and agents. `make check` before every PR.
-.PHONY: setup check fmt run apk device-test ssh-test offline-test store-screenshots store-frames
+.PHONY: setup check fmt run apk release-apk device-test ssh-test offline-test store-screenshots store-frames
 
 setup:            ## Install dependencies
 	cd app && flutter pub get
@@ -47,3 +47,13 @@ REGISTRANT := app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRe
 apk:              ## Release APK (see SETUP.md § Release signing)
 	rm -f $(REGISTRANT)
 	cd app && flutter build apk --release $(DART_DEFINES)
+
+VERSION := $(shell sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)
+
+release-apk:      ## The APK attached to a GitHub release: app/build/release/diffcat-<version>.apk + .sha256
+	@test -f app/android/key.properties || { echo "app/android/key.properties is missing: the APK would be debug-signed (SETUP.md § 5)"; exit 1; }
+	$(MAKE) apk
+	mkdir -p app/build/release
+	cp app/build/app/outputs/flutter-apk/app-release.apk app/build/release/diffcat-$(VERSION).apk
+	cd app/build/release && shasum -a 256 diffcat-$(VERSION).apk > diffcat-$(VERSION).apk.sha256
+	@cat app/build/release/diffcat-$(VERSION).apk.sha256
