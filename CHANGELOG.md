@@ -8,6 +8,10 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 Nothing yet. Add changes here as they land on `development`.
 
+## 1.1.2 (build 5), 2026-10-10
+
+- Fix: on a landscape 7" tablet the keyboard squeezed the navigation rail until its bottom tab was cut off.
+
 ## 1.1.1 (build 4), 2026-10-10
 
 - Sign in with GitHub in every build (Diffcat's OAuth App is now built in), not only builds made with a client ID.
