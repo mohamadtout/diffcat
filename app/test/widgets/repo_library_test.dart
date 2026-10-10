@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/core/routing/app_router.dart';
 import 'package:git_reviewer/core/routing/routes.dart';
+import 'package:git_reviewer/features/repos/repo_library.dart';
 import 'package:git_reviewer/features/repos/repos_providers.dart';
 
 import '../support/demo_app.dart';
@@ -86,5 +87,70 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Unhide'));
     await _settle(tester);
     expect(container.read(repoLibraryProvider).hidden, isEmpty);
+  });
+
+  testWidgets('folders move up from their menu; the archive menu offers only what applies', (tester) async {
+    tester.view
+      ..physicalSize = const Size(800, 1800)
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final env = await DemoEnv.create();
+    await tester.pumpWidget(env.app());
+    await _settle(tester);
+    final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+    container.read(repoLibraryProvider.notifier)
+      ..createFolder('First', folderColors[1])
+      ..createFolder('Second', folderColors[2]);
+    await _settle(tester);
+
+    Future<List<String>> menuOf(Finder button) async {
+      await tester.tap(button);
+      await _settle(tester);
+      return [
+        for (final item in tester.widgetList<PopupMenuItem<String>>(find.byType(PopupMenuItem<String>))) item.value!,
+      ];
+    }
+
+    Future<void> closeMenu() async {
+      await tester.tapAt(const Offset(4, 4));
+      await _settle(tester);
+    }
+
+    // The second folder moves up; the first one can only move down.
+    expect(await menuOf(find.byTooltip('Folder options').at(1)), ['up', 'edit', 'delete']);
+    await tester.tap(find.text('Move up'));
+    await _settle(tester);
+    expect(container.read(repoLibraryProvider).folders.map((f) => f.name), ['Second', 'First']);
+    expect(await menuOf(find.byTooltip('Folder options').first), ['down', 'edit', 'delete']);
+    await closeMenu();
+
+    // Archive infra from its own menu; the snackbar goes away on its own.
+    await tester.tap(_repoMenu('infra'));
+    await _settle(tester);
+    await tester.tap(find.text('Archive'));
+    await _settle(tester);
+    expect(find.text('infra archived'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 10));
+    await _settle(tester);
+    expect(find.text('infra archived'), findsNothing, reason: 'Undo snackbars time out');
+    await tester.tap(find.text('Archived'));
+    await _settle(tester);
+
+    await tester.longPress(find.text('website'));
+    await _settle(tester);
+    expect(await menuOf(find.byTooltip('More')), ['archive', 'hide'], reason: 'nothing to unarchive');
+    await closeMenu();
+    await tester.tap(find.text('infra'));
+    await _settle(tester);
+    expect(await menuOf(find.byTooltip('More')), ['archive', 'unarchive', 'hide'], reason: 'a mix');
+    await closeMenu();
+    await tester.tap(find.text('website'));
+    await _settle(tester);
+    expect(await menuOf(find.byTooltip('More')), ['unarchive', 'hide'], reason: 'all archived');
+    await tester.tap(find.text('Unarchive'));
+    await _settle(tester);
+    expect(find.text('infra unarchived'), findsOneWidget);
+    expect(container.read(repoLibraryProvider).archived, isEmpty);
+    expect(find.text('Archived'), findsNothing, reason: 'nothing left in it');
   });
 }

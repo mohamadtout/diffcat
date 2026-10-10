@@ -26,8 +26,8 @@ class ReposScreen extends ConsumerStatefulWidget {
 class _ReposScreenState extends ConsumerState<ReposScreen> {
   String _query = '';
 
-  /// Repos selected for a bulk action (`owner/name`); empty: not selecting.
-  final _selected = <String>{};
+  /// Repos selected for a bulk action, by [RepoLibrary.key]; empty: not selecting.
+  final _selected = <String, GhRepo>{};
 
   bool get _selecting => _selected.isNotEmpty;
 
@@ -36,8 +36,10 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
     if (repo != null && mounted) openRepo(context, ref, repo);
   }
 
-  void _toggle(String fullName) =>
-      setState(() => _selected.contains(fullName) ? _selected.remove(fullName) : _selected.add(fullName));
+  void _toggle(GhRepo repo) {
+    final key = RepoLibrary.key(repo.fullName);
+    setState(() => _selected.remove(key) ?? (_selected[key] = repo));
+  }
 
   /// Applies a change to the library with a snackbar offering Undo.
   void _withUndo(String message, VoidCallback change) {
@@ -50,6 +52,8 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
       ..showSnackBar(
         SnackBar(
           content: Text(message),
+          // A snackbar with an action stays until tapped unless told otherwise.
+          persist: false,
           action: SnackBarAction(
             label: 'Undo',
             onPressed: () {
@@ -61,20 +65,27 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
       );
   }
 
-  String _what(List<String> repos) => repos.length == 1 ? repos.single.split('/').last : '${repos.length} repos';
+  String _what(List<GhRepo> repos) => repos.length == 1 ? repos.single.name : '${repos.length} repos';
 
-  void _archive(List<String> repos, {required bool archive}) =>
-      _withUndo('${_what(repos)} ${archive ? 'archived' : 'unarchived'}', () {
-        ref.read(repoLibraryProvider.notifier).update((l) => l.setArchived(repos, archive: archive));
-        if (archive) ref.read(pinnedReposProvider.notifier).setPinned(repos, pinned: false);
-      });
+  /// Archives or unarchives the [repos] that aren't that way already.
+  void _archive(List<GhRepo> repos, {required bool archive}) {
+    final library = ref.read(repoLibraryProvider);
+    final changing = repos.where((r) => library.isArchived(r) != archive).toList();
+    if (changing.isEmpty) return setState(_selected.clear);
+    _withUndo('${_what(changing)} ${archive ? 'archived' : 'unarchived'}', () {
+      ref.read(repoLibraryProvider.notifier).update((l) => l.setArchived(changing, archive: archive));
+      if (archive) ref.read(pinnedReposProvider.notifier).setPinned(_names(changing), pinned: false);
+    });
+  }
 
-  void _hide(List<String> repos) {
+  static List<String> _names(List<GhRepo> repos) => [for (final r in repos) r.fullName];
+
+  void _hide(List<GhRepo> repos) {
     final watched = ref.read(watchedReposProvider);
-    final unwatched = repos.where((r) => watched.contains(r.toLowerCase())).length;
+    final unwatched = repos.where((r) => watched.contains(r.fullName.toLowerCase())).length;
     _withUndo(
       '${_what(repos)} hidden${unwatched == 0 ? '' : ', no longer watched'}. Unhide in Settings → Repository list.',
-      () => ref.read(repoLibraryProvider.notifier).hide(repos),
+      () => ref.read(repoLibraryProvider.notifier).hide(_names(repos)),
     );
   }
 
@@ -83,7 +94,7 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
     () => ref.read(repoLibraryProvider.notifier).hideOwner(owner),
   );
 
-  Future<void> _move(List<String> repos) async {
+  Future<void> _move(List<GhRepo> repos) async {
     final message = await moveToFolder(context, ref, repos);
     if (message == null || !mounted) return;
     setState(_selected.clear);
@@ -92,10 +103,10 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _pin(List<String> repos) {
+  void _pin(List<GhRepo> repos) {
     final pins = ref.read(pinnedReposProvider.notifier);
-    final pin = !repos.every(pins.isPinned);
-    pins.setPinned(repos, pinned: pin);
+    final pin = !repos.every((r) => pins.isPinned(r.fullName));
+    pins.setPinned(_names(repos), pinned: pin);
     if (pin) ref.read(repoLibraryProvider.notifier).update((l) => l.setArchived(repos, archive: false));
     setState(_selected.clear);
   }
@@ -115,8 +126,9 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
 
   AppBar _appBar(RepoLibrary library, List<GhRepo> visible) {
     if (_selecting) {
-      final repos = _selected.toList();
-      final allPinned = repos.every(ref.read(pinnedReposProvider.notifier).isPinned);
+      final repos = _selected.values.toList();
+      final allPinned = repos.every((r) => ref.read(pinnedReposProvider.notifier).isPinned(r.fullName));
+      final archived = repos.where(library.isArchived).length;
       return AppBar(
         leading: IconButton(
           tooltip: 'Cancel selection',
@@ -128,7 +140,8 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
           IconButton(
             tooltip: 'Select all shown',
             icon: const Icon(Icons.select_all),
-            onPressed: () => setState(() => _selected.addAll(visible.map((r) => r.fullName))),
+            onPressed: () =>
+                setState(() => _selected.addAll({for (final r in visible) RepoLibrary.key(r.fullName): r})),
           ),
           IconButton(
             tooltip: 'Move to folder',
@@ -147,10 +160,11 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
               'unarchive' => _archive(repos, archive: false),
               _ => _hide(repos),
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'archive', child: Text('Archive')),
-              PopupMenuItem(value: 'unarchive', child: Text('Unarchive')),
-              PopupMenuItem(value: 'hide', child: Text('Hide')),
+            // Only what applies; a mix of archived and active repos gets both.
+            itemBuilder: (_) => [
+              if (archived < repos.length) const PopupMenuItem(value: 'archive', child: Text('Archive')),
+              if (archived > 0) const PopupMenuItem(value: 'unarchive', child: Text('Unarchive')),
+              const PopupMenuItem(value: 'hide', child: Text('Hide')),
             ],
           ),
         ],
@@ -166,7 +180,7 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
           onSelected: (v) async {
             switch (v) {
               case 'select':
-                if (visible.isNotEmpty) setState(() => _selected.add(visible.first.fullName));
+                if (visible.isNotEmpty) _toggle(visible.first);
               case 'folder':
                 await createFolder(context, ref);
               case 'sort':
@@ -271,7 +285,13 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
                                   .update((l) => l.copyWith(archivedCollapsed: !l.archivedCollapsed)),
                             _ => null,
                           },
-                          menu: section.folder == null ? null : _FolderMenu(folder: section.folder!),
+                          menu: section.folder == null
+                              ? null
+                              : _FolderMenu(
+                                  folder: section.folder!,
+                                  index: library.folders.indexOf(section.folder!),
+                                  count: library.folders.length,
+                                ),
                         ),
                       if (!section.collapsed)
                         for (final r in section.repos)
@@ -280,19 +300,19 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
                             watched: watched.contains(r.fullName.toLowerCase()),
                             pinned: section.kind == SectionKind.pinned,
                             accent: library.folderFor(r.fullName)?.color,
-                            selected: _selecting ? _selected.contains(r.fullName) : null,
-                            onTap: _selecting ? () => _toggle(r.fullName) : null,
-                            onLongPress: () => _toggle(r.fullName),
+                            selected: _selecting ? _selected.containsKey(RepoLibrary.key(r.fullName)) : null,
+                            onTap: _selecting ? () => _toggle(r) : null,
+                            onLongPress: () => _toggle(r),
                             trailing: _selecting
                                 ? null
                                 : _RepoMenu(
                                     repo: r,
                                     pinned: ref.read(pinnedReposProvider.notifier).isPinned(r.fullName),
                                     archived: library.isArchived(r),
-                                    onPin: () => _pin([r.fullName]),
-                                    onMove: () => _move([r.fullName]),
-                                    onArchive: (archive) => _archive([r.fullName], archive: archive),
-                                    onHide: () => _hide([r.fullName]),
+                                    onPin: () => _pin([r]),
+                                    onMove: () => _move([r]),
+                                    onArchive: (archive) => _archive([r], archive: archive),
+                                    onHide: () => _hide([r]),
                                     onHideOwner: () => _hideOwner(r.owner),
                                   ),
                           ),
@@ -308,11 +328,15 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
   }
 }
 
-/// Edit or delete a folder, from its heading.
+/// Reorder, edit or delete a folder, from its heading.
 class _FolderMenu extends ConsumerWidget {
-  const _FolderMenu({required this.folder});
+  const _FolderMenu({required this.folder, required this.index, required this.count});
 
   final RepoFolder folder;
+
+  /// Its place among [count] folders.
+  final int index;
+  final int count;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => PopupMenuButton<String>(
@@ -320,7 +344,11 @@ class _FolderMenu extends ConsumerWidget {
     icon: const Icon(Icons.more_vert, size: 20),
     onSelected: (v) async {
       final library = ref.read(repoLibraryProvider.notifier);
-      if (v == 'edit') {
+      if (v == 'up' || v == 'down') {
+        library.update((l) => l.reorderFolder(index, v == 'up' ? index - 1 : index + 1));
+      } else if (v == 'reorder') {
+        await context.push(Routes.repoFolders);
+      } else if (v == 'edit') {
         final r = await showFolderDialog(context, initial: folder);
         if (r != null) library.update((l) => l.withFolder(folder.copyWith(name: r.name, color: r.color)));
       } else {
@@ -331,9 +359,12 @@ class _FolderMenu extends ConsumerWidget {
         }
       }
     },
-    itemBuilder: (_) => const [
-      PopupMenuItem(value: 'edit', child: Text('Rename or recolor')),
-      PopupMenuItem(value: 'delete', child: Text('Delete folder')),
+    itemBuilder: (_) => [
+      if (index > 0) const PopupMenuItem(value: 'up', child: Text('Move up')),
+      if (index < count - 1) const PopupMenuItem(value: 'down', child: Text('Move down')),
+      if (count > 2) const PopupMenuItem(value: 'reorder', child: Text('Reorder folders…')),
+      const PopupMenuItem(value: 'edit', child: Text('Rename or recolor')),
+      const PopupMenuItem(value: 'delete', child: Text('Delete folder')),
     ],
   );
 }
@@ -373,9 +404,7 @@ class _RepoMenu extends StatelessWidget {
     itemBuilder: (_) => [
       PopupMenuItem(value: 'pin', child: Text(pinned ? 'Unpin' : 'Pin to top')),
       const PopupMenuItem(value: 'move', child: Text('Move to folder…')),
-      // Archived on GitHub stays archived: there's nothing to undo here.
-      if (!(repo.archived && archived))
-        PopupMenuItem(value: 'archive', child: Text(archived ? 'Unarchive' : 'Archive')),
+      PopupMenuItem(value: 'archive', child: Text(archived ? 'Unarchive' : 'Archive')),
       const PopupMenuItem(value: 'hide', child: Text('Hide')),
       PopupMenuItem(value: 'owner', child: Text('Hide everything from ${repo.owner}')),
     ],

@@ -80,7 +80,7 @@ class RepoSources {
 /// lower-case `owner/name`, accounts by lower-case login (GitHub ignores case).
 ///
 /// - **Archived** repos move to a collapsed section at the bottom. Repos
-///   archived on GitHub go there too.
+///   archived on GitHub go there too, unless the user unarchived them here.
 /// - **Hidden** repos and accounts are never shown, watched, or reported in
 ///   notifications or the inbox.
 class RepoLibrary {
@@ -88,6 +88,7 @@ class RepoLibrary {
     this.folders = const [],
     this.folderOf = const {},
     this.archived = const {},
+    this.unarchived = const {},
     this.hidden = const {},
     this.hiddenOwners = const {},
     this.sources = const RepoSources(),
@@ -111,6 +112,7 @@ class RepoLibrary {
             if (e.value is String && ids.contains(e.value)) e.key: e.value as String,
       },
       archived: set(j['archived']),
+      unarchived: set(j['unarchived']),
       hidden: set(j['hidden']),
       hiddenOwners: set(j['hiddenOwners']),
       sources: j['sources'] is Map<String, dynamic>
@@ -135,6 +137,9 @@ class RepoLibrary {
   /// Repo → folder id. Repos without one are in "Other".
   final Map<String, String> folderOf;
   final Set<String> archived;
+
+  /// Repos archived on GitHub that the user keeps with the active ones.
+  final Set<String> unarchived;
   final Set<String> hidden;
   final Set<String> hiddenOwners;
   final RepoSources sources;
@@ -146,7 +151,10 @@ class RepoLibrary {
   bool isHidden(String fullName) =>
       hidden.contains(key(fullName)) || hiddenOwners.contains(key(fullName.split('/').first));
 
-  bool isArchived(GhRepo r) => r.archived || archived.contains(key(r.fullName));
+  bool isArchived(GhRepo r) {
+    final k = key(r.fullName);
+    return archived.contains(k) || (r.archived && !unarchived.contains(k));
+  }
 
   RepoFolder? folderFor(String fullName) {
     final id = folderOf[key(fullName)];
@@ -157,6 +165,7 @@ class RepoLibrary {
     List<RepoFolder>? folders,
     Map<String, String>? folderOf,
     Set<String>? archived,
+    Set<String>? unarchived,
     Set<String>? hidden,
     Set<String>? hiddenOwners,
     RepoSources? sources,
@@ -166,6 +175,7 @@ class RepoLibrary {
     folders: folders ?? this.folders,
     folderOf: folderOf ?? this.folderOf,
     archived: archived ?? this.archived,
+    unarchived: unarchived ?? this.unarchived,
     hidden: hidden ?? this.hidden,
     hiddenOwners: hiddenOwners ?? this.hiddenOwners,
     sources: sources ?? this.sources,
@@ -194,9 +204,11 @@ class RepoLibrary {
   );
 
   /// Moves the folder at [from] to index [to] (its final position).
+  /// Indexes out of range are clamped, so moving the first folder up does nothing.
   RepoLibrary reorderFolder(int from, int to) {
+    if (from < 0 || from >= folders.length) return this;
     final list = [...folders];
-    list.insert(to, list.removeAt(from));
+    list.insert(to.clamp(0, folders.length - 1), list.removeAt(from));
     return copyWith(folders: list);
   }
 
@@ -207,22 +219,29 @@ class RepoLibrary {
 
   /// Moves [repos] into [folderId] (null: out of any folder), and out of the
   /// archive: filing a repo means it's in use.
-  RepoLibrary move(Iterable<String> repos, String? folderId) {
-    final keys = repos.map(key).toSet();
-    return copyWith(
+  RepoLibrary move(Iterable<GhRepo> repos, String? folderId) {
+    final keys = {for (final r in repos) key(r.fullName)};
+    return setArchived(repos, archive: false).copyWith(
       folderOf: {
         for (final e in folderOf.entries)
           if (!keys.contains(e.key)) e.key: e.value,
         if (folderId != null)
           for (final k in keys) k: folderId,
       },
-      archived: archived.difference(keys),
     );
   }
 
-  RepoLibrary setArchived(Iterable<String> repos, {required bool archive}) {
-    final keys = repos.map(key).toSet();
-    return copyWith(archived: archive ? archived.union(keys) : archived.difference(keys));
+  /// Archives or unarchives [repos]. Unarchiving a repo archived on GitHub
+  /// keeps it with the active repos; archiving it again undoes that.
+  RepoLibrary setArchived(Iterable<GhRepo> repos, {required bool archive}) {
+    final keys = {for (final r in repos) key(r.fullName)};
+    final onGitHub = {
+      for (final r in repos)
+        if (r.archived) key(r.fullName),
+    };
+    return archive
+        ? copyWith(archived: archived.union(keys.difference(onGitHub)), unarchived: unarchived.difference(keys))
+        : copyWith(archived: archived.difference(keys), unarchived: unarchived.union(onGitHub));
   }
 
   RepoLibrary setHidden(Iterable<String> repos, {required bool hide}) {
@@ -283,6 +302,7 @@ class RepoLibrary {
     'folders': [for (final f in folders) f.toJson()],
     'folderOf': folderOf,
     'archived': archived.toList(),
+    'unarchived': unarchived.toList(),
     'hidden': hidden.toList(),
     'hiddenOwners': hiddenOwners.toList(),
     'sources': sources.toJson(),

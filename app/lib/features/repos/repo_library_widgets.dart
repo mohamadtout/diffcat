@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/github/models/models.dart';
 import 'repo_library.dart';
 import 'repos_providers.dart';
 
@@ -115,9 +116,9 @@ Future<String?> createFolder(BuildContext context, WidgetRef ref) async {
 
 /// Lets the user pick a folder for [repos] (or none, or a new one) and moves
 /// them there. Returns a message for a snackbar, or null if cancelled.
-Future<String?> moveToFolder(BuildContext context, WidgetRef ref, List<String> repos) async {
+Future<String?> moveToFolder(BuildContext context, WidgetRef ref, List<GhRepo> repos) async {
   final library = ref.read(repoLibraryProvider);
-  final current = repos.length == 1 ? library.folderOf[RepoLibrary.key(repos.single)] : null;
+  final current = repos.length == 1 ? library.folderOf[RepoLibrary.key(repos.single.fullName)] : null;
   final choice = await showModalBottomSheet<String>(
     context: context,
     useRootNavigator: true,
@@ -132,7 +133,7 @@ Future<String?> moveToFolder(BuildContext context, WidgetRef ref, List<String> r
               alignment: AlignmentDirectional.centerStart,
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                repos.length == 1 ? 'Move ${repos.single.split('/').last} to' : 'Move ${repos.length} repos to',
+                repos.length == 1 ? 'Move ${repos.single.name} to' : 'Move ${repos.length} repos to',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
             ),
@@ -168,7 +169,7 @@ Future<String?> moveToFolder(BuildContext context, WidgetRef ref, List<String> r
   if (choice == '+' && folderId == null) return null;
   ref.read(repoLibraryProvider.notifier).update((l) => l.move(repos, folderId));
   final name = folderId == null ? null : ref.read(repoLibraryProvider).folders.firstWhere((f) => f.id == folderId).name;
-  final what = repos.length == 1 ? repos.single.split('/').last : '${repos.length} repos';
+  final what = repos.length == 1 ? repos.single.name : '${repos.length} repos';
   return name == null ? '$what moved out of folders' : '$what moved to $name';
 }
 

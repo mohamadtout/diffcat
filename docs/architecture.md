@@ -41,7 +41,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 
 - **Server data** uses `FutureProvider.autoDispose.family` keyed by Dart **records** (`({RepoRef repo, String sha})`). Records give structural equality for free.
 - **Paged lists** use `AsyncNotifierProvider.autoDispose.family` + `Paged<T>` with `loadMore()` (see `CommitListNotifier`).
-- **Local, persisted state** uses `Notifier`s backed by `sharedPrefsProvider` (custom commands, SSH hosts, watched/pinned repos, the repo library (`RepoLibrary`: folders, archived, hidden, sources), theme, diff settings). The poller reads the library's hidden repos straight from prefs, as it has no Riverpod.
+- **Local, persisted state** uses `Notifier`s backed by `sharedPrefsProvider` (custom commands, SSH hosts, watched/pinned repos, the repo library (`RepoLibrary`: folders, archived, unarchived, hidden, sources), theme, diff settings). The poller reads the library's hidden repos straight from prefs, as it has no Riverpod.
 - **Screen-local UI state** (the selected branch, selected item in split view) lives in `StatefulWidget`s, not providers. This keeps pushed screens independent: "browse at commit X" doesn't change the branch on the screen below it.
 - **Retries:** `ProviderScope.retry` in `main.dart` retries only transient errors (`GitHubException.isRetryable`).
 - **Background isolate:** the WorkManager task (`backgroundPollDispatcher`) runs without Riverpod. `Poller` takes a `GitHubApi` and `SharedPreferences` directly, so the same code runs in both isolates.

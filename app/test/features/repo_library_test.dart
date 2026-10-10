@@ -27,6 +27,11 @@ final _repos = [
   _r('Spam/thing', daysAgo: 0),
 ];
 
+/// Repos of [_repos] by name, ignoring case like GitHub does.
+List<GhRepo> _pick(List<String> names) => [
+  for (final n in names) _repos.firstWhere((r) => r.fullName.toLowerCase() == n.toLowerCase()),
+];
+
 /// `kind folder: repo, repo (collapsed)` per section.
 List<String> _shape(List<RepoSection> sections) => [
   for (final s in sections)
@@ -50,9 +55,9 @@ void main() {
     final lib = const RepoLibrary()
         .withFolder(work)
         .withFolder(side)
-        .move(['ACME/api', 'acme/web'], 'w')
-        .move(['me/blog'], 's')
-        .setArchived(['me/app'], archive: true)
+        .move(_pick(['acme/api', 'acme/web']), 'w')
+        .move(_pick(['me/blog']), 's')
+        .setArchived(_pick(['me/app']), archive: true)
         .setHidden(['spam/thing'], hide: true);
     expect(_shape(lib.arrange(_repos, pinned: {'acme/web'})), [
       'pinned: acme/web',
@@ -64,7 +69,10 @@ void main() {
   });
 
   test('searching opens collapsed sections, drops empty folders, and matches descriptions', () {
-    final lib = const RepoLibrary().withFolder(work.copyWith(collapsed: true)).withFolder(side).move(['acme/api'], 'w');
+    final lib = const RepoLibrary()
+        .withFolder(work.copyWith(collapsed: true))
+        .withFolder(side)
+        .move(_pick(['acme/api']), 'w');
     expect(_shape(lib.arrange(_repos, query: 'payments')), ['folder Work: acme/api']);
     expect(_shape(lib.arrange(_repos, query: 'legacy')), ['archived: acme/legacy']);
     expect(
@@ -86,14 +94,37 @@ void main() {
   });
 
   test('filing a repo unarchives it; deleting a folder sends its repos to Other', () {
-    var lib = const RepoLibrary().withFolder(work).setArchived(['me/app'], archive: true).move(['me/app'], 'w');
+    final app = _pick(['me/app']);
+    var lib = const RepoLibrary().withFolder(work).setArchived(app, archive: true).move(app, 'w');
     expect(lib.archived, isEmpty);
     expect(lib.folderOf, {'me/app': 'w'});
     lib = lib.withoutFolder('w');
     expect(lib.folders, isEmpty);
     expect(lib.folderOf, isEmpty);
-    expect(lib.move(['me/app'], 'w').folderOf, {'me/app': 'w'});
-    expect(const RepoLibrary().move(['me/app'], 'w').move(['me/app'], null).folderOf, isEmpty);
+    expect(lib.move(app, 'w').folderOf, {'me/app': 'w'});
+    expect(const RepoLibrary().move(app, 'w').move(app, null).folderOf, isEmpty);
+  });
+
+  test('repos archived on GitHub can be unarchived here, and archived again', () {
+    final legacy = _pick(['acme/legacy']);
+    // Archived here before (older versions recorded it): unarchiving clears both.
+    var lib = const RepoLibrary(archived: {'acme/legacy'}).setArchived(legacy, archive: false);
+    expect(lib.isArchived(legacy.single), isFalse);
+    expect(_shape(lib.arrange(_repos)).last, 'other: Spam/thing, me/app, acme/api, acme/web, me/blog, acme/legacy');
+
+    lib = lib.setArchived(legacy, archive: true);
+    expect(lib.isArchived(legacy.single), isTrue);
+    expect(lib.archived, isEmpty, reason: "GitHub's flag is enough");
+    expect(lib.unarchived, isEmpty);
+
+    // Filing it in a folder brings it back too.
+    lib = lib.withFolder(work).move(legacy, 'w');
+    expect(_shape(lib.arrange(_repos)).first, 'folder Work: acme/legacy');
+
+    // Unarchiving only adds repos archived on GitHub to the exceptions.
+    expect(const RepoLibrary().setArchived(_pick(['me/app', 'acme/legacy']), archive: false).unarchived, {
+      'acme/legacy',
+    });
   });
 
   test('folders reorder, rename and collapse', () {
@@ -101,6 +132,9 @@ void main() {
     var lib = const RepoLibrary().withFolder(work).withFolder(side).withFolder(third);
     expect(lib.reorderFolder(2, 0).folders.map((f) => f.id), ['t', 'w', 's']);
     expect(lib.reorderFolder(0, 2).folders.map((f) => f.id), ['s', 't', 'w']);
+    expect(lib.reorderFolder(1, 0).folders.map((f) => f.id), ['s', 'w', 't'], reason: 'move up');
+    expect(lib.reorderFolder(0, -1).folders.map((f) => f.id), ['w', 's', 't'], reason: 'first stays first');
+    expect(lib.reorderFolder(2, 3).folders.map((f) => f.id), ['w', 's', 't'], reason: 'last stays last');
     lib = lib.withFolder(work.copyWith(name: 'Job')).toggleCollapsed('s');
     expect(lib.folders.map((f) => (f.name, f.collapsed)), [('Job', false), ('Side', true), ('Third', false)]);
   });
@@ -115,8 +149,9 @@ void main() {
     final lib =
         const RepoLibrary(sort: RepoSort.name, archivedCollapsed: false, sources: RepoSources(collaborations: false))
             .withFolder(work)
-            .move(['me/app'], 'w')
-            .setArchived(['me/blog'], archive: true)
+            .move(_pick(['me/app']), 'w')
+            .setArchived(_pick(['me/blog']), archive: true)
+            .setArchived(_pick(['acme/legacy']), archive: false)
             .setHidden(['spam/thing'], hide: true)
             .setOwnerHidden('Spam', hide: true);
     final back = RepoLibrary.parse(jsonEncode(lib.toJson()));
@@ -124,6 +159,7 @@ void main() {
     expect(back.folders.single.color, work.color);
     expect(back.folderOf, lib.folderOf);
     expect(back.archived, {'me/blog'});
+    expect(back.unarchived, {'acme/legacy'});
     expect(back.hidden, {'spam/thing'});
     expect(back.hiddenOwners, {'spam'});
     expect(
