@@ -73,6 +73,50 @@ void main() {
       expect(s.preset.id, 'github');
     });
 
+    test('a new profile copies the colors shown, then owns its edits', () {
+      const red = Color(0xFFFF0000);
+      const blue = Color(0xFF0000FF);
+      final edited = const DiffColorSettings(palette: 'neon').withOverride(DiffColorSlot.addFg, red, dark: true);
+      final s = edited.withNewProfile('p1', 'Mine');
+      expect(s.preset.id, 'p1');
+      expect(s.editingProfile, isTrue);
+      expect(s.dark, isEmpty, reason: 'the override moved into the profile');
+      expect(s.darkColors.addFg, red);
+      expect(s.lightColors.delFg, diffPalettes.firstWhere((p) => p.id == 'neon').light.delFg);
+
+      final changed = s.withOverride(DiffColorSlot.delBg, blue, dark: false);
+      expect(changed.light, isEmpty, reason: 'profile edits are not overrides');
+      expect(changed.lightColors.delBg, blue);
+      expect(changed.withOverride(DiffColorSlot.delBg, null, dark: false).lightColors.delBg, blue);
+
+      // Survives switching away and back, and JSON.
+      final back = DiffColorSettings.fromJson(changed.select('github').toJson()).select('p1');
+      expect(back.lightColors.delBg, blue);
+      expect(back.darkColors.addFg, red);
+      expect(back.renamed('p1', 'Night').preset.label, 'Night');
+    });
+
+    test('deleting: presets hide until reset, profiles go, the last one stays', () {
+      var s = const DiffColorSettings(palette: 'neon').withNewProfile('p1', 'Mine').select('neon');
+      s = s.without('neon');
+      expect(s.hidden, {'neon'});
+      expect(s.preset.id, 'github', reason: 'deleting the one in use switches to the first left');
+      expect(s.available.map((p) => p.id), isNot(contains('neon')));
+      expect(DiffColorSettings.fromJson(s.toJson()).hidden, {'neon'});
+
+      for (final p in diffPalettes) {
+        s = s.without(p.id);
+      }
+      expect(s.available.map((p) => p.id), ['p1'], reason: 'every preset can go while a profile is left');
+      expect(s.preset.id, 'p1');
+      expect(s.without('p1').available, hasLength(1), reason: 'the last palette is kept');
+
+      final reset = s.withOverride(DiffColorSlot.gutter, const Color(0xFF123456), dark: true).reset();
+      expect(reset.available, hasLength(diffPalettes.length + 1), reason: 'presets back, profile kept');
+      expect(reset.preset.id, 'github');
+      expect(reset.dark, isEmpty);
+    });
+
     test('hex', () {
       expect(parseHexColor('#0a0'), const Color(0xFF00AA00));
       expect(parseHexColor('1A7F37'), const Color(0xFF1A7F37));

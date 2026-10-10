@@ -129,8 +129,10 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 - **Full files:** `fullFileLines` merges the new file's content with the hunks (context lines between them get both
   line numbers) and returns null if the content doesn't match, e.g. a compare whose head branch moved. A file header
   requests its content after it's built, so only files scrolled near cost a request.
-- **Colors** come from the `DiffColors` theme extension, which `app.dart` builds from `diffColorsProvider` (a palette
-  plus per-slot overrides for light and dark), so every `DiffColors.of(context)` follows the user's choice.
+- **Colors** come from the `DiffColors` theme extension, which `app.dart` builds from `diffColorsProvider`, so every
+  `DiffColors.of(context)` follows the user's choice. `DiffColorSettings` holds the selected palette, per-slot
+  overrides on a preset (light and dark, dropped when switching), the user's profiles (full palettes that own their
+  edits) and the ids of deleted presets.
 - **Syntax and word diffs** (`syntax.dart`, pure): `highlightDiffLines` highlights each side of a file's diff as one
   text (new side: context + added; old side: context + removed), so block comments and strings spanning lines color
   right, then splits the result back into lines. `pairedWordDiffs` pairs the i-th removed with the i-th added line of a
