@@ -77,10 +77,12 @@ class DownloadButton extends ConsumerWidget {
   }
 }
 
-/// "saved 2h ago" for the repo title when [branch] has an offline copy.
+/// "saved 2h ago" for the repo title when [branch] is shown from its offline
+/// copy (offline mode or data saver). Live screens don't need the age.
 String? savedLabel(WidgetRef ref, RepoRef repo, String branch) {
   final saved = ref.watch(savedRepoProvider(repo.fullName))?.branches[branch];
-  return saved == null ? null : 'saved ${relativeTime(saved.updatedAt)}';
+  if (saved == null || !ref.watch(showsSavedCopyProvider(repo))) return null;
+  return 'saved ${relativeTime(saved.updatedAt)}';
 }
 
 Future<void> showDownloadSheet(BuildContext context, {required RepoRef repo, required String branch}) =>

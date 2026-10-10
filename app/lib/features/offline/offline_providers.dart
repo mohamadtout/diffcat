@@ -51,6 +51,30 @@ class OfflineMode extends Notifier<Set<String>> {
   }
 }
 
+/// Data saver: downloaded repos load from their saved copy, and only what
+/// wasn't downloaded uses the network. Off (the default, "fresh"): lists,
+/// branches and pull requests load live and saved copies are used for what
+/// can't change (a commit's diff) or when GitHub can't be reached.
+final dataSaverProvider = NotifierProvider<DataSaver, bool>(DataSaver.new);
+
+class DataSaver extends Notifier<bool> {
+  @override
+  bool build() => ref.watch(sharedPrefsProvider).getBool(StoreKeys.dataSaver) ?? false;
+
+  void set(bool on) {
+    state = on;
+    ref.read(sharedPrefsProvider).setBool(StoreKeys.dataSaver, on);
+  }
+}
+
+/// Whether [repo]'s screens show its saved copy rather than live data:
+/// offline mode, or data saver with a download.
+final showsSavedCopyProvider = Provider.family<bool, RepoRef>(
+  (ref, repo) =>
+      ref.watch(isOfflineProvider(repo)) ||
+      (ref.watch(dataSaverProvider) && ref.watch(savedRepoProvider(repo.fullName)) != null),
+);
+
 /// Whether [repo] is shown in offline mode right now (it must still be saved).
 final isOfflineProvider = Provider.family<bool, RepoRef>(
   (ref, repo) =>

@@ -43,6 +43,25 @@ abstract final class Groups {
   return (repo: repo, group: group);
 }
 
+final _sha = RegExp(r'^[0-9a-fA-F]{40}$');
+final _immutablePath = RegExp(
+  r'^/repos/[^/]+/[^/]+/(?:commits/[0-9a-fA-F]{7,40}|git/trees/[0-9a-fA-F]{40}|compare/[0-9a-fA-F]{40}\.\.\.[0-9a-fA-F]{40})$',
+);
+
+/// Whether the response for a request key ([GitHubClient.cacheKey]) can never
+/// change: it's pinned to a commit (a commit's diff, a tree or file at a sha,
+/// a compare of two shas). A saved copy of these is always as good as asking
+/// GitHub. Lists, branches and pull requests change, so they aren't.
+bool isImmutableKey(String key) {
+  final request = key.substring(key.indexOf('|') + 1);
+  final q = request.indexOf('?');
+  final path = q < 0 ? request : request.substring(0, q);
+  if (_immutablePath.hasMatch(path)) return true;
+  if (!path.contains('/contents/')) return false;
+  final query = Uri.splitQueryString(q < 0 ? '' : request.substring(q + 1));
+  return _sha.hasMatch(query['ref'] ?? '');
+}
+
 /// What a branch download includes.
 class DownloadOptions {
   const DownloadOptions({this.commits = 30, this.pulls = true, this.files = false});

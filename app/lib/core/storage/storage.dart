@@ -53,6 +53,7 @@ abstract final class StoreKeys {
   static const pinnedRepos = 'pinned_repos';
   static const recentRepos = 'recent_repos';
   static const offlineModeRepos = 'offline_mode_repos';
+  static const dataSaver = 'data_saver';
   static const customCommands = 'custom_commands';
   static const sshHosts = 'ssh_hosts';
   static const knownHosts = 'known_hosts';
