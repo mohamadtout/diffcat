@@ -31,6 +31,7 @@ Future<void> _pumpApp(WidgetTester tester) async {
 Future<void> _signIn(WidgetTester tester) async {
   expect(find.byType(TokenScreen), findsOneWidget);
   await tester.enterText(find.byType(TextField), 'ghp_test');
+  await tester.ensureVisible(find.widgetWithText(FilledButton, 'Sign in')); // below "Sign in with GitHub"
   await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
   await tester.pumpAndSettle();
 }
