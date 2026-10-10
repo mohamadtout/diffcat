@@ -52,6 +52,9 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
     final dark = _editDark ?? theme.brightness == Brightness.dark;
     final effective = dark ? colors.darkColors : colors.lightColors;
     final overrides = colors.overrides(dark: dark);
+    final palettes = ref.read(diffColorsProvider.notifier);
+    final selected = colors.preset;
+    final isProfile = colors.editingProfile;
 
     Widget section(String title) => Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
@@ -65,7 +68,20 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
       appBar: AppBar(
         title: const Text('Code view'),
         actions: [
-          TextButton(onPressed: ref.read(diffColorsProvider.notifier).reset, child: const Text('Reset colors')),
+          TextButton(
+            onPressed: () {
+              final hadHidden = ref.read(diffColorsProvider).hidden.isNotEmpty;
+              ref.read(diffColorsProvider.notifier).reset();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'GitHub colors${hadHidden ? ', deleted presets restored' : ''}. Your profiles are kept.',
+                  ),
+                ),
+              );
+            },
+            child: const Text('Reset colors'),
+          ),
         ],
       ),
       body: ReadableWidth(
@@ -158,14 +174,54 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final p in diffPalettes)
+                  for (final p in colors.available)
                     ChoiceChip(
                       avatar: _Dots(dark ? p.dark : p.light),
                       label: Text(p.label),
-                      selected: colors.palette == p.id,
-                      onSelected: (_) => ref.read(diffColorsProvider.notifier).setPalette(p.id),
+                      selected: selected.id == p.id,
+                      onSelected: (_) => palettes.setPalette(p.id),
                     ),
                 ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Wrap(
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.add),
+                    label: const Text('New profile'),
+                    onPressed: () async {
+                      final name = await _askName(context, title: 'New color profile', initial: 'My colors');
+                      if (name != null) palettes.createProfile(name);
+                    },
+                  ),
+                  if (isProfile)
+                    TextButton.icon(
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Rename'),
+                      onPressed: () async {
+                        final name = await _askName(context, title: 'Rename profile', initial: selected.label);
+                        if (name != null) palettes.renameProfile(selected.id, name);
+                      },
+                    ),
+                  if (colors.available.length > 1)
+                    TextButton.icon(
+                      icon: const Icon(Icons.delete_outline),
+                      label: Text('Delete ${selected.label}'),
+                      onPressed: () => _delete(context, palettes, selected, isProfile: isProfile),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              child: Text(
+                isProfile
+                    ? 'Your profile: color changes are saved to it.'
+                    : 'Changes to a preset are dropped when you switch palettes. '
+                          'Keep them with New profile.',
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
             ),
             Padding(
@@ -192,19 +248,19 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
                 ),
                 title: Text(slot.label),
                 subtitle: Text(
-                  '${hexOf(effective[slot])}${overrides.containsKey(slot) ? ' · changed' : ''}',
+                  '${hexOf(effective[slot])}${!isProfile && overrides.containsKey(slot) ? ' · changed' : ''}',
                   style: TextStyle(fontFamily: AppTheme.monoFamily),
                 ),
-                trailing: overrides.containsKey(slot)
+                trailing: !isProfile && overrides.containsKey(slot)
                     ? IconButton(
                         tooltip: 'Back to the palette color',
                         icon: const Icon(Icons.undo),
-                        onPressed: () => ref.read(diffColorsProvider.notifier).setColor(slot, null, dark: dark),
+                        onPressed: () => palettes.setColor(slot, null, dark: dark),
                       )
                     : null,
                 onTap: () async {
                   final picked = await showColorPicker(context, initial: effective[slot], title: slot.label);
-                  if (picked != null) ref.read(diffColorsProvider.notifier).setColor(slot, picked, dark: dark);
+                  if (picked != null) palettes.setColor(slot, picked, dark: dark);
                 },
               ),
             const SizedBox(height: 32),
@@ -215,23 +271,102 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
   }
 }
 
-/// Added / removed colors of a palette, for its chip.
+Future<void> _delete(
+  BuildContext context,
+  DiffColorsNotifier palettes,
+  DiffPalette palette, {
+  required bool isProfile,
+}) async {
+  if (isProfile) {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${palette.label}?'),
+        content: const Text("Its light and dark colors are deleted. This can't be undone."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+    if (ok == true) palettes.delete(palette.id);
+    return;
+  }
+  palettes.delete(palette.id);
+  ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text('${palette.label} removed. Reset colors brings it back.')));
+}
+
+Future<String?> _askName(BuildContext context, {required String title, required String initial}) => showDialog<String>(
+  context: context,
+  builder: (_) => _NameDialog(title: title, initial: initial),
+);
+
+/// Owns its TextEditingController so it is disposed only after the dialog's
+/// exit animation finishes.
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({required this.title, required this.initial});
+
+  final String title;
+  final String initial;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  late final _ctrl = TextEditingController(text: widget.initial)
+    ..selection = TextSelection(baseOffset: 0, extentOffset: widget.initial.length);
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _ctrl.text.trim();
+    if (name.isNotEmpty) Navigator.pop(context, name);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: Text(widget.title),
+    content: TextField(
+      controller: _ctrl,
+      autofocus: true,
+      maxLength: 30,
+      decoration: const InputDecoration(labelText: 'Name', helperText: 'Starts from the colors shown, light and dark'),
+      onSubmitted: (_) => _submit(),
+    ),
+    actions: [
+      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+      FilledButton(onPressed: _submit, child: const Text('Save')),
+    ],
+  );
+}
+
+/// Added / removed colors of a palette, for its chip. The chip sizes its
+/// avatar to the label's line height, which shrinks with smaller system text,
+/// so the dots scale down to fit rather than overflow.
 class _Dots extends StatelessWidget {
   const _Dots(this.c);
 
   final DiffColors c;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      for (final color in [c.addFg, c.delFg])
-        Container(
-          width: 8,
-          height: 8,
-          margin: const EdgeInsets.only(right: 2),
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-    ],
+  Widget build(BuildContext context) => FittedBox(
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final (i, color) in [c.addFg, c.delFg].indexed)
+          Container(
+            width: 8,
+            height: 8,
+            margin: EdgeInsets.only(left: i == 0 ? 0 : 2),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+      ],
+    ),
   );
 }

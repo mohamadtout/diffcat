@@ -109,44 +109,159 @@ const diffPalettes = [
   ),
 ];
 
-/// The chosen palette plus any colors the user changed, per brightness.
-class DiffColorSettings {
-  const DiffColorSettings({this.palette = 'github', this.light = const {}, this.dark = const {}});
+/// Every slot of [c], by name (a profile's full set of colors).
+Map<String, int> _slotsJson(DiffColors c) => {for (final slot in DiffColorSlot.values) slot.name: c[slot].toARGB32()};
 
-  factory DiffColorSettings.fromJson(Map<String, dynamic> j) {
-    Map<DiffColorSlot, Color> slots(Object? m) => {
-      if (m is Map<String, dynamic>)
-        for (final e in m.entries)
-          if (DiffColorSlot.values.asNameMap()[e.key] case final slot? when e.value is int) slot: Color(e.value as int),
-    };
-    return DiffColorSettings(
-      palette: (j['palette'] as String?) ?? 'github',
-      light: slots(j['light']),
-      dark: slots(j['dark']),
-    );
-  }
+/// Colors read back from JSON, skipping unknown slots and junk values.
+Map<DiffColorSlot, Color> _slotsFrom(Object? m) => {
+  if (m is Map<String, dynamic>)
+    for (final e in m.entries)
+      if (DiffColorSlot.values.asNameMap()[e.key] case final slot? when e.value is int) slot: Color(e.value as int),
+};
+
+/// The chosen palette, the user's own profiles, the presets they deleted, and
+/// any colors they changed on a preset (per brightness).
+///
+/// A preset's edits are overrides on top of it, dropped when switching away.
+/// A profile owns its colors: editing one changes the profile itself.
+class DiffColorSettings {
+  const DiffColorSettings({
+    this.palette = 'github',
+    this.light = const {},
+    this.dark = const {},
+    this.profiles = const [],
+    this.hidden = const {},
+  });
+
+  factory DiffColorSettings.fromJson(Map<String, dynamic> j) => DiffColorSettings(
+    palette: (j['palette'] as String?) ?? 'github',
+    light: _slotsFrom(j['light']),
+    dark: _slotsFrom(j['dark']),
+    profiles: [
+      if (j['profiles'] case final List<dynamic> list)
+        for (final p in list)
+          if (p case {'id': final String id, 'label': final String label})
+            DiffPalette(
+              id,
+              label,
+              DiffColors.light.withAll(_slotsFrom(p['light'])),
+              DiffColors.dark.withAll(_slotsFrom(p['dark'])),
+            ),
+    ],
+    hidden: {if (j['hidden'] case final List<dynamic> list) ...list.whereType<String>()},
+  );
 
   final String palette;
+
+  /// Changes on top of a preset (empty while a profile is selected).
   final Map<DiffColorSlot, Color> light;
   final Map<DiffColorSlot, Color> dark;
 
-  DiffPalette get preset => diffPalettes.firstWhere((p) => p.id == palette, orElse: () => diffPalettes.first);
+  /// The user's own palettes, oldest first.
+  final List<DiffPalette> profiles;
+
+  /// Ids of deleted presets ("Reset colors" brings them back).
+  final Set<String> hidden;
+
+  /// Presets that weren't deleted, then the user's profiles.
+  List<DiffPalette> get available => [
+    for (final p in diffPalettes)
+      if (!hidden.contains(p.id)) p,
+    ...profiles,
+  ];
+
+  /// The palette in use. If it's gone, the first one left; GitHub's colors if
+  /// everything was deleted.
+  DiffPalette get preset {
+    final all = available;
+    return all.where((p) => p.id == palette).firstOrNull ?? all.firstOrNull ?? diffPalettes.first;
+  }
+
+  bool isProfile(String id) => profiles.any((p) => p.id == id);
+
+  bool get editingProfile => isProfile(preset.id);
 
   DiffColors get lightColors => preset.light.withAll(light);
   DiffColors get darkColors => preset.dark.withAll(dark);
 
   Map<DiffColorSlot, Color> overrides({required bool dark}) => dark ? this.dark : light;
 
+  DiffColorSettings copyWith({
+    String? palette,
+    Map<DiffColorSlot, Color>? light,
+    Map<DiffColorSlot, Color>? dark,
+    List<DiffPalette>? profiles,
+    Set<String>? hidden,
+  }) => DiffColorSettings(
+    palette: palette ?? this.palette,
+    light: light ?? this.light,
+    dark: dark ?? this.dark,
+    profiles: profiles ?? this.profiles,
+    hidden: hidden ?? this.hidden,
+  );
+
+  /// Switches palette, dropping changes made on top of the old one.
+  DiffColorSettings select(String id) => copyWith(palette: id, light: const {}, dark: const {});
+
+  /// Sets one color of the palette in use: into the profile itself, or as an
+  /// override on a preset ([color] null goes back to the preset's color).
   DiffColorSettings withOverride(DiffColorSlot slot, Color? color, {required bool dark}) {
+    final current = preset;
+    if (isProfile(current.id)) {
+      if (color == null) return this;
+      final edited = DiffPalette(
+        current.id,
+        current.label,
+        dark ? current.light : current.light.withAll({slot: color}),
+        dark ? current.dark.withAll({slot: color}) : current.dark,
+      );
+      return copyWith(profiles: [for (final p in profiles) p.id == current.id ? edited : p]);
+    }
     final next = {...overrides(dark: dark)};
     color == null ? next.remove(slot) : next[slot] = color;
-    return DiffColorSettings(palette: palette, light: dark ? light : next, dark: dark ? next : this.dark);
+    return copyWith(light: dark ? light : next, dark: dark ? next : this.dark);
   }
+
+  /// A new profile named [label] with the colors shown now (light and dark),
+  /// selected. [id] must be unique.
+  DiffColorSettings withNewProfile(String id, String label) => copyWith(
+    palette: id,
+    light: const {},
+    dark: const {},
+    profiles: [...profiles, DiffPalette(id, label, lightColors, darkColors)],
+  );
+
+  DiffColorSettings renamed(String id, String label) =>
+      copyWith(profiles: [for (final p in profiles) p.id == id ? DiffPalette(p.id, label, p.light, p.dark) : p]);
+
+  /// Deletes a profile, or hides a preset. The last palette can't be deleted.
+  /// Deleting the one in use switches to the first one left.
+  DiffColorSettings without(String id) {
+    if (available.length <= 1) return this;
+    final next = isProfile(id)
+        ? copyWith(
+            profiles: [
+              for (final p in profiles)
+                if (p.id != id) p,
+            ],
+          )
+        : copyWith(hidden: {...hidden, id});
+    return palette == id || preset.id == id ? next.select(next.available.first.id) : next;
+  }
+
+  /// "Reset colors": GitHub colors, every preset back, preset edits dropped.
+  /// The user's profiles are kept.
+  DiffColorSettings reset() => DiffColorSettings(profiles: profiles);
 
   Map<String, dynamic> toJson() => {
     'palette': palette,
     'light': {for (final e in light.entries) e.key.name: e.value.toARGB32()},
     'dark': {for (final e in dark.entries) e.key.name: e.value.toARGB32()},
+    'profiles': [
+      for (final p in profiles)
+        {'id': p.id, 'label': p.label, 'light': _slotsJson(p.light), 'dark': _slotsJson(p.dark)},
+    ],
+    'hidden': hidden.toList(),
   };
 }
 
@@ -169,12 +284,18 @@ class DiffColorsNotifier extends Notifier<DiffColorSettings> {
     ref.read(sharedPrefsProvider).setString(StoreKeys.diffColors, jsonEncode(s.toJson()));
   }
 
-  /// Switches palette, dropping individual changes (they were made on top of
-  /// the old one).
-  void setPalette(String id) => _save(DiffColorSettings(palette: id));
+  void setPalette(String id) => _save(state.select(id));
 
   void setColor(DiffColorSlot slot, Color? color, {required bool dark}) =>
       _save(state.withOverride(slot, color, dark: dark));
 
-  void reset() => _save(const DiffColorSettings());
+  /// Saves the colors shown now as a new profile and selects it.
+  void createProfile(String label) =>
+      _save(state.withNewProfile('profile-${DateTime.now().microsecondsSinceEpoch}', label));
+
+  void renameProfile(String id, String label) => _save(state.renamed(id, label));
+
+  void delete(String id) => _save(state.without(id));
+
+  void reset() => _save(state.reset());
 }

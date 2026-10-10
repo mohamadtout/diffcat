@@ -28,6 +28,7 @@ const _sizes = <(String, Size, double)>[
   ('small phone', Size(320, 568), 1),
   ('phone', Size(360, 640), 1),
   ('phone, large text', Size(360, 640), 1.5),
+  ('phone, small text', Size(384, 823), 0.9), // a common Android default
   ('iPhone', Size(393, 852), 1),
   ('large phone, largest text', Size(440, 956), 2),
   ('phone landscape', Size(852, 393), 1),
