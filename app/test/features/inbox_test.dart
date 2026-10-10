@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/demo_app.dart';
 import '../support/demo_github.dart';
+import '../support/settle.dart';
 
 class _MockApi extends Mock implements GitHubApi {}
 
@@ -31,13 +32,6 @@ GhSearchPull _p(String repo, int n) => GhSearchPull.fromJson({
   'user': {'login': 'bob'},
   'updated_at': '2026-10-09T10:00:00Z',
 });
-
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 20; i++) {
-    await tester.pump(const Duration(milliseconds: 50));
-    if (!tester.binding.hasScheduledFrame) return;
-  }
-}
 
 void main() {
   test('search results know their repo and key', () {
@@ -163,25 +157,25 @@ void main() {
     addTearDown(tester.view.reset);
     final env = await DemoEnv.create();
     await tester.pumpWidget(env.app());
-    await _settle(tester);
+    await settle(tester);
     await tester.tap(find.text('Inbox'));
-    await _settle(tester);
+    await settle(tester);
     expect(find.byType(InboxScreen), findsOneWidget);
     expect(find.text(DemoGitHub.openPullTitle), findsOneWidget);
     expect(find.text('Retry dead-letter queue on startup'), findsOneWidget);
 
     await tester.tap(find.text('Yours'));
-    await _settle(tester);
+    await settle(tester);
     expect(find.text('Round zero-decimal currencies to whole units'), findsOneWidget);
 
     await tester.tap(find.text('Review requested'));
-    await _settle(tester);
+    await settle(tester);
     await tester.tap(find.text(DemoGitHub.openPullTitle));
-    await _settle(tester);
+    await settle(tester);
     expect(find.byType(PullScreen), findsOneWidget);
 
     await tester.pageBack();
-    await _settle(tester);
+    await settle(tester);
     expect(find.byType(InboxScreen), findsOneWidget, reason: 'back returns to the inbox');
     expect(env.github.unknown, isEmpty);
     expect(

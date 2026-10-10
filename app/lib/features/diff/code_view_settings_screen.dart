@@ -5,6 +5,8 @@ import '../../core/layout/readable_width.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/code_fonts.dart';
 import '../../core/widgets/color_picker.dart';
+import '../../core/widgets/common.dart';
+import '../../core/widgets/text_input_dialog.dart';
 import '../../data/github/models/models.dart';
 import 'diff_colors.dart';
 import 'diff_settings.dart';
@@ -56,11 +58,6 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
     final selected = colors.preset;
     final isProfile = colors.editingProfile;
 
-    Widget section(String title) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-    );
-
     // The preview shows the mode being edited, even if the app is in the other.
     final previewTheme = (dark ? AppTheme.dark : AppTheme.light)(diff: effective);
 
@@ -109,7 +106,7 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
               ),
             ),
 
-            section('Font'),
+            const SectionHeader('Font'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Wrap(
@@ -167,7 +164,7 @@ class _CodeViewSettingsScreenState extends ConsumerState<CodeViewSettingsScreen>
               onChanged: notifier.setFullFile,
             ),
 
-            section('Diff colors'),
+            const SectionHeader('Diff colors'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Wrap(
@@ -297,54 +294,15 @@ Future<void> _delete(
       .showSnackBar(SnackBar(content: Text('${palette.label} removed. Reset colors brings it back.')));
 }
 
-Future<String?> _askName(BuildContext context, {required String title, required String initial}) => showDialog<String>(
-  context: context,
-  builder: (_) => _NameDialog(title: title, initial: initial),
+Future<String?> _askName(BuildContext context, {required String title, required String initial}) => askText(
+  context,
+  title: title,
+  action: 'Save',
+  initial: initial,
+  label: 'Name',
+  helper: 'Starts from the colors shown, light and dark',
+  maxLength: 30,
 );
-
-/// Owns its TextEditingController so it is disposed only after the dialog's
-/// exit animation finishes.
-class _NameDialog extends StatefulWidget {
-  const _NameDialog({required this.title, required this.initial});
-
-  final String title;
-  final String initial;
-
-  @override
-  State<_NameDialog> createState() => _NameDialogState();
-}
-
-class _NameDialogState extends State<_NameDialog> {
-  late final _ctrl = TextEditingController(text: widget.initial)
-    ..selection = TextSelection(baseOffset: 0, extentOffset: widget.initial.length);
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final name = _ctrl.text.trim();
-    if (name.isNotEmpty) Navigator.pop(context, name);
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.title),
-    content: TextField(
-      controller: _ctrl,
-      autofocus: true,
-      maxLength: 30,
-      decoration: const InputDecoration(labelText: 'Name', helperText: 'Starts from the colors shown, light and dark'),
-      onSubmitted: (_) => _submit(),
-    ),
-    actions: [
-      TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-      FilledButton(onPressed: _submit, child: const Text('Save')),
-    ],
-  );
-}
 
 /// Added / removed colors of a palette, for its chip. The chip sizes its
 /// avatar to the label's line height, which shrinks with smaller system text,

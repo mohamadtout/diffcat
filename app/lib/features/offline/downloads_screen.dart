@@ -8,7 +8,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/relative_time.dart';
 import '../../core/widgets/async_view.dart';
 import '../../data/github/models/models.dart';
-import '../repos/repos_screen.dart';
 import 'download_button.dart';
 import 'offline_providers.dart';
 import 'offline_store.dart';

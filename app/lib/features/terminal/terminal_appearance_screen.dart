@@ -9,6 +9,7 @@ import 'package:xterm/xterm.dart';
 
 import '../../core/layout/readable_width.dart';
 import '../../core/theme/code_fonts.dart';
+import '../../core/widgets/common.dart';
 import 'shell_integration.dart';
 import 'terminal_appearance.dart';
 import 'terminal_chrome.dart';
@@ -54,10 +55,6 @@ class _TerminalAppearanceScreenState extends ConsumerState<TerminalAppearanceScr
     final preset = presetFor(a.theme, appIsDark: appDark);
     final theme = Theme.of(context);
 
-    Widget section(String title) => Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-      child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
-    );
     Widget slider(String label, double value, double min, double max, ValueChanged<double> onChanged, String shown) =>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -118,7 +115,7 @@ class _TerminalAppearanceScreenState extends ConsumerState<TerminalAppearanceScr
               ),
             ),
 
-            section('Colors'),
+            const SectionHeader('Colors'),
             SizedBox(
               height: 76,
               child: ListView(
@@ -142,7 +139,7 @@ class _TerminalAppearanceScreenState extends ConsumerState<TerminalAppearanceScr
               ),
             ),
 
-            section('Font'),
+            const SectionHeader('Font'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Wrap(
@@ -190,7 +187,7 @@ class _TerminalAppearanceScreenState extends ConsumerState<TerminalAppearanceScr
               ),
             ),
 
-            section('Background'),
+            const SectionHeader('Background'),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: SegmentedButton<BackgroundKind>(
@@ -285,7 +282,7 @@ class _TerminalAppearanceScreenState extends ConsumerState<TerminalAppearanceScr
               ),
             ],
 
-            section('Status bar'),
+            const SectionHeader('Status bar'),
             SwitchListTile(
               title: const Text('Show status bar'),
               subtitle: const Text('Folder and git branch of the shell'),
@@ -337,7 +334,7 @@ class _TerminalAppearanceScreenState extends ConsumerState<TerminalAppearanceScr
               const _ShellIntegrationTiles(),
             ],
 
-            section('Keys'),
+            const SectionHeader('Keys'),
             SwitchListTile(
               title: const Text('Key toolbar'),
               subtitle: const Text('Esc, Tab, Ctrl, Alt, arrows… (turn off with a hardware keyboard)'),

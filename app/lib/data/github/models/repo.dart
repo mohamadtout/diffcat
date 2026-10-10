@@ -5,6 +5,12 @@ extension RepoRefX on RepoRef {
   String get fullName => '$owner/$name';
 }
 
+/// Parses `owner/name` or a github.com URL.
+RepoRef? parseRepoInput(String input) {
+  final m = RegExp(r'^\s*(?:https?://github\.com/)?([\w.-]+)/([\w.-]+?)(?:\.git)?/?\s*$').firstMatch(input);
+  return m == null ? null : (owner: m.group(1)!, name: m.group(2)!);
+}
+
 class GhUser {
   const GhUser({required this.login, this.avatarUrl, this.name});
 

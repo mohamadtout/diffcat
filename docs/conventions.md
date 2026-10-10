@@ -9,6 +9,7 @@
 ## Dart / Flutter
 
 - **Feature-first folders:** `features/<feature>/` holds that feature's screens, providers, and pure logic. Shared UI goes in `core/widgets`; shared infrastructure goes in `core/*`.
+- **Reuse before copying:** `core/widgets` has `AsyncView`, `EmptyView`, `SectionHeader` (settings group headings), `askText` (one-line text dialogs with validation), the color picker and the text-size sheet. When a screen file grows past ~500 lines, move its leaf widgets out (a `part` file keeps private ones private, as `diff_rows.dart` does).
 - **Pure logic in plain Dart files** (parsers, builders, executors) with no Flutter imports where possible, so it's unit-testable. Examples: `diff_parser.dart`, `tree_builder.dart`, `key_sequence.dart`, `command_line.dart`.
 - **Models:** hand-written immutable classes with `fromJson` and explicit casts. No codegen, which keeps the build simple for agents and CI.
 - **Providers:** declare them next to the feature that owns them (`*_providers.dart`). Use records as family keys. Prefer `autoDispose` unless state must survive navigation, and say why in a comment when it must.
@@ -29,7 +30,7 @@
 ## Testing
 
 - Unit tests for parsers, executors, and HTTP behaviour. `GitHubClient` is tested with a scripted Dio adapter (`test/data/github_client_test.dart`). The API is mocked with `mocktail`.
-- Widget tests use `SharedPreferences.setMockInitialValues` and `FlutterSecureStorage.setMockInitialValues`, and override `sharedPrefsProvider`.
+- Widget tests wait with `settle` (`test/support/settle.dart`), not `pumpAndSettle`, which spins forever on progress indicators. They use `SharedPreferences.setMockInitialValues` and `FlutterSecureStorage.setMockInitialValues`, and override `sharedPrefsProvider`.
 - **Demo project** (`test/support/demo_github.dart`, `demo_app.dart`): a fictional `demo/payments-api` with commits, diffs, PRs, a file tree, tags and SSH hosts. `DemoEnv` runs the whole `GitReviewerApp` on it, with in-memory prefs and secure storage and `githubAdapterProvider` overridden. The screen-size sweep, the device smoke test and the store screenshots all use it. When a screen calls a new endpoint, add it there: unknown calls are recorded and fail those tests.
 - **Screen-size sweep** (`test/widgets/screen_sizes_test.dart`, part of `make check`): every route, plus the sheets and dialogs, at 12 sizes from a 320×568 phone to a desktop. It covers portrait and landscape, text at 1×, 1.5× and 2×, and signed in and out. Any layout error fails the test with the size and screen. It loads the SDK's Roboto (`test/support/fonts.dart`) so text widths are realistic. Add new routes to its list.
 - **Store screenshots:** `make store-screenshots DEVICE=<id> NAME=<folder>`, then `make store-frames`. See [store/README.md](../store/README.md).
