@@ -27,7 +27,7 @@ abstract final class Groups {
   final String group;
   if (rest.isEmpty || rest == '/branches' || rest == '/tags' || rest == '/pulls') {
     group = Groups.repo;
-  } else if (match(r'^/pulls/(\d+)(/files|/commits)?$') case final p?) {
+  } else if (match(r'^/pulls/(\d+)(/files|/commits|/reviews|/comments)?$') case final p?) {
     group = Groups.pull(int.parse(p[1]!));
   } else if (rest == '/commits' && query?['sha'] != null && query?['path'] == null) {
     group = Groups.branch('${query!['sha']}');
@@ -62,30 +62,93 @@ bool isImmutableKey(String key) {
   return _sha.hasMatch(query['ref'] ?? '');
 }
 
+/// Which commits of a branch a download saves diffs for.
+enum CommitRange {
+  /// The newest [DownloadOptions.commits].
+  recent,
+
+  /// Everything newer than [DownloadOptions.since], and that commit itself.
+  since,
+
+  /// The branch's whole history.
+  all,
+}
+
+/// Which pull requests a branch download saves.
+enum PullScope {
+  none,
+  open,
+
+  /// Open ones plus the 30 most recently updated closed ones (the PR tab's
+  /// first page of each filter).
+  openAndClosed,
+}
+
 /// What a branch download includes.
 class DownloadOptions {
-  const DownloadOptions({this.commits = 30, this.pulls = true, this.files = false});
+  const DownloadOptions({
+    this.range = CommitRange.recent,
+    this.commits = 30,
+    this.since,
+    this.pulls = PullScope.open,
+    this.files = false,
+  });
 
   factory DownloadOptions.fromJson(Map<String, dynamic> j) => DownloadOptions(
+    range: CommitRange.values.asNameMap()[j['range']] ?? CommitRange.recent,
     commits: (j['commits'] as int?) ?? 30,
-    pulls: (j['pulls'] as bool?) ?? true,
+    since: j['since'] as String?,
+    pulls: switch (j['pulls']) {
+      final String name => PullScope.values.asNameMap()[name] ?? PullScope.open,
+      false => PullScope.none, // before 1.1.1: a switch for open PRs
+      _ => PullScope.open,
+    },
     files: (j['files'] as bool?) ?? false,
   );
 
-  /// How many recent commits get their diffs saved.
+  final CommitRange range;
+
+  /// How many recent commits get their diffs saved ([CommitRange.recent]).
   final int commits;
 
-  /// Open pull requests with their diffs and commits.
-  final bool pulls;
+  /// Sha (full or abbreviated) of the oldest commit to save ([CommitRange.since]).
+  final String? since;
+
+  /// Pull requests with their diffs, commits and review threads.
+  final PullScope pulls;
 
   /// Every text file at the branch head (one archive download), not just diffs.
   final bool files;
 
-  DownloadOptions copyWith({int? commits, bool? pulls, bool? files}) =>
-      DownloadOptions(commits: commits ?? this.commits, pulls: pulls ?? this.pulls, files: files ?? this.files);
+  /// Largest number of commits [recent] accepts.
+  static const maxCommits = 10000;
 
-  Map<String, dynamic> toJson() => {'commits': commits, 'pulls': pulls, 'files': files};
+  DownloadOptions copyWith({CommitRange? range, int? commits, String? since, PullScope? pulls, bool? files}) =>
+      DownloadOptions(
+        range: range ?? this.range,
+        commits: commits ?? this.commits,
+        since: since ?? this.since,
+        pulls: pulls ?? this.pulls,
+        files: files ?? this.files,
+      );
+
+  /// What's saved, for the downloads list: "30 commits", "since a1b2c3d", "full history".
+  String get rangeLabel => switch (range) {
+    CommitRange.recent => '$commits commit${commits == 1 ? '' : 's'}',
+    CommitRange.since => 'since ${shortSha(since ?? '')}',
+    CommitRange.all => 'full history',
+  };
+
+  Map<String, dynamic> toJson() => {
+    'range': range.name,
+    'commits': commits,
+    'since': ?since,
+    'pulls': pulls.name,
+    'files': files,
+  };
 }
+
+String shortSha(String sha) => sha.length > 7 ? sha.substring(0, 7) : sha;
 
 class SavedCommit {
   const SavedCommit(this.sha, this.title);
@@ -266,6 +329,14 @@ class OfflineStore extends ChangeNotifier implements ResponseCache {
     await File('${dir.path}/$file').writeAsBytes(bytes, flush: false);
     repo.entries[key] = SavedEntry(file: file, bytes: bytes.length, group: owner.group);
     _dirty.add(_id(repo.fullName));
+  }
+
+  /// Records a pull request downloaded on its own (from its screen).
+  void savePull(String fullName, int number, String title) {
+    final repo = _repos.putIfAbsent(_id(fullName), () => SavedRepo(fullName));
+    repo.pulls[number] = title;
+    repo.updatedAt = DateTime.now();
+    _dirty.add(_id(fullName));
   }
 
   /// Records what a finished branch download covered.

@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/data/github/github_api.dart';
 import 'package:git_reviewer/data/github/github_client.dart';
 import 'package:git_reviewer/data/github/github_exception.dart';
+import 'package:git_reviewer/data/github/models/models.dart';
 import 'package:git_reviewer/data/github/response_cache.dart';
 import 'package:git_reviewer/features/offline/downloader.dart';
 import 'package:git_reviewer/features/offline/offline_store.dart';
@@ -33,10 +34,10 @@ class _FakeGitHub implements HttpClientAdapter {
       ],
   };
 
-  Map<String, dynamic> _pull(int n) => {
+  Map<String, dynamic> _pull(int n, {String state = 'open'}) => {
     'number': n,
     'title': 'PR $n',
-    'state': 'open',
+    'state': state,
     'user': {'login': 'dev'},
     'head': {'ref': 'feature', 'sha': sha(90)},
     'base': {'ref': 'main', 'sha': sha(0)},
@@ -76,10 +77,19 @@ class _FakeGitHub implements HttpClientAdapter {
         ],
       };
     }
-    if (p == '/repos/o/r/pulls') return [_pull(7)];
-    if (p == '/repos/o/r/pulls/7') return _pull(7);
-    if (p == '/repos/o/r/pulls/7/files') return <Object>[];
-    if (p == '/repos/o/r/pulls/7/commits') return [_commit(0)];
+    if (p == '/repos/o/r/pulls') {
+      return switch (q['state']) {
+        'closed' => [_pull(8, state: 'closed')],
+        'all' => [_pull(7), _pull(8, state: 'closed')],
+        _ => [_pull(7)],
+      };
+    }
+    if (RegExp(r'^/repos/o/r/pulls/(7|8)$').hasMatch(p)) {
+      final n = int.parse(p.split('/').last);
+      return _pull(n, state: n == 8 ? 'closed' : 'open');
+    }
+    if (RegExp(r'^/repos/o/r/pulls/(7|8)/(files|reviews|comments)$').hasMatch(p)) return <Object>[];
+    if (RegExp(r'^/repos/o/r/pulls/(7|8)/commits$').hasMatch(p)) return [_commit(0)];
     return null;
   }
 
@@ -97,7 +107,17 @@ class _FakeGitHub implements HttpClientAdapter {
     if (data == null) {
       return ResponseBody.fromString(jsonEncode({'message': 'Not Found'}), 404, headers: _jsonHeaders);
     }
-    return ResponseBody.fromString(jsonEncode(data), 200, headers: _jsonHeaders);
+    return ResponseBody.fromString(jsonEncode(data), 200, headers: {..._jsonHeaders, 'link': ?_link(o)});
+  }
+
+  /// Pagination of the commit list, like GitHub's `Link` header.
+  List<String>? _link(RequestOptions o) {
+    if (o.path != '/repos/o/r/commits') return null;
+    final page = o.queryParameters['page'] as int, per = o.queryParameters['per_page'] as int;
+    final last = (commitCount / per).ceil();
+    if (page >= last) return null;
+    String url(int p) => '<https://api.github.com/repos/o/r/commits?per_page=$per&page=$p>';
+    return ['${url(page + 1)}; rel="next", ${url(last)}; rel="last"'];
   }
 
   static const _jsonHeaders = {
@@ -193,11 +213,11 @@ void main() {
       api: _api(fake, cache: store, mode: CacheMode.record),
     ).run();
 
-    await download(const DownloadOptions(pulls: false));
+    await download(const DownloadOptions(pulls: PullScope.none));
     fake
       ..commitCount = 4
       ..requests.clear();
-    await download(const DownloadOptions(pulls: false, files: true));
+    await download(const DownloadOptions(pulls: PullScope.none, files: true));
     final commitDetails = fake.requests.where((p) => p.startsWith('/repos/o/r/commits/')).toList();
     expect(commitDetails, ['/repos/o/r/commits/${_FakeGitHub.sha(3)}'], reason: 'only the new commit');
     expect(fake.requests.where((p) => p.contains('/tarball/')), hasLength(1));
@@ -295,7 +315,7 @@ void main() {
       store: store,
       repo: (owner: 'o', name: 'r'),
       branch: 'main',
-      options: const DownloadOptions(pulls: false),
+      options: const DownloadOptions(pulls: PullScope.none),
       onProgress: (_) {},
       api: _api(fake, cache: store, mode: CacheMode.record),
     ).run();
@@ -385,6 +405,141 @@ void main() {
       await ui.pulls(repo);
       await ui.commit(repo, _FakeGitHub.sha(1));
       expect(fake.requests, isEmpty);
+    });
+  });
+
+  group('download options', () {
+    late OfflineStore store;
+    late _FakeGitHub fake;
+    const repo = (owner: 'o', name: 'r');
+    setUp(() async {
+      store = await OfflineStore.open(dir);
+      fake = _FakeGitHub()..commitCount = 100;
+    });
+    Future<List<String>> download(DownloadOptions options) async {
+      await BranchDownloader(
+        store: store,
+        repo: repo,
+        branch: 'main',
+        options: options,
+        onProgress: (_) {},
+        api: _api(fake, cache: store, mode: CacheMode.record),
+      ).run();
+      return [for (final c in store.repo('o/r')!.branches['main']!.commits) c.sha];
+    }
+
+    test('any number of the latest commits', () async {
+      final shas = await download(const DownloadOptions(commits: 45, pulls: PullScope.none));
+      expect(shas, [for (var i = 0; i < 45; i++) _FakeGitHub.sha(i)]);
+      expect(fake.requests.where((p) => p == '/repos/o/r/commits'), hasLength(2), reason: '2 pages of 30');
+    });
+
+    test('since a commit: it and everything newer', () async {
+      final since = _FakeGitHub.sha(40).toUpperCase(); // fake shas share prefixes, so the full one
+      final shas = await download(DownloadOptions(range: CommitRange.since, since: since, pulls: PullScope.none));
+      expect(shas, hasLength(41));
+      expect(shas.last, _FakeGitHub.sha(40));
+      expect(fake.requests.where((p) => p == '/repos/o/r/commits'), hasLength(2), reason: 'stops paging once found');
+
+      await expectLater(
+        download(const DownloadOptions(range: CommitRange.since, since: 'deadbeef', pulls: PullScope.none)),
+        throwsA(isA<SinceCommitNotFound>().having((e) => '$e', 'message', contains('last 100 commits of main'))),
+      );
+    });
+
+    test('the whole history, counted in one request', () async {
+      final shas = await download(const DownloadOptions(range: CommitRange.all, pulls: PullScope.none));
+      expect(shas, hasLength(100));
+      fake.requests.clear();
+      expect(await _api(fake).commitCount(repo, 'main'), 100);
+      expect(fake.requests, hasLength(1));
+      fake.commitCount = 1;
+      expect(await _api(fake).commitCount(repo, 'main'), 1, reason: 'no Link header with a single page');
+    });
+
+    test('open and closed pull requests, with their review threads, read offline', () async {
+      fake.commitCount = 3;
+      await download(const DownloadOptions(pulls: PullScope.openAndClosed));
+      final saved = store.repo('o/r')!;
+      expect(saved.pulls, {7: 'PR 7', 8: 'PR 8'});
+      expect(saved.groupBytes(Groups.pull(8)), greaterThan(0));
+      final reviews = GitHubClient.cacheKey('/repos/o/r/pulls/8/reviews', query: {'per_page': 100, 'page': 1});
+      expect(saved.entries[reviews]?.group, Groups.pull(8), reason: 'review threads belong to the PR');
+
+      fake.online = false;
+      final ui = GitHubApi(
+        GitHubClient(
+          dio: Dio(BaseOptions(baseUrl: 'https://api.github.com'))..httpClientAdapter = fake,
+          cache: store,
+          cacheOnly: (key) => true,
+        ),
+      );
+      expect((await ui.pulls(repo, state: 'closed')).items.single.number, 8);
+      expect((await ui.pulls(repo, state: 'all')).items, hasLength(2));
+      expect(await ui.reviews(repo, 8), isEmpty);
+      expect(await ui.reviewComments(repo, 7), isEmpty);
+    });
+
+    test('one pull request on its own, from its screen', () async {
+      await PullDownloader(
+        store: store,
+        repo: repo,
+        number: 8,
+        onProgress: (_) {},
+        api: _api(fake, cache: store, mode: CacheMode.record),
+      ).run();
+      final saved = (await OfflineStore.open(dir)).repo('o/r')!;
+      expect(saved.pulls, {8: 'PR 8'});
+      expect(saved.branches, isEmpty);
+      expect(fake.requests, [
+        '/repos/o/r',
+        '/repos/o/r/pulls/8',
+        '/repos/o/r/pulls/8/files',
+        '/repos/o/r/pulls/8/commits',
+        '/repos/o/r/pulls/8/reviews',
+        '/repos/o/r/pulls/8/comments',
+      ]);
+    });
+
+    test('options survive JSON, and old ones still read', () {
+      const o = DownloadOptions(
+        range: CommitRange.since,
+        since: 'abc1234',
+        pulls: PullScope.openAndClosed,
+        files: true,
+      );
+      final back = DownloadOptions.fromJson(o.toJson());
+      expect(
+        (back.range, back.since, back.pulls, back.files),
+        (CommitRange.since, 'abc1234', PullScope.openAndClosed, true),
+      );
+      expect(back.rangeLabel, 'since abc1234');
+
+      final old = DownloadOptions.fromJson({'commits': 100, 'pulls': false, 'files': false});
+      expect((old.range, old.commits, old.pulls), (CommitRange.recent, 100, PullScope.none));
+      expect(DownloadOptions.fromJson({'commits': 30, 'pulls': true}).pulls, PullScope.open);
+      expect(const DownloadOptions(range: CommitRange.all).rangeLabel, 'full history');
+    });
+
+    test('"All files" estimate skips big and binary files', () {
+      GhTreeEntry blob(String path, int size) =>
+          GhTreeEntry(path: path, type: TreeEntryType.blob, sha: 'x', size: size);
+      final e = estimateTextFiles(
+        GhTree(
+          sha: 'x',
+          truncated: true,
+          entries: [
+            blob('README.md', 1000),
+            blob('src/a.dart', 3000),
+            blob('assets/logo.PNG', 50000),
+            blob('data/huge.json', 5000000),
+            const GhTreeEntry(path: 'src', type: TreeEntryType.tree, sha: 'y'),
+          ],
+        ),
+      );
+      expect((e.files, e.truncated), (2, true));
+      expect(e.bytes, greaterThanOrEqualTo(4000));
+      expect(e.bytes, lessThan(4500));
     });
   });
 }

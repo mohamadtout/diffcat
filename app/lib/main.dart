@@ -34,10 +34,7 @@ Future<void> main() async {
         localNotificationsProvider.overrideWithValue(notifications),
         offlineStoreProvider.overrideWithValue(offline),
       ],
-      // Only retry transient failures; 401/404/rate-limit won't fix themselves.
-      retry: (count, error) => count < 3 && (error is! GitHubException || error.isRetryable)
-          ? Duration(milliseconds: 400 * (1 << count))
-          : null,
+      retry: retryTransient,
       child: const GitReviewerApp(),
     ),
   );
