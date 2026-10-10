@@ -349,7 +349,7 @@ class _FolderMenu extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => PopupMenuButton<String>(
     tooltip: 'Folder options',
-    icon: const Icon(Icons.more_vert, size: 20),
+    icon: Icon(Icons.adaptive.more, size: 20), // ⋮ on Android, ⋯ on iOS, like the repo rows
     onSelected: (v) async {
       final library = ref.read(repoLibraryProvider.notifier);
       if (v == 'up' || v == 'down') {
