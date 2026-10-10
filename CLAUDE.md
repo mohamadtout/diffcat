@@ -10,7 +10,8 @@ Android first; iOS/iPadOS planned (keep everything responsive and platform-neutr
 app/         Flutter app (Dart)          → docs/architecture.md
 docs/        Focused docs — read the one relevant to your task
 SETUP.md     Manual, owner-only configuration (token, SSH, signing)
-store/       App Store / Google Play listings and screenshots → store/README.md
+store/       App Store / Google Play / GitHub Marketplace listings and screenshots → store/README.md
+marketplace-webhook/  Cloudflare Worker the Marketplace listing requires (stateless) → its README.md
 PRIVACY.md   Privacy policy (linked from both stores)
 CHANGELOG.md What's in each version; branching and versioning rules
 Makefile     Entry points: make check | fmt | run | apk
@@ -50,7 +51,8 @@ number always goes up (stores reject reused numbers). Record changes in CHANGELO
 - **Secrets only in secure storage** (`SecureStore`, keys in `StoreKeys`). Never in prefs, logs, or code.
 - **No backend.** Don't reintroduce servers, webhooks or Firebase without the owner asking. Notifications are
   on-device polling (`app/lib/features/notifications/`); the background isolate has no Riverpod, so keep
-  `Poller` dependent only on `GitHubApi` + `SharedPreferences`.
+  `Poller` dependent only on `GitHubApi` + `SharedPreferences`. The one exception is `marketplace-webhook/` (D15):
+  a stateless Cloudflare Worker the Marketplace listing requires. The app never talks to it; keep it storing nothing.
 - **Every screen is reachable by a route** in `Routes` (notifications and iPad multi-pane depend on it).
 - **Responsive by default:** use `WindowSize` / `SplitView` / `ReadableWidth`; no phone-only layouts. New routes go in
   `test/widgets/screen_sizes_test.dart`, which checks every screen from small phones to desktops.

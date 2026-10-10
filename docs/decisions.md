@@ -28,6 +28,15 @@ For a single-user app, a fine-grained PAT is the simplest secure option, with no
 GitHub** through the device flow. It needs no client secret or redirect, so the app stays backend-free; the client ID
 is public. Pasting a PAT still works, and is the only option in builds without the ID (forks, CI).
 
+*Amended 2026-10-10:* the owner registered Diffcat's OAuth App and its client ID is now the built-in default, so
+every build (store, `flutter run`, CI) offers the button. That's how other open-source GitHub clients ship theirs:
+the device flow has no secret, and the ID only names the app on GitHub's approval page. Forks override it with
+`--dart-define=GITHUB_CLIENT_ID` (empty hides the button).
+
+While the user approves in the browser, Android cuts the backgrounded app's network, so a poll fails with "Failed host
+lookup". Polling treats that as temporary (only a GitHub answer or the code expiring ends it) and polls again the
+moment the app returns to the foreground.
+
 Signing in is optional (2026-10-08): public repos are readable without a token, so the app opens to a public-repo browser and the token only unlocks your repo list, private repos and the 5,000/hour limit (60/hour signed out). Notifications also work signed out, within the lower limit.
 
 ### D7: Riverpod 3 without codegen, hand-written models
@@ -94,3 +103,12 @@ Android backups are off (`allowBackup=false`, `data_extraction_rules.xml` for cl
 the offline folder is excluded from iCloud backup: offline copies can be private source code, which the privacy policy
 promises never leaves the device. Secure storage couldn't be restored on another device anyway (its key is in the
 Keystore/Keychain). The cost is that a new phone starts fresh: re-add the token and SSH hosts.
+
+### D15: One stateless Worker, only for the GitHub Marketplace webhook
+GitHub requires an active webhook on every Marketplace listing, free ones included (2026-10-10). Diffcat is free with
+no accounts, so `marketplace-webhook/` only verifies GitHub's signature, logs and answers 204. It stores nothing,
+never sees a token, and the app never calls it, so the app itself still has no backend (D5). It runs on Cloudflare's
+free Workers plan with no payment method on the account: past the free 100,000 requests a day it fails until the next
+day rather than costing anything. Instant push would extend the same Worker; that plan is in
+[instant-push.md](instant-push.md) and isn't built.
+

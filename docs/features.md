@@ -2,7 +2,7 @@
 
 | Feature | What the user sees | Code |
 |---|---|---|
-| Sign in (optional) | **Sign in with GitHub** (OAuth device flow: enter a short code on github.com; shown when the build has a client ID, SETUP.md § 1b) or paste a PAT. Signed out: browse any public repo by `owner/name` or github.com URL, with a Recent list (60 GitHub requests/hour). Signing in (paste a PAT, validated against `/user`, stored in the keystore) adds your repo list, private repos and 5,000 requests/hour | `features/auth/`, `features/repos/repos_screen.dart` |
+| Sign in (optional) | **Sign in with GitHub** (OAuth device flow: enter a short code on github.com; Diffcat's OAuth App, built in; forks set their own, SETUP.md § 1b) or paste a PAT. Signed out: browse any public repo by `owner/name` or github.com URL, with a Recent list (60 GitHub requests/hour). Signing in (paste a PAT, validated against `/user`, stored in the keystore) adds your repo list, private repos and 5,000 requests/hour | `features/auth/`, `features/repos/repos_screen.dart` |
 | **Inbox** | Tab (signed in): open PRs across GitHub that need you: **Review requested** (default), **Yours**, **Mentioned**, **Assigned**; PR beside the list on tablets. Optional notifications for new review requests (Settings → Notifications, or the hint on the inbox) | `features/inbox/`, `notifications/poller.dart` |
 | Repo list | Filter, pin to top, "open by name" (also accepts a github.com URL; inaccessible repos explain why), bell icon on watched repos | `features/repos/repos_screen.dart` |
 | Repo home | Branch/tag picker, tabs: Commits · Files · PRs · Console; bell = watch; Δ icon = changed-since | `features/repo/` |

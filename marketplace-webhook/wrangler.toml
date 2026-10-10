@@ -1,0 +1,4 @@
+# Cloudflare Worker for the GitHub Marketplace webhook. See README.md.
+name = "diffcat-marketplace"
+main = "src/index.js"
+compatibility_date = "2026-10-01"

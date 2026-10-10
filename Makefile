@@ -4,8 +4,8 @@
 setup:            ## Install dependencies
 	cd app && flutter pub get
 
-# OAuth App client ID for "Sign in with GitHub" (SETUP.md § 1b). Public, not a secret.
-DART_DEFINES := $(if $(GITHUB_CLIENT_ID),--dart-define=GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID))
+# Overrides the built-in OAuth App client ID (forks, SETUP.md § 1b). Public, not a secret.
+DART_DEFINES := $(if $(filter undefined,$(origin GITHUB_CLIENT_ID)),,--dart-define=GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID))
 
 check:            ## Everything CI runs: format, analyze, test
 	cd app && dart format --output=none --set-exit-if-changed lib test integration_test test_driver tool
