@@ -51,6 +51,11 @@ void main() {
     expect(find.text('2 repos moved to Client work'), findsOneWidget);
     expect(find.text('2 selected'), findsNothing, reason: 'select mode ends after the action');
     expect(container.read(repoLibraryProvider).folderFor('demo/mobile-app')?.name, 'Client work');
+    // The folder's menu sits at the row's end, in line with the repos' menus.
+    expect(
+      tester.getRect(find.byTooltip('Folder options')).right,
+      moreOrLessEquals(tester.getRect(_repoMenu('infra')).right, epsilon: 16),
+    );
 
     // Collapsing the folder hides its repos.
     await tester.tap(find.text('Client work'));

@@ -128,8 +128,9 @@ Future<String?> moveToFolder(BuildContext context, WidgetRef ref, List<String> r
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            Container(
+              alignment: AlignmentDirectional.centerStart,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
                 repos.length == 1 ? 'Move ${repos.single.split('/').last} to' : 'Move ${repos.length} repos to',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -195,24 +196,32 @@ class RepoSectionHeader extends StatelessWidget {
     return InkWell(
       onTap: onToggle,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(16, 12, menu == null ? 16 : 4, 4),
+        // The menu lines up with the repo rows' menus (ListTile's end padding).
+        padding: EdgeInsets.fromLTRB(16, 12, menu == null ? 24 : 28, 4),
         child: Row(
           children: [
             SizedBox(width: 20, child: Center(child: icon)),
             const SizedBox(width: 12),
-            Flexible(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: folder?.color ?? theme.colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
+            // One flexible child: a Flexible label plus a Spacer would split the
+            // free width and leave the menu mid-row.
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: folder?.color ?? theme.colorScheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text('${section.repos.length}', style: theme.textTheme.labelMedium),
+                ],
               ),
             ),
-            const SizedBox(width: 6),
-            Text('${section.repos.length}', style: theme.textTheme.labelMedium),
-            const Spacer(),
             if (collapsible)
               Icon(
                 section.collapsed ? Icons.expand_more : Icons.expand_less,
