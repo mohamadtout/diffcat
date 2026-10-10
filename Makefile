@@ -33,6 +33,7 @@ offline-test:     ## Real offline download of a small public repo on a device: m
 		--target=integration_test/offline_test.dart $(if $(DEVICE),-d $(DEVICE))
 
 store-screenshots: ## Store screenshots on demo data: make store-screenshots DEVICE=<id> NAME=<folder, see store/README.md>
+	rm -rf app/build/store/raw/$(NAME)  # a failed or partial run must not leave older shots to be framed
 	cd app && SCREENSHOT_DIR=build/store/raw/$(NAME) flutter drive --driver=test_driver/integration_test.dart \
 		--target=integration_test/store_screenshots_test.dart $(if $(DEVICE),-d $(DEVICE))
 
