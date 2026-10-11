@@ -119,12 +119,18 @@ are signed with your own key. The Gradle side is already wired up in `app/androi
 
 1. Put your Apple Developer Team ID in `app/ios/Flutter/Signing.xcconfig` (copy `Signing.xcconfig.example`; the
    file is git-ignored so the ID stays out of the public repo). Don't pick the team in Xcode's *Signing & Capabilities*
-   tab: Xcode writes it into `project.pbxproj`, which is committed. If it does, delete the `DEVELOPMENT_TEAM` lines there.
+   tab: Xcode writes it into `project.pbxproj`, which is committed. If it does, delete the `DEVELOPMENT_TEAM` lines there
+   (`make check` and CI fail while they're present). The Signing tab looks empty even when signing works: Xcode doesn't
+   show values that come from `Signing.xcconfig`.
 2. `flutter run` on the device. Browsing, diffs and SSH work as on Android.
 3. Background checks are wired up (BGAppRefreshTask `git-reviewer-poll`). On the device, keep *Settings → Diffcat →
    Background App Refresh* on. iOS decides when they run, usually a few times a day.
 
 ## 6b. Publishing to the App Store and Google Play
+
+Store builds: `make aab` (Google Play bundle, signed with the upload key from § 5) and `make ipa` (App Store IPA in
+`app/build/ios/ipa/`). For `make ipa`, Xcode must be signed in to your Apple ID (**Xcode → Settings → Accounts**) so it
+can create the distribution certificate; without it the archive builds but the export fails with "No Accounts".
 
 Listing text, screenshots, privacy answers and a checklist for each store are in [store/README.md](store/README.md).
 The privacy policy is [PRIVACY.md](PRIVACY.md), public at <https://github.com/mohamadtout/diffcat/blob/main/PRIVACY.md>.

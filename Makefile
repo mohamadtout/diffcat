@@ -1,5 +1,5 @@
 # One-word entry points for humans and agents. `make check` before every PR.
-.PHONY: setup check fmt run apk release-apk device-test ssh-test offline-test store-screenshots store-frames
+.PHONY: setup check fmt run apk release-apk aab ipa no-team-id device-test ssh-test offline-test store-screenshots store-frames
 
 setup:            ## Install dependencies
 	cd app && flutter pub get
@@ -7,7 +7,7 @@ setup:            ## Install dependencies
 # Overrides the built-in OAuth App client ID (forks, SETUP.md § 1b). Public, not a secret.
 DART_DEFINES := $(if $(filter undefined,$(origin GITHUB_CLIENT_ID)),,--dart-define=GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID))
 
-check:            ## Everything CI runs: format, analyze, test
+check: no-team-id ## Everything CI runs: format, analyze, test
 	cd app && dart format --output=none --set-exit-if-changed lib test integration_test test_driver tool
 	cd app && flutter analyze
 	cd app && flutter test
@@ -60,3 +60,20 @@ release-apk:      ## The APK attached to a GitHub release: app/build/release/dif
 	cp app/build/app/outputs/flutter-apk/app-release.apk app/build/release/diffcat-$(VERSION).apk
 	cd app/build/release && shasum -a 256 diffcat-$(VERSION).apk > diffcat-$(VERSION).apk.sha256
 	@cat app/build/release/diffcat-$(VERSION).apk.sha256
+
+aab:              ## Google Play bundle → app/build/app/outputs/bundle/release/app-release.aab
+	@test -f app/android/key.properties || { echo "app/android/key.properties is missing: Play rejects a debug-signed bundle (SETUP.md § 5)"; exit 1; }
+	rm -f $(REGISTRANT)
+	cd app && flutter build appbundle --release $(DART_DEFINES)
+
+# The Apple Team ID lives in the git-ignored app/ios/Flutter/Signing.xcconfig. Picking a team in Xcode's Signing tab
+# writes it into project.pbxproj, which is public.
+PBXPROJ := app/ios/Runner.xcodeproj/project.pbxproj
+
+no-team-id:       ## Fails if Xcode wrote a Team ID into the committed project file
+	@! grep -q DEVELOPMENT_TEAM $(PBXPROJ) || { echo "$(PBXPROJ) has DEVELOPMENT_TEAM (Xcode's Signing tab put it there). Remove those lines; the ID belongs in app/ios/Flutter/Signing.xcconfig (SETUP.md § 6)."; exit 1; }
+
+ipa: no-team-id   ## App Store IPA → app/build/ios/ipa/ (needs Signing.xcconfig and Xcode signed in to your Apple ID)
+	@test -f app/ios/Flutter/Signing.xcconfig || { echo "app/ios/Flutter/Signing.xcconfig is missing: copy Signing.xcconfig.example and add your Team ID (SETUP.md § 6)"; exit 1; }
+	cd app && flutter build ipa --release $(DART_DEFINES)
+	@ls app/build/ios/ipa/*.ipa

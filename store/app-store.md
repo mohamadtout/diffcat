@@ -184,7 +184,7 @@ Contact info: your name, phone and email (not shown publicly).
 - [ ] Your Team ID in `app/ios/Flutter/Signing.xcconfig` (git-ignored, see SETUP.md § 6).
 - [ ] Build with Xcode 26 or later. Apple has required the iOS 26 SDK for uploads since April 28, 2026; Xcode 26.3 is installed.
 - [ ] Set `version:` in `app/pubspec.yaml` (`1.0.0+1`). Raise the build number (`+N`) on every upload.
-- [ ] `cd app && flutter build ipa --release`, then upload `build/ios/ipa/Diffcat.ipa` with Transporter, or open
-  `build/ios/archive/Runner.xcarchive` (Xcode → Organizer) → *Distribute App* → *App Store Connect*.
+- [ ] `make ipa` (Xcode signed in to your Apple ID), then upload `app/build/ios/ipa/Diffcat.ipa` with Transporter, or open
+  `app/build/ios/archive/Runner.xcarchive` (Xcode → Organizer) → *Distribute App* → *App Store Connect*.
 - [ ] TestFlight on your own iPhone and iPad first, including a background notification check.
 - [ ] App icon: the 1024 px marketing icon is already in the asset catalog with no alpha channel.
