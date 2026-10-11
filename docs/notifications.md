@@ -25,7 +25,7 @@ Android WorkManager (every ~15 min, network required)      App opened / resumed 
 ## Behaviour
 
 - **Watch a repo:** tap the bell on the repo screen. This asks for notification permission, schedules the background task, and immediately records a **baseline**. The first check of a repo is silent, so you're only told about activity after you started watching.
-- **Latency:** the background check runs about every 15 minutes, which is Android's minimum. Doze and battery saver can stretch that to an hour or more. Opening the app triggers a check if the last one is more than 10 minutes old.
+- **Latency:** the background check runs about every 15 minutes, which is Android's minimum. Doze and battery saver can stretch that to an hour or more. Opening the app triggers a check if the last one is more than 10 minutes old (at launch it waits for the token to be read).
 - **Cost:** two API requests per watched repo per check, plus one per branch that moved. The background check keeps
   its ETags on disk (`FileEtagCache`, `<app support>/poll_etags`, cleared on sign-in and sign-out), so a repo with no
   changes answers 304 and costs no rate limit at all. Repos are checked four at a time (iOS allows a background refresh

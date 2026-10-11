@@ -165,9 +165,17 @@ class _ReviewableDiff extends ConsumerWidget {
     Future<void> comment(GhFileChange file, DiffLine line) async {
       final anchor = anchorFor(file.filename, line);
       if (anchor == null) return;
+      final outdated = ref.read(reviewDraftProvider(pullKey)).isOutdatedFor(pull.headSha);
       final r = await showCommentComposer(
         context,
         title: '${file.basename}:${anchor.line}${anchor.side == DiffSide.left ? ' (removed)' : ''}',
+        note: outdated
+            ? 'Your pending review is on an older version of this pull request. Submit or discard it '
+                  'to start a review here; meanwhile comments post right away.'
+            : null,
+        actions: outdated
+            ? const [ComposeAction.commentNow]
+            : const [ComposeAction.addToReview, ComposeAction.commentNow],
       );
       if (r == null) return;
       if (r.action == ComposeAction.addToReview) {
