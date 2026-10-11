@@ -6,7 +6,7 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
-Nothing yet. Add changes here as they land on `development`.
+- README: screenshots section (phone, plus tablet in a collapsible block). No app changes.
 
 ## 1.1.3 (build 6), 2026-10-11
 

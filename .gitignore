@@ -17,5 +17,10 @@ key.properties
 .env.*
 *.local.md
 
-# Store images: large and regenerated with `make store-frames` (see store/README.md)
-store/screenshots/
+# Store images: large and regenerated with `make store-frames` (see store/README.md).
+# Only the Android phone and 10" tablet sets are committed, for the README.
+store/screenshots/*
+!store/screenshots/google-play/
+store/screenshots/google-play/*
+!store/screenshots/google-play/phone/
+!store/screenshots/google-play/tablet-10/
