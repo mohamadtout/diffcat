@@ -2,11 +2,14 @@
 
 Versions follow [Semantic Versioning](https://semver.org): features bump the minor version, fixes the patch. The
 number after `+` is the store build number (Android `versionCode`, iOS `CFBundleVersion`) and only ever goes up.
-Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the signed APK attached (SETUP.md § 6c).
+Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the signed APKs attached (SETUP.md § 6c).
 
 ## Unreleased
 
 - README: screenshots section (phone, plus tablet in a collapsible block). No app changes.
+- Smaller APK: GitHub releases have one APK per CPU type (25 MB for nearly every phone) instead of one 73 MB APK
+  carrying all three, and release builds leave Dart debug info out (1.6 MB less, on Google Play too). Installs of
+  earlier APKs update in place.
 
 ## 1.1.3 (build 6), 2026-10-11
 

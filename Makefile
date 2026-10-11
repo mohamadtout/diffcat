@@ -46,25 +46,36 @@ store-frames:     ## Captioned store images from the raw screenshots → store/s
 # one written mid-build still breaks it, so on that failure build once more.
 REGISTRANT := app/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 
-apk:              ## Release APK (see SETUP.md § Release signing)
-	rm -f $(REGISTRANT)
-	cd app && { flutter build apk --release $(DART_DEFINES) || { grep -q integration_test ../$(REGISTRANT) && \
-		echo "Building again: the plugin registrant had test-only plugins" && flutter build apk --release $(DART_DEFINES); }; }
-
 VERSION := $(shell sed -n 's/^version: *\([^+]*\).*/\1/p' app/pubspec.yaml)
 
-release-apk:      ## The APK attached to a GitHub release: app/build/release/diffcat-<version>.apk + .sha256
+# Release builds keep Dart debug info out of the app (1.6 MB less per CPU type) and write it to app/build/symbols/,
+# which `flutter symbolize` needs to read a logged stack trace (SETUP.md § 6c). Paths are relative to app/.
+release_flags = --release --split-debug-info=build/symbols/$(1)-$(VERSION) $(DART_DEFINES)
+
+# One APK per CPU type: a universal APK carries all three copies of the engine and Dart code (73 MB instead of 25).
+ABIS := arm64-v8a armeabi-v7a x86_64
+
+apk:              ## Release APKs, one per CPU type: app/build/app/outputs/flutter-apk/app-<abi>-release.apk
+	rm -f $(REGISTRANT)
+	cd app && { flutter build apk --split-per-abi $(call release_flags,apk) || { grep -q integration_test ../$(REGISTRANT) && \
+		echo "Building again: the plugin registrant had test-only plugins" && \
+		flutter build apk --split-per-abi $(call release_flags,apk); }; }
+
+release-apk:      ## The APKs attached to a GitHub release: app/build/release/diffcat-<version>-<abi>.apk + .sha256
 	@test -f app/android/key.properties || { echo "app/android/key.properties is missing: the APK would be debug-signed (SETUP.md § 5)"; exit 1; }
 	$(MAKE) apk
 	mkdir -p app/build/release
-	cp app/build/app/outputs/flutter-apk/app-release.apk app/build/release/diffcat-$(VERSION).apk
-	cd app/build/release && shasum -a 256 diffcat-$(VERSION).apk > diffcat-$(VERSION).apk.sha256
-	@cat app/build/release/diffcat-$(VERSION).apk.sha256
+	for abi in $(ABIS); do \
+		cp app/build/app/outputs/flutter-apk/app-$$abi-release.apk app/build/release/diffcat-$(VERSION)-$$abi.apk; done
+	cd app/build/release && shasum -a 256 $(ABIS:%=diffcat-$(VERSION)-%.apk) > diffcat-$(VERSION).sha256
+	rm -f app/build/release/diffcat-$(VERSION)-symbols.zip
+	cd app/build/symbols/apk-$(VERSION) && zip -q ../../release/diffcat-$(VERSION)-symbols.zip *.symbols
+	@cat app/build/release/diffcat-$(VERSION).sha256
 
 aab:              ## Google Play bundle → app/build/app/outputs/bundle/release/app-release.aab
 	@test -f app/android/key.properties || { echo "app/android/key.properties is missing: Play rejects a debug-signed bundle (SETUP.md § 5)"; exit 1; }
 	rm -f $(REGISTRANT)
-	cd app && flutter build appbundle --release $(DART_DEFINES)
+	cd app && flutter build appbundle $(call release_flags,aab)
 
 # The Apple Team ID lives in the git-ignored app/ios/Flutter/Signing.xcconfig. Picking a team in Xcode's Signing tab
 # writes it into project.pbxproj, which is public.

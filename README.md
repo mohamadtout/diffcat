@@ -56,9 +56,11 @@ your own token if you sign in (optional: public repos work without an account), 
 
 ## Install
 
-- **Android APK:** download `diffcat-<version>.apk` from the [latest release](https://github.com/mohamadtout/diffcat/releases/latest)
-  and open it (Android asks once to allow installs from your browser or file manager). Each release lists the file's
-  SHA-256 so you can check the download. Updates install over it, keeping your data.
+- **Android APK:** download `diffcat-<version>-arm64-v8a.apk` from the
+  [latest release](https://github.com/mohamadtout/diffcat/releases/latest) and open it (Android asks once to allow
+  installs from your browser or file manager). That one fits nearly every phone; `armeabi-v7a` is for old 32-bit
+  phones and `x86_64` for Chromebooks and emulators. Each release lists the files' SHA-256 so you can check the
+  download. Updates install over it, keeping your data.
 - **Google Play / App Store:** see the store listings once published.
 
 The APK and the Google Play version are signed differently (Google signs Play installs), so Android won't update one
