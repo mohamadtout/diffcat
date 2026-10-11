@@ -132,3 +132,15 @@ into `“`. All of this was reproduced on an emulator and simulator (2026-10-11)
 two-space field so backspace has something to delete. Deltas carry the text they apply to, so a keystroke that
 reaches the app before its last reset is still counted once. Correcting a composed word costs a few backspaces in the
 shell, which beats the shell not seeing it at all.
+
+### D17: GitHub releases ship one APK per CPU type
+The single release APK was 73 MB, and 46 MB of it was never used on any one phone: it held the Flutter engine
+(12 MB) and the compiled Dart code (11 MB) once for each of arm64, 32-bit ARM and x86_64, stored uncompressed. Play
+already sends each phone only its own part of the bundle (about 12 MB to download). Releases now ship
+`--split-per-abi` APKs (25 MB for arm64), and release builds use `--split-debug-info` (1.6 MB less per CPU type; the
+symbols are kept to decode stack traces, SETUP.md § 6c). Measured 2026-10-12.
+
+Rewriting as two native apps (Kotlin/Compose and SwiftUI) was weighed and rejected. It would save an estimated 5 MB
+per Play download for two codebases to maintain (D1). The other options measured: compressing the native libraries in
+the APK (12.5 MB file, but 34 MB installed instead of 25, and a slower start), and cutting the Nerd Font down to the
+prompt icons (about 1 MB, at the risk of blank icons in some prompts). Both are still open.

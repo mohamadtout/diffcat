@@ -111,7 +111,8 @@ are signed with your own key. The Gradle side is already wired up in `app/androi
    keyAlias=diffcat
    storeFile=/Users/<you>/diffcat-release.jks
    ```
-3. Run `make apk` and install `app/build/app/outputs/flutter-apk/app-release.apk`. To check which key signed it:
+3. Run `make apk` and install `app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` (`app-armeabi-v7a-…` on
+   an old 32-bit phone, `app-x86_64-…` on an emulator). To check which key signed it:
    `$ANDROID_HOME/build-tools/<version>/apksigner verify --print-certs <apk>`. It should show your name, not
    `CN=Android Debug`.
 
@@ -137,17 +138,25 @@ The privacy policy is [PRIVACY.md](PRIVACY.md), public at <https://github.com/mo
 
 ## 6c. GitHub release with the APK
 
-Each release on `main` is also a GitHub release with the signed APK, for people who don't use Google Play.
+Each release on `main` is also a GitHub release with the signed APKs, for people who don't use Google Play.
+There is one APK per CPU type (decisions.md D17): `arm64-v8a` for nearly every phone, `armeabi-v7a` for old 32-bit
+phones, `x86_64` for Chromebooks and emulators.
 
 1. Merge `development` into `main`, then tag the merge and push the tag: `git tag v1.1.1 && git push origin v1.1.1`.
 2. With the tag checked out, `make release-apk`. It refuses to run without `app/android/key.properties` (the APK would
-   be debug-signed, and every later update would fail to install over it). It writes
-   `app/build/release/diffcat-<version>.apk` and its `.sha256`.
+   be debug-signed, and every later update would fail to install over it). It writes, in `app/build/release/`:
+   - `diffcat-<version>-<abi>.apk` for each CPU type, and `diffcat-<version>.sha256` with all three checksums;
+   - `diffcat-<version>-symbols.zip`, the Dart debug info the APKs leave out. **Keep it, but don't attach it**: it
+     holds file paths from your machine. A stack trace from that version's logs (`adb logcat`) only shows addresses
+     until you run `flutter symbolize -i <trace.txt> -d app.android-arm64.symbols` (the file for the phone's CPU type).
 3. GitHub → **Releases** → **Draft a new release** → pick the tag. Title `Diffcat 1.1.1`. Notes: that version's
-   CHANGELOG section, plus the SHA-256 line. Attach the APK and publish.
-   With the GitHub CLI instead: `gh release create v1.1.1 app/build/release/diffcat-1.1.1.apk --title "Diffcat 1.1.1" --notes-file <notes>`.
+   CHANGELOG section, plus the SHA-256 lines. Attach the three APKs and publish.
+   With the GitHub CLI instead:
+   `gh release create v1.1.1 app/build/release/diffcat-1.1.1-*.apk --title "Diffcat 1.1.1" --notes-file <notes>`.
 
-Always sign with the same key: Android only installs an update over an APK signed by the same one.
+Always sign with the same key: Android only installs an update over an APK signed by the same one. Keep publishing
+per-CPU APKs, too: their version codes are offset (arm64 build 7 is 2007; Flutter adds 1000 × the CPU type's number),
+so a single universal APK would have a lower code than the one installed and wouldn't install over it.
 
 ## 7. Source control & CI
 
