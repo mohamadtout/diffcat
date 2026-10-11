@@ -70,4 +70,14 @@ void main() {
     ]);
     expect(const ReviewDraft().isEmpty, isTrue);
   });
+
+  test('a draft with comments on an older head is outdated for the new one', () {
+    const comment = DraftComment(anchor: (path: 'a.dart', side: DiffSide.right, line: 2), body: 'x');
+    const draft = ReviewDraft(headSha: 'old', comments: [comment]);
+    expect(draft.isOutdatedFor('old'), isFalse);
+    expect(draft.isOutdatedFor('new'), isTrue);
+    // Only a summary, or nothing pinned yet: any head can take the comments.
+    expect(const ReviewDraft(headSha: 'old', body: 'summary').isOutdatedFor('new'), isFalse);
+    expect(const ReviewDraft().isOutdatedFor('new'), isFalse);
+  });
 }

@@ -53,6 +53,7 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
   void _withUndo(String message, VoidCallback change) {
     final before = ref.read(repoLibraryProvider);
     final pinnedBefore = ref.read(pinnedReposProvider);
+    final watchedBefore = ref.read(watchedReposProvider);
     change();
     setState(_selected.clear);
     ScaffoldMessenger.of(context)
@@ -67,6 +68,8 @@ class _ReposScreenState extends ConsumerState<ReposScreen> {
             onPressed: () {
               ref.read(repoLibraryProvider.notifier).set(before);
               ref.read(pinnedReposProvider.notifier).restore(pinnedBefore);
+              // Hiding stops watching; Undo watches again.
+              ref.read(watchedReposProvider.notifier).restore(watchedBefore);
             },
           ),
         ),

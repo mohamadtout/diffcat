@@ -120,3 +120,15 @@ free Workers plan with no payment method on the account: past the free 100,000 r
 day rather than costing anything. Instant push would extend the same Worker; that plan is in
 [instant-push.md](instant-push.md) and isn't built.
 
+### D16: The terminal has its own keyboard input client
+xterm's text input kept a word the keyboard was composing on the phone, drawn at the cursor, until a space committed
+it: the cursor stayed at the start of the word, and Tab completed whatever the shell had (nothing of that word).
+Its default email field also combines with suggestions off into Android's "filter" field type (0x20 | 0x90 = 0xB0),
+where Samsung Keyboard composes. Backspace on its empty field did nothing on iOS (UIKit has nothing to delete, so
+Flutter sends no update) and on Android keyboards that don't fall back to a delete key event; iOS also turned `"`
+into `“`. All of this was reproduced on an emulator and simulator (2026-10-11).
+
+`TerminalKeyboard` uses Flutter's delta model instead and sends every edit as it happens, composing included, with a
+two-space field so backspace has something to delete. Deltas carry the text they apply to, so a keystroke that
+reaches the app before its last reset is still counted once. Correcting a composed word costs a few backspaces in the
+shell, which beats the shell not seeing it at all.

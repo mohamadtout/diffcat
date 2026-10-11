@@ -147,9 +147,19 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 
 - PTY type `xterm-256color`. Resizes are forwarded. Output is decoded as streaming UTF-8.
 - Host keys use trust-on-first-use, stored in prefs (`KnownHosts`). A changed key gets a red warning dialog.
+- **Keyboard input** (`terminal_keyboard.dart`, pure part `terminal_ime.dart`): the on-screen keyboard goes through
+  Diffcat's own text input client, not xterm's (`TerminalView(hardwareKeyboardOnly: true)` still handles hardware
+  keys). It uses the delta model: each edit is sent to the shell at once as text, backspaces or Enter, including a
+  word the keyboard is still composing, then the hidden field goes back to two spaces so backspace always has
+  something to delete. Plain text with suggestions off (a visible-password field on Android, so keyboards don't
+  compose), no smart quotes or dashes on iOS. Toolbar keys, custom buttons and paste end the keyboard's word first.
+  Taps reopen the keyboard through a raw `Listener`, because the view keeps taps to itself while a program has mouse
+  reporting on. See D16.
 - On-screen toolbar: Esc/Tab/arrows/PgUp…, plus sticky **Ctrl/Alt** that modify the next typed key.
 - Custom buttons and the startup command use key notation (docs/commands.md) and go through `Terminal.keyInput`, so arrow keys respect application-cursor mode (important for lazygit).
 - Sessions live in `SshSessionRegistry`, so leaving the screen doesn't drop the connection while the app is in the foreground.
+  A kept session that isn't connected takes the host's saved details when the screen opens or Reconnect is tapped,
+  so an edited host (a fixed typo) applies without closing the session.
   The registry is a `ChangeNotifier` that forwards each session's changes, which keeps the host list's connected
   (green) icon current however the terminal screen was left.
 - **Status bar / shell integration** (`shell_integration.dart`): the shell's folder arrives as OSC 7 (`Terminal.onPrivateOSC`).

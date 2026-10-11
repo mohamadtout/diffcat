@@ -117,6 +117,11 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
       _full.clear();
       _fullLoading.clear();
       _fullFailed.clear();
+      // The lines are parsed again: highlighting computed for the old ones
+      // would never be looked up, leaving the new ones uncolored.
+      _prepared.clear();
+      _segs = Expando();
+      _emph = Expando();
       _prepare();
     }
   }

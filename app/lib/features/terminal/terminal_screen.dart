@@ -16,6 +16,7 @@ import 'ssh_session.dart';
 import 'terminal_appearance.dart';
 import 'terminal_appearance_screen.dart';
 import 'terminal_chrome.dart';
+import 'terminal_keyboard.dart';
 import 'terminal_themes.dart';
 
 class TerminalScreen extends ConsumerStatefulWidget {
@@ -29,6 +30,10 @@ class TerminalScreen extends ConsumerStatefulWidget {
 
 class _TerminalScreenState extends ConsumerState<TerminalScreen> {
   SshSessionController? _session;
+  final _focus = FocusNode();
+  final _scroll = ScrollController();
+  final _keyboard = GlobalKey<TerminalKeyboardState>();
+  final _view = GlobalKey<TerminalViewState>();
 
   @override
   void initState() {
@@ -43,7 +48,27 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     }
   }
 
-  void _connect() => _session?.connect(shellIntegration: ref.read(terminalAppearanceProvider).shellIntegration);
+  @override
+  void dispose() {
+    _focus.dispose();
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Before keys sent other than by typing (see [TerminalKeyboardState.finishComposing]).
+  void _finishComposing() => _keyboard.currentState?.finishComposing();
+
+  void _scrollToBottom() {
+    if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
+  }
+
+  void _connect() {
+    final session = _session;
+    if (session == null) return;
+    // Reconnect uses the host as saved now, if it was edited meanwhile.
+    if (ref.read(sshHostsProvider.notifier).byId(widget.hostId) case final saved?) session.updateHost(saved);
+    session.connect(shellIntegration: ref.read(terminalAppearanceProvider).shellIntegration);
+  }
 
   Future<bool> _confirmHostKey(String type, String fp, String? previous) =>
       confirmHostKey(context, hostName: _session!.host.host, type: type, fingerprint: fp, previous: previous);
@@ -98,7 +123,10 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                 switch (v) {
                   case 'paste':
                     final data = await Clipboard.getData(Clipboard.kTextPlain);
-                    if (data?.text != null) session.terminal.paste(data!.text!);
+                    if (data?.text != null) {
+                      _finishComposing();
+                      session.terminal.paste(data!.text!);
+                    }
                   case 'textSize':
                     if (context.mounted) {
                       await showTextSizeSheet(
@@ -139,20 +167,35 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                   fit: StackFit.expand,
                   children: [
                     TerminalBackdrop(appearance: look, theme: theme),
-                    TerminalView(
-                      session.terminal,
-                      autofocus: true,
-                      theme: theme,
-                      backgroundOpacity: look.hasBackground ? 0 : 1,
-                      cursorType: look.cursor,
+                    TerminalKeyboard(
+                      key: _keyboard,
+                      terminal: session.terminal,
+                      focusNode: _focus,
                       keyboardAppearance: preset.isDark ? Brightness.dark : Brightness.light,
-                      textStyle: TerminalStyle(
-                        fontSize: look.fontSize,
-                        height: look.lineHeight,
-                        fontFamily: look.font.family,
-                        fontFamilyFallback: look.font.fallback,
+                      caretRect: () => _view.currentState?.globalCursorRect,
+                      onInput: _scrollToBottom,
+                      child: TerminalView(
+                        session.terminal,
+                        key: _view,
+                        focusNode: _focus,
+                        scrollController: _scroll,
+                        autofocus: true,
+                        // The keyboard goes through TerminalKeyboard instead.
+                        hardwareKeyboardOnly: true,
+                        onKeyEvent: (_, _) => _keyboard.currentState?.composing ?? false
+                            ? KeyEventResult.skipRemainingHandlers
+                            : KeyEventResult.ignored,
+                        theme: theme,
+                        backgroundOpacity: look.hasBackground ? 0 : 1,
+                        cursorType: look.cursor,
+                        textStyle: TerminalStyle(
+                          fontSize: look.fontSize,
+                          height: look.lineHeight,
+                          fontFamily: look.font.family,
+                          fontFamilyFallback: look.font.fallback,
+                        ),
+                        padding: const EdgeInsets.all(4),
                       ),
-                      padding: const EdgeInsets.all(4),
                     ),
                   ],
                 ),
@@ -172,13 +215,16 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
                             visualDensity: VisualDensity.compact,
                             label: Text(b.label),
                             tooltip: b.command,
-                            onPressed: () => session.sendKeys(b.command),
+                            onPressed: () {
+                              _finishComposing();
+                              session.sendKeys(b.command);
+                            },
                           ),
                         ),
                     ],
                   ),
                 ),
-              if (look.keyToolbar) _KeyToolbar(session: session, tint: tint),
+              if (look.keyToolbar) _KeyToolbar(session: session, tint: tint, beforeKey: _finishComposing),
             ],
           ),
         ),
@@ -189,9 +235,12 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
 
 /// Keys a phone keyboard lacks but TUIs like lazygit need.
 class _KeyToolbar extends StatelessWidget {
-  const _KeyToolbar({required this.session, this.tint});
+  const _KeyToolbar({required this.session, required this.beforeKey, this.tint});
 
   final SshSessionController session;
+
+  /// Runs before each key, to end the keyboard's word.
+  final VoidCallback beforeKey;
 
   /// Terminal colors to match, or null for the app's.
   final TerminalTheme? tint;
@@ -210,6 +259,7 @@ class _KeyToolbar extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           onTap: () {
             HapticFeedback.selectionClick();
+            beforeKey();
             onTap();
           },
           child: Container(

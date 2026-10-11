@@ -39,6 +39,12 @@ class WatchedRepos extends Notifier<Set<String>> {
     if (state.any(keys.contains)) await _save(state.difference(keys));
   }
 
+  /// Puts back an earlier set (Undo). A repo whose check state was already
+  /// dropped starts again with a silent baseline, like a new watch.
+  Future<void> restore(Set<String> keys) async {
+    if (keys.length != state.length || !keys.containsAll(state)) await _save({...keys});
+  }
+
   Future<void> _save(Set<String> s) async {
     state = s;
     await ref.read(sharedPrefsProvider).setStringList(StoreKeys.watchedRepos, s.toList()..sort());
@@ -173,7 +179,15 @@ class PollController extends Notifier<PollStatus> {
   /// Called when the app returns to the foreground. Returns whether it ran a
   /// full check.
   Future<bool> checkIfStale({Duration maxAge = const Duration(minutes: 10)}) async {
-    if (!backgroundChecksWanted(ref.read(sharedPrefsProvider)) || !ref.read(authTokenProvider).hasValue) return false;
+    if (!backgroundChecksWanted(ref.read(sharedPrefsProvider))) return false;
+    // At launch the token is still being read: wait for it rather than skip
+    // the check opening the app is meant to run.
+    try {
+      await ref.read(authTokenProvider.future);
+    } on Object {
+      return false;
+    }
+    if (!ref.mounted) return false;
     await ref.read(sharedPrefsProvider).reload();
     final last = _readLast();
     state = PollStatus(last: last, running: state.running);

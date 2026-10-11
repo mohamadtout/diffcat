@@ -136,25 +136,27 @@ class _CommentBody extends StatelessWidget {
 enum ComposeAction { addToReview, commentNow, save }
 
 /// Writes a line comment. [actions]: the buttons offered (the first is the
-/// main one). Returns null when cancelled.
+/// main one). [note]: shown under the title. Returns null when cancelled.
 Future<({String text, ComposeAction action})?> showCommentComposer(
   BuildContext context, {
   required String title,
   String initial = '',
+  String? note,
   List<ComposeAction> actions = const [ComposeAction.addToReview, ComposeAction.commentNow],
 }) => showModalBottomSheet<({String text, ComposeAction action})>(
   context: context,
   useRootNavigator: true,
   isScrollControlled: true,
   showDragHandle: true,
-  builder: (_) => _Composer(title: title, initial: initial, actions: actions),
+  builder: (_) => _Composer(title: title, initial: initial, note: note, actions: actions),
 );
 
 class _Composer extends StatefulWidget {
-  const _Composer({required this.title, required this.initial, required this.actions});
+  const _Composer({required this.title, required this.initial, required this.actions, this.note});
 
   final String title;
   final String initial;
+  final String? note;
   final List<ComposeAction> actions;
 
   @override
@@ -192,6 +194,13 @@ class _ComposerState extends State<_Composer> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(widget.title, style: Theme.of(context).textTheme.titleSmall, overflow: TextOverflow.ellipsis),
+              if (widget.note case final note?) ...[
+                const SizedBox(height: 4),
+                Text(
+                  note,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.tertiary),
+                ),
+              ],
               const SizedBox(height: 8),
               TextField(
                 controller: _text,

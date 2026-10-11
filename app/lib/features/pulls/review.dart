@@ -99,6 +99,11 @@ class ReviewDraft {
 
   bool get isEmpty => comments.isEmpty && body.trim().isEmpty;
 
+  /// Whether this draft's comments were written on another head than [head]
+  /// (commits were pushed since). A review goes to one commit, so comments
+  /// on [head] can't join it: their line numbers would land on the old one.
+  bool isOutdatedFor(String head) => comments.isNotEmpty && headSha != null && headSha != head;
+
   ReviewDraft copyWith({String? headSha, List<DraftComment>? comments, String? body}) =>
       ReviewDraft(headSha: headSha ?? this.headSha, comments: comments ?? this.comments, body: body ?? this.body);
 
