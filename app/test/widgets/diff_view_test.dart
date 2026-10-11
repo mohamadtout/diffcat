@@ -65,4 +65,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Browse any public repo'), findsOneWidget);
   });
+
+  testWidgets('a refreshed file list keeps its syntax colors', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    bool colored() {
+      final span = tester.widget<Text>(find.text('new line')).textSpan;
+      return span is TextSpan && (span.children ?? const []).any((s) => s.style?.color != null);
+    }
+
+    Future<void> show(List<GhFileChange> files) => tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPrefsProvider.overrideWithValue(prefs)],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(
+            body: DiffView(repo: (owner: 'o', name: 'r'), files: files, fileRef: 'sha'),
+          ),
+        ),
+      ),
+    );
+
+    await show(_files);
+    await tester.pumpAndSettle();
+    expect(colored(), isTrue, reason: '`new` is a Dart keyword');
+
+    await show([..._files]); // the same files, fetched again
+    await tester.pumpAndSettle();
+    expect(colored(), isTrue);
+  });
 }

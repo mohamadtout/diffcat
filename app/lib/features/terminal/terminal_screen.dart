@@ -62,7 +62,13 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
   }
 
-  void _connect() => _session?.connect(shellIntegration: ref.read(terminalAppearanceProvider).shellIntegration);
+  void _connect() {
+    final session = _session;
+    if (session == null) return;
+    // Reconnect uses the host as saved now, if it was edited meanwhile.
+    if (ref.read(sshHostsProvider.notifier).byId(widget.hostId) case final saved?) session.updateHost(saved);
+    session.connect(shellIntegration: ref.read(terminalAppearanceProvider).shellIntegration);
+  }
 
   Future<bool> _confirmHostKey(String type, String fp, String? previous) =>
       confirmHostKey(context, hostName: _session!.host.host, type: type, fingerprint: fp, previous: previous);

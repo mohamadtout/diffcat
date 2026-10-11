@@ -15,6 +15,13 @@ Nothing yet. Add changes here as they land on `development`.
   space). Backspace works on an empty line (it did nothing on iOS and with some Android keyboards). iOS no longer
   turns `"` and `--` into curly quotes and dashes. Tapping the terminal brings the keyboard back inside programs that
   use the mouse, like lazygit.
+- Fix: after new commits on a pull request, comments added to a review started earlier were submitted against the old
+  commit (wrong lines, or GitHub refused the review). Until that review is submitted or discarded, comments on the new
+  version post right away.
+- Fix: editing an SSH host (a mistyped address, say) didn't apply until the app restarted.
+- Fix: Undo after hiding repos didn't watch them again.
+- Fix: diffs lost their syntax colors when reloaded in place (switching a repo between online and offline).
+- Fix: the check for new activity when the app starts was skipped until a minute later.
 
 ## 1.1.2 (build 5), 2026-10-10
 

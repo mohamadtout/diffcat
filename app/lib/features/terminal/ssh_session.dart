@@ -21,7 +21,9 @@ typedef HostKeyPrompt = Future<bool> Function(String type, String fingerprint, S
 class SshSessionController extends ChangeNotifier {
   SshSessionController({required this.host, required this.secure, required this.knownHosts});
 
-  final SshHost host;
+  /// The host as last saved. Edits apply from the next connection (see
+  /// [updateHost]); a live connection keeps the details it was opened with.
+  SshHost host;
   final SecureStore secure;
   final KnownHosts knownHosts;
 
@@ -55,6 +57,12 @@ class SshSessionController extends ChangeNotifier {
   HostKeyPrompt? onHostKeyPrompt;
 
   bool get isActive => status == SshStatus.connecting || status == SshStatus.connected;
+
+  /// Takes the host's saved details (after an edit) unless a connection is
+  /// open or opening. Doesn't notify: it runs while the terminal screen builds.
+  void updateHost(SshHost h) {
+    if (!isActive) host = h;
+  }
 
   /// [shellIntegration]: type the folder-reporting hook after login.
   Future<void> connect({bool shellIntegration = false}) async {
@@ -392,15 +400,15 @@ class SshSessionRegistry extends ChangeNotifier {
   final _sessions = <String, SshSessionController>{};
 
   // Not notified here: obtain runs in the terminal screen's initState, during
-  // a build, and a new session is idle anyway.
-  SshSessionController obtain(SshHost host) => _sessions.putIfAbsent(
-    host.id,
-    () => SshSessionController(
-      host: host,
-      secure: _ref.read(secureStoreProvider),
-      knownHosts: _ref.read(knownHostsProvider),
-    )..addListener(notifyListeners),
-  );
+  // a build, and a new session is idle anyway. A kept session that isn't
+  // connected takes [host] as saved, so edits (a fixed typo) apply.
+  SshSessionController obtain(SshHost host) =>
+      (_sessions[host.id]?..updateHost(host)) ??
+      (_sessions[host.id] = SshSessionController(
+        host: host,
+        secure: _ref.read(secureStoreProvider),
+        knownHosts: _ref.read(knownHostsProvider),
+      )..addListener(notifyListeners));
 
   SshSessionController? existing(String hostId) => _sessions[hostId];
 
