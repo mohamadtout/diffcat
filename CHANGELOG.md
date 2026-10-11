@@ -8,6 +8,14 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 Nothing yet. Add changes here as they land on `development`.
 
+## 1.1.3 (build 6), 2026-10-11
+
+- Fix: typing in the terminal with the phone keyboard. Words reach the shell letter by letter, so the cursor follows
+  them and Tab completes the word being typed (some keyboards, Samsung's among them, held the word back until a
+  space). Backspace works on an empty line (it did nothing on iOS and with some Android keyboards). iOS no longer
+  turns `"` and `--` into curly quotes and dashes. Tapping the terminal brings the keyboard back inside programs that
+  use the mouse, like lazygit.
+
 ## 1.1.2 (build 5), 2026-10-10
 
 - Fix: on a landscape 7" tablet the keyboard squeezed the navigation rail until its bottom tab was cut off.
