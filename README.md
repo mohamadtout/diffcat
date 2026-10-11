@@ -16,6 +16,44 @@ your own token if you sign in (optional: public repos work without an account), 
 - **Works offline:** download a branch (diffs, PRs, optionally every file) and read it with no connection.
 - **Responsive:** phone → foldable → tablet and iPad (list/detail split, full-width toggle). Android and iOS/iPadOS.
 
+## Screenshots
+
+<p align="center">
+  <img src="store/screenshots/google-play/phone/01_repos.png" width="23%" alt="All your repos, your way">
+  <img src="store/screenshots/google-play/phone/02_diff.png" width="23%" alt="Diffs made for small screens">
+  <img src="store/screenshots/google-play/phone/03_pull.png" width="23%" alt="Review pull requests anywhere">
+  <img src="store/screenshots/google-play/phone/04_offline_mode.png" width="23%" alt="Download once, read offline">
+</p>
+<p align="center">
+  <img src="store/screenshots/google-play/phone/05_terminal.png" width="23%" alt="Your own machine, over SSH">
+  <img src="store/screenshots/google-play/phone/06_changed_since.png" width="23%" alt="Everything since the last release">
+  <img src="store/screenshots/google-play/phone/07_console.png" width="23%" alt="Git commands, no clone needed">
+  <img src="store/screenshots/google-play/phone/08_diff_dark.png" width="23%" alt="Easy on the eyes at night">
+</p>
+
+<details>
+<summary><b>On tablets and iPad</b></summary>
+<br>
+<p align="center">
+  <img src="store/screenshots/google-play/tablet-10/01_commit_split.png" width="49%" alt="Commits and diffs, side by side">
+  <img src="store/screenshots/google-play/tablet-10/02_diff_full_width.png" width="49%" alt="Go full width">
+</p>
+<p align="center">
+  <img src="store/screenshots/google-play/tablet-10/03_pull.png" width="49%" alt="Review pull requests anywhere">
+  <img src="store/screenshots/google-play/tablet-10/04_file.png" width="49%" alt="Browse code at any branch or tag">
+</p>
+<p align="center">
+  <img src="store/screenshots/google-play/tablet-10/05_offline_mode.png" width="49%" alt="Download once, read offline">
+  <img src="store/screenshots/google-play/tablet-10/06_terminal.png" width="49%" alt="Your own machine, over SSH">
+</p>
+<p align="center">
+  <img src="store/screenshots/google-play/tablet-10/07_changed_since.png" width="49%" alt="Everything since the last release">
+  <img src="store/screenshots/google-play/tablet-10/08_diff_dark.png" width="49%" alt="Easy on the eyes at night">
+</p>
+</details>
+
+<sub>All screenshots use made-up demo data. No real account or host appears.</sub>
+
 ## Install
 
 - **Android APK:** download `diffcat-<version>.apk` from the [latest release](https://github.com/mohamadtout/diffcat/releases/latest)
