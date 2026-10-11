@@ -8,7 +8,7 @@ Everything needed to publish Diffcat on the App Store, Google Play and GitHub Ma
 | [google-play.md](google-play.md) | Play Console fields, data safety, content rating, graphics, closed-test rule, checklist |
 | [github-marketplace.md](github-marketplace.md) | GitHub Marketplace listing for the OAuth App: copy, URLs, images, free plan, webhook; images from [github_marketplace_assets.py](github_marketplace_assets.py) |
 | [../PRIVACY.md](../PRIVACY.md) | Privacy policy, public at https://github.com/mohamadtout/diffcat/blob/main/PRIVACY.md |
-| `screenshots/` | Captioned screenshots per store and device size, plus the Play feature graphic and 512 px icon. Git-ignored: regenerate them as below. |
+| `screenshots/` | Captioned screenshots per store and device size, plus the Play feature graphic and 512 px icon. Git-ignored (regenerate them as below), except `google-play/phone/` and `google-play/tablet-10/`, which the main README shows: commit those again after regenerating. |
 | [check_lengths.py](check_lengths.py) | Checks the listing text against each store's character limits |
 
 ## Screenshots
