@@ -26,8 +26,10 @@ copies are excluded from iCloud backup). Uninstalling the app deletes all of it.
 
 ## Who the app talks to
 
-- **GitHub** (`api.github.com`), to load the repositories, commits, pull requests and files you open, and to check
-  repositories you choose to watch for notifications. If you are signed in, requests carry your token. GitHub handles
+- **GitHub** (`api.github.com`), to load the repositories, commits, pull requests, files and GitHub Actions runs you
+  open, to start, re-run or cancel workflows when you ask, and to check repositories you choose to watch for
+  notifications. GitHub hands out workflow logs and downloaded archives through its own short-lived download links;
+  those requests don't carry your token. If you are signed in, requests carry your token. GitHub handles
   this traffic under its own privacy statement: <https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement>.
   If you use **Sign in with GitHub**, the app also asks `github.com` for a sign-in code and, once you approve it on
   GitHub's website, for your token. Nothing else is sent; the app never sees your GitHub password.

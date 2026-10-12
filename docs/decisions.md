@@ -144,3 +144,16 @@ Rewriting as two native apps (Kotlin/Compose and SwiftUI) was weighed and reject
 per Play download for two codebases to maintain (D1). The other options measured: compressing the native libraries in
 the APK (12.5 MB file, but 34 MB installed instead of 25, and a slower start), and cutting the Nerd Font down to the
 prompt icons (about 1 MB, at the risk of blank icons in some prompts). Both are still open.
+
+### D18: GitHub Actions through the API, with the form read from the workflow file
+Starting, re-running and cancelling workflows are writes, like reviews: signed in and online only, and a 403 explains
+that a fine-grained token needs the Actions permission. The REST API doesn't say whether a workflow can be started by
+hand or which inputs it takes, so the Run workflow sheet reads the workflow's file at the chosen branch (one request)
+and parses `on.workflow_dispatch.inputs` with the `yaml` package. That's also what GitHub does: the form follows the
+file on that branch.
+
+Runs that are still going refresh every 10 to 15 seconds, but only while they can be seen (`AutoRefresh` checks the
+repo tab's visibility, `TickerMode` and the app's lifecycle) and only signed in: 60 requests an hour wouldn't last a
+build signed out. Unchanged responses are 304s, which don't count against the rate limit. Job logs are plain text
+behind a redirect, so they're fetched like tarballs and never saved offline; GitHub only has a job's log once the job
+has finished, so the log screen waits for that instead of asking early.

@@ -13,3 +13,10 @@ String relativeTime(DateTime t, {DateTime? now}) {
 }
 
 String fullTimestamp(DateTime t) => DateFormat('EEE, MMM d y · HH:mm').format(t.toLocal());
+
+/// "45s", "3m 12s", "1h 5m": how long something took.
+String shortDuration(Duration d) {
+  if (d.inMinutes < 1) return '${d.inSeconds}s';
+  if (d.inHours < 1) return '${d.inMinutes}m ${d.inSeconds % 60}s';
+  return '${d.inHours}h ${d.inMinutes % 60}m';
+}

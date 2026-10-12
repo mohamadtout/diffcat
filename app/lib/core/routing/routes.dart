@@ -29,7 +29,7 @@ abstract final class Routes {
     return '?${Uri(queryParameters: {for (final e in entries) e.key: e.value}).query}';
   }
 
-  /// Repo home. [tab] is one of `commits`, `files`, `pulls`, `console`.
+  /// Repo home. [tab] is one of `commits`, `files`, `pulls`, `actions`, `console`.
   static String repo(RepoRef r, {String? tab, String? ref}) => '${_base(r)}${_q({'tab': tab, 'ref': ref})}';
 
   static String commit(RepoRef r, String sha, {String? file}) => '${_base(r)}/commit/$sha${_q({'file': file})}';
@@ -38,6 +38,12 @@ abstract final class Routes {
       '${_base(r)}/compare${_q({'base': base, 'head': head, 'file': file})}';
 
   static String pull(RepoRef r, int number) => '${_base(r)}/pull/$number';
+
+  /// A workflow run (GitHub Actions): its jobs and steps.
+  static String run(RepoRef r, int id) => '${_base(r)}/actions/runs/$id';
+
+  /// One job's log.
+  static String jobLog(RepoRef r, int id) => '${_base(r)}/actions/jobs/$id';
 
   /// [blame] opens with the blame gutter on.
   static String file(RepoRef r, String path, String ref, {bool blame = false}) =>
