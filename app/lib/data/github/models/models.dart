@@ -1,3 +1,4 @@
+export 'actions.dart';
 export 'blame.dart';
 export 'commit.dart';
 export 'file_change.dart';

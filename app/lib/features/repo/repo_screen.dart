@@ -7,6 +7,7 @@ import '../../core/routing/routes.dart';
 import '../../core/widgets/async_view.dart';
 import '../../data/github/github_exception.dart';
 import '../../data/github/models/models.dart';
+import '../actions/actions_tab.dart';
 import '../auth/auth_controller.dart';
 import '../commits/commits_tab.dart';
 import '../console/console_tab.dart';
@@ -23,6 +24,7 @@ enum RepoTab {
   commits('Commits', Icons.commit),
   files('Files', Icons.folder_outlined),
   pulls('PRs', Icons.merge_type),
+  actions('Actions', Icons.play_circle_outline),
   console('Console', Icons.terminal);
 
   const RepoTab(this.label, this.icon);
@@ -32,7 +34,7 @@ enum RepoTab {
   static RepoTab parse(String? s) => RepoTab.values.asNameMap()[s] ?? commits;
 }
 
-/// Repo home: branch picker + Commits / Files / PRs / Console.
+/// Repo home: branch picker + Commits / Files / PRs / Actions / Console.
 class RepoScreen extends ConsumerStatefulWidget {
   const RepoScreen({super.key, required this.repo, this.initialTab, this.initialRef});
 
@@ -210,6 +212,7 @@ class _RepoScreenState extends ConsumerState<RepoScreen> {
                 RepoTab.commits => CommitsTab(repo: widget.repo, gitRef: gitRef),
                 RepoTab.files => FileTreeTab(repo: widget.repo, gitRef: gitRef),
                 RepoTab.pulls => PullsTab(repo: widget.repo),
+                RepoTab.actions => ActionsTab(repo: widget.repo, gitRef: gitRef),
                 RepoTab.console => ConsoleTab(repo: widget.repo, gitRef: gitRef),
               },
         ],

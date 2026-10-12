@@ -22,6 +22,11 @@ class DemoGitHub implements HttpClientAdapter {
   static const openPullTitle = 'Exponential backoff for webhook retries';
   static const retryGo = 'internal/webhooks/retry.go';
 
+  /// A failed CI run, its failed job (with a log) and the manual Deploy workflow.
+  static const failedRunId = 4998;
+  static const failedJobId = 77002;
+  static const deployWorkflowId = 202;
+
   final unknown = <String>[];
 
   /// Writes the app made (POST path and body), e.g. submitted reviews.
@@ -408,6 +413,137 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
     },
   ];
 
+  /// (id, name, path)
+  static const _workflows = [
+    (201, 'CI', '.github/workflows/ci.yml'),
+    (deployWorkflowId, 'Deploy', '.github/workflows/deploy.yml'),
+    (203, 'pages-build-deployment', 'dynamic/pages/pages-build-deployment'),
+  ];
+
+  /// (id, workflow index, number, title, branch, event, status, conclusion, commit index, hours ago)
+  static const _runs = [
+    (5001, 0, 128, openPullTitle, featureBranch, 'pull_request', 'in_progress', null, 0, 0),
+    (5000, 0, 127, 'Add exponential backoff to webhook retries', 'main', 'push', 'completed', 'success', 0, 1),
+    (4999, 1, 31, 'Deploy', 'main', 'workflow_dispatch', 'completed', 'success', 1, 3),
+    (failedRunId, 0, 126, 'Fix rounding of JPY amounts', 'fix/currency-rounding', 'push', 'completed', 'failure', 1, 4),
+    (4997, 0, 125, 'Validate idempotency keys on refunds', 'main', 'push', 'completed', 'success', 3, 20),
+    (4996, 0, 124, 'Log request IDs in error responses', 'main', 'push', 'completed', 'cancelled', 4, 27),
+  ];
+
+  Map<String, dynamic> _run((int, int, int, String, String, String, String, String?, int, int) r) {
+    final w = _workflows[r.$2];
+    final person = _people[_commits[r.$9].$3];
+    return {
+      'id': r.$1,
+      'name': w.$2,
+      'display_title': r.$4,
+      'workflow_id': w.$1,
+      'path': w.$3,
+      'run_number': r.$3,
+      'run_attempt': 1,
+      'event': r.$6,
+      'status': r.$7,
+      'conclusion': r.$8,
+      'head_sha': sha(r.$9 + 1),
+      'head_branch': r.$5,
+      'actor': {'login': person.$1, 'avatar_url': null},
+      'created_at': _ago(Duration(hours: r.$10, minutes: 6)),
+      'run_started_at': _ago(Duration(hours: r.$10, minutes: 6)),
+      'updated_at': _ago(Duration(hours: r.$10, minutes: 2)),
+      'html_url': 'https://github.com/$owner/$repoName/actions/runs/${r.$1}',
+    };
+  }
+
+  /// Lint, test and build; how far they got follows the run's outcome.
+  List<Map<String, dynamic>> _jobs(int runId) {
+    final run = _runs.firstWhere((r) => r.$1 == runId, orElse: () => _runs[1]);
+    final (testStatus, testConclusion, buildStatus, buildConclusion) = switch (run.$8) {
+      'failure' => ('completed', 'failure', 'completed', 'skipped'),
+      'cancelled' => ('completed', 'cancelled', 'completed', 'skipped'),
+      null => ('in_progress', null, 'queued', null),
+      _ => ('completed', 'success', 'completed', 'success'),
+    };
+    Map<String, dynamic> job(int id, String name, String status, String? conclusion, int minutes) => {
+      'id': id,
+      'name': name,
+      'status': status,
+      'conclusion': conclusion,
+      'started_at': status == 'queued' ? null : _ago(Duration(hours: run.$10, minutes: 5)),
+      'completed_at': status == 'completed' ? _ago(Duration(hours: run.$10, minutes: 5 - minutes)) : null,
+      'html_url': 'https://github.com/$owner/$repoName/actions/runs/$runId/job/$id',
+      'steps': [
+        for (final (i, step) in [
+          'Set up job',
+          'Checkout',
+          'Set up Go',
+          name == 'test' ? 'go test ./...' : 'make $name',
+        ].indexed)
+          {
+            'number': i + 1,
+            'name': step,
+            'status': i < 3 || status == 'completed' ? 'completed' : status,
+            'conclusion': i < 3 ? 'success' : conclusion,
+          },
+      ],
+    };
+    final base = runId == failedRunId ? 77000 : runId * 10;
+    return [
+      job(base + 1, 'lint', 'completed', 'success', 1),
+      job(runId == failedRunId ? failedJobId : base + 2, 'test', testStatus, testConclusion, 3),
+      job(base + 3, 'build', buildStatus, buildConclusion, 0),
+    ];
+  }
+
+  static const _jobLog =
+      '﻿2026-10-12T09:14:02.1000000Z Current runner version: \'2.329.0\'\n'
+      '2026-10-12T09:14:02.2000000Z ##[group]Run actions/checkout@v5\n'
+      '2026-10-12T09:14:02.2000000Z with:\n'
+      '2026-10-12T09:14:02.2000000Z   repository: demo/payments-api\n'
+      '2026-10-12T09:14:02.3000000Z ##[endgroup]\n'
+      '2026-10-12T09:14:03.0000000Z [command]/usr/bin/git checkout --progress --force 5d1e9a0\n'
+      '2026-10-12T09:14:04.0000000Z ##[group]Run go test ./...\n'
+      '2026-10-12T09:14:04.0000000Z \x1b[36;1mgo test ./...\x1b[0m\n'
+      '2026-10-12T09:14:04.0000000Z ##[endgroup]\n'
+      '2026-10-12T09:14:31.0000000Z ok  \tdemo/payments-api/internal/ledger\t1.204s\n'
+      '2026-10-12T09:14:33.0000000Z --- FAIL: TestRoundJPY (0.00s)\n'
+      '2026-10-12T09:14:33.0000000Z     money_test.go:41: Round(1234.5, "JPY") = 1234.50, want 1235\n'
+      '2026-10-12T09:14:33.0000000Z FAIL\tdemo/payments-api/internal/payments\t0.318s\n'
+      '2026-10-12T09:14:33.1000000Z ##[error]Process completed with exit code 1.\n';
+
+  static const _deployWorkflow = '''
+name: Deploy
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+      version:
+        description: Tag or commit to deploy (default the branch)
+        required: false
+      dry_run:
+        description: Show the plan without applying it
+        type: boolean
+        default: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: make deploy
+''';
+
+  static const _ciWorkflow = '''
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: go test ./...
+''';
+
   /// GraphQL: blame of [retryGo] (any other file: one range).
   Object? _graphql(Object? body) {
     final vars = (body as Map<String, dynamic>?)?['variables'] as Map<String, dynamic>? ?? const {};
@@ -513,6 +649,40 @@ func (r *Retrier) Deliver(ctx context.Context, hook Webhook) error {
           for (final f in _tree) {'path': f, 'type': 'blob', 'sha': 'b-$f', 'size': 400 + f.length * 97},
         ],
       };
+    }
+    if (path.startsWith('$base/contents/.github/workflows/')) {
+      return path.endsWith('deploy.yml') ? _deployWorkflow : _ciWorkflow;
+    }
+    if (path == '$base/actions/workflows') {
+      return {
+        'total_count': _workflows.length,
+        'workflows': [
+          for (final w in _workflows) {'id': w.$1, 'name': w.$2, 'path': w.$3, 'state': 'active'},
+        ],
+      };
+    }
+    final runs = RegExp(r'/actions/(?:workflows/(\d+)/)?runs$').firstMatch(path);
+    if (runs != null) {
+      final workflow = int.tryParse(runs.group(1) ?? '');
+      final list = [
+        for (final r in _runs)
+          if (workflow == null || _workflows[r.$2].$1 == workflow) _run(r),
+      ];
+      final perPage = int.tryParse('${query['per_page'] ?? ''}') ?? 30;
+      final page = int.tryParse('${query['page'] ?? ''}') ?? 1;
+      return {'total_count': list.length, 'workflow_runs': list.skip((page - 1) * perPage).take(perPage).toList()};
+    }
+    final run = RegExp(r'/actions/runs/(\d+)(/jobs)?$').firstMatch(path);
+    if (run != null) {
+      final id = int.parse(run.group(1)!);
+      if (run.group(2) != null) return {'total_count': 3, 'jobs': _jobs(id)};
+      return _run(_runs.firstWhere((r) => r.$1 == id, orElse: () => _runs[1]));
+    }
+    final job = RegExp(r'/actions/jobs/(\d+)(/logs)?$').firstMatch(path);
+    if (job != null) {
+      if (job.group(2) != null) return _jobLog;
+      final id = int.parse(job.group(1)!);
+      return _jobs(failedRunId).firstWhere((j) => j['id'] == id, orElse: () => _jobs(failedRunId)[1]);
     }
     if (path.startsWith('$base/contents/')) {
       return path.endsWith('.go') ? _retrySource : _readme;
