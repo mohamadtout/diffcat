@@ -28,41 +28,88 @@ const _bezel = Color(0xFF0D1117);
 
 typedef _Shot = (String raw, String title, String subtitle);
 
-const _phone = <_Shot>[
-  ('01_repos', 'All your repos,\nyour way', 'Colored folders, pins and an archive.'),
-  ('03_diff', 'Diffs made for\nsmall screens', 'Wrapped lines and line numbers.'),
-  ('04_pull', 'Review pull requests\nanywhere', 'Overview, changed files and commits.'),
-  ('07_offline_mode', 'Download once,\nread offline', 'For flights, trains and slow networks.'),
-  ('09_terminal', 'Your own machine,\nover SSH', 'Run git, tests and lazygit in a real terminal.'),
-  ('06_changed_since', 'Everything since\nthe last release', 'Compare any branch, tag or commit.'),
-  ('10_console', 'Git commands,\nno clone needed', 'log, branches and PRs, straight from GitHub.'),
-  ('11_diff_dark', 'Easy on the eyes\nat night', 'Light and dark themes.'),
-];
+// Every caption, by raw shot. Each store gets its own pick and order below.
+const _captions = <String, (String, String)>{
+  '01_repos': ('All your repos,\nyour way', 'Colored folders, pins and an archive.'),
+  '02_commit_split': ('Commits and diffs,\nside by side', 'Built for iPad and tablets.'),
+  '03_diff': ('Diffs made for\nsmall screens', 'Wrapped lines and line numbers.'),
+  '03_diff_full_width': ('Go full width', 'Hide the list when you need the space.'),
+  '04_pull': ('Review pull requests\nanywhere', 'Comment on any line, reply and approve.'),
+  '07_offline_mode': ('Download once,\nread offline', 'For flights, trains and slow networks.'),
+  '09_terminal': ('Your own machine,\nover SSH', 'Run git, tests and lazygit in a real terminal.'),
+  '11_diff_dark': ('Easy on the eyes\nat night', 'Light and dark themes.'),
+  '13_actions': ('Keep CI moving', 'Read logs, re-run jobs, start workflows.'),
+  '14_run_workflow': ('Deploy from\nanywhere', 'Start any workflow, inputs and all.'),
+  '15_history': ('Every change to a file,\nacross branches', 'Rebases, cherry-picks and reverts linked up.'),
+  '16_blame': ('Who changed what,\nand when', 'Blame colored by age, a tap from the commit.'),
+  '17_inbox': ('Pull requests\nwaiting on you', 'Review requests and mentions, across repos.'),
+};
 
-const _tablet = <_Shot>[
-  ('02_commit_split', 'Commits and diffs,\nside by side', 'Built for iPad and tablets.'),
-  ('03_diff_full_width', 'Go full width', 'Hide the list when you need the space.'),
-  ('04_pull', 'Review pull requests\nanywhere', 'Overview, changed files and commits.'),
-  ('05_file', 'Browse code at\nany branch or tag', 'With file history one tap away.'),
-  ('07_offline_mode', 'Download once,\nread offline', 'For flights, trains and slow networks.'),
-  ('09_terminal', 'Your own machine,\nover SSH', 'Run git, tests and lazygit in a real terminal.'),
-  ('06_changed_since', 'Everything since\nthe last release', 'Compare any branch, tag or commit.'),
-  ('11_diff_dark', 'Easy on the eyes\nat night', 'Light and dark themes.'),
-];
+List<_Shot> _pick(List<String> raws) => [for (final r in raws) (r, _captions[r]!.$1, _captions[r]!.$2)];
+
+// The App Store shows up to 10 per device, Google Play up to 8. The first
+// three are what search results show, so they carry the core: browse, read
+// diffs, review. Unused raw shots: the commit list, file view, changed since,
+// downloads, console, settings, and the inbox (a short list on a phone; on a
+// tablet it looks like the pull request shot).
+final _phoneAppStore = _pick([
+  '01_repos',
+  '03_diff',
+  '04_pull',
+  '13_actions',
+  '14_run_workflow',
+  '15_history',
+  '16_blame',
+  '07_offline_mode',
+  '09_terminal',
+  '11_diff_dark',
+]);
+final _phonePlay = _pick([
+  '01_repos',
+  '03_diff',
+  '04_pull',
+  '13_actions',
+  '15_history',
+  '07_offline_mode',
+  '09_terminal',
+  '11_diff_dark',
+]);
+final _tabletAppStore = _pick([
+  '02_commit_split',
+  '03_diff_full_width',
+  '04_pull',
+  '13_actions',
+  '14_run_workflow',
+  '15_history',
+  '16_blame',
+  '07_offline_mode',
+  '09_terminal',
+  '11_diff_dark',
+]);
+final _tabletPlay = _pick([
+  '02_commit_split',
+  '03_diff_full_width',
+  '04_pull',
+  '13_actions',
+  '15_history',
+  '07_offline_mode',
+  '09_terminal',
+  '11_diff_dark',
+]);
 
 /// (raw device folder, output folder, canvas size in px, shots)
-const _targets = <(String, String, Size, List<_Shot>)>[
+final _targets = <(String, String, Size, List<_Shot>)>[
   // App Store Connect requires "iPhone with Dynamic Island (medium display)"
   // (iPhone 17 Pro: 1206 × 2622) and, for iPad apps, "iPad 13-inch display".
   // The large display (iPhone 17 Pro Max) is optional.
-  ('iphone-6.3', 'app-store/iphone-dynamic-island-medium', Size(1206, 2622), _phone),
-  ('iphone-6.9', 'app-store/iphone-dynamic-island-large', Size(1320, 2868), _phone),
-  ('ipad-13', 'app-store/ipad-13', Size(2064, 2752), _tablet),
-  ('android-phone', 'google-play/phone', Size(1080, 1920), _phone),
+  ('iphone-6.3', 'app-store/iphone-dynamic-island-medium', const Size(1206, 2622), _phoneAppStore),
+  ('iphone-6.9', 'app-store/iphone-dynamic-island-large', const Size(1320, 2868), _phoneAppStore),
+  ('ipad-13', 'app-store/ipad-13', const Size(2064, 2752), _tabletAppStore),
+  ('android-phone', 'google-play/phone', const Size(1080, 1920), _phonePlay),
   // Android tablets are shot in landscape: in portrait they're narrower than
   // the 840dp split-view breakpoint.
-  ('android-tablet-7', 'google-play/tablet-7', Size(1920, 1200), _tablet),
-  ('android-tablet-10', 'google-play/tablet-10', Size(2560, 1600), _tablet),
+  ('android-tablet-7', 'google-play/tablet-7', const Size(1920, 1200), _tabletPlay),
+  ('android-tablet-10', 'google-play/tablet-10', const Size(2560, 1600), _tabletPlay),
 ];
 
 final _repoRoot = Directory.current.path.endsWith('/app') ? Directory.current.parent.path : Directory.current.path;
