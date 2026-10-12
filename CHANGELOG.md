@@ -6,6 +6,8 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- `make run DEVICE=<id>` picks the device, like the test targets, and `MODE=profile` or `MODE=release` builds
+  in that mode (debug by default). No app changes.
 - GitHub Actions: a new **Actions** tab on every repo lists workflow runs (filter by workflow) with their jobs,
   steps and logs. Signed in, you can start a workflow that has a manual trigger, filling in its inputs, and re-run
   or cancel runs. Runs that are still going update on their own while you watch.

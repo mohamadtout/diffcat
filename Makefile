@@ -15,8 +15,9 @@ check: no-team-id ## Everything CI runs: format, analyze, test
 fmt:              ## Auto-format Dart sources
 	cd app && dart format lib test integration_test test_driver tool
 
-run:              ## Run the app on a connected device
-	cd app && flutter run $(DART_DEFINES)
+run:              ## Run the app on a connected device: make run [DEVICE=<id from `flutter devices`>] [MODE=debug|profile|release]
+	$(if $(filter $(or $(MODE),debug),debug profile release),,$(error MODE must be debug, profile or release, not "$(MODE)"))
+	cd app && flutter run --$(or $(MODE),debug) $(if $(DEVICE),-d $(DEVICE)) $(DART_DEFINES)
 
 device-test:      ## On-device smoke test + screenshots: make device-test DEVICE=<id from `flutter devices`>
 	cd app && flutter drive --driver=test_driver/integration_test.dart \
