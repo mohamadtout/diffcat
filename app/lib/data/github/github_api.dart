@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'github_client.dart';
 import 'github_exception.dart';
 import 'models/models.dart';
@@ -212,4 +214,65 @@ query($owner: String!, $name: String!, $ref: String!, $path: String!) {
 
   Future<List<GhCommit>> pullCommits(RepoRef r, int number) =>
       client.getAll('${_r(r)}/pulls/$number/commits', parse: GhCommit.fromJson, maxPages: 3);
+
+  /// The repo's workflows (GitHub Actions), including disabled ones.
+  Future<List<GhWorkflow>> workflows(RepoRef r) async {
+    final j = await client.getJson('${_r(r)}/actions/workflows', query: {'per_page': 100}) as Map<String, dynamic>;
+    return [for (final w in j['workflows'] as List<dynamic>) GhWorkflow.fromJson(w as Map<String, dynamic>)];
+  }
+
+  /// Workflow runs, newest first: all of them, or one workflow's.
+  Future<GhPage<GhWorkflowRun>> workflowRuns(RepoRef r, {int? workflowId, int page = 1, int perPage = 30}) async {
+    final path = workflowId == null ? '${_r(r)}/actions/runs' : '${_r(r)}/actions/workflows/$workflowId/runs';
+    final j = await client.getJson(path, query: {'page': page, 'per_page': perPage}) as Map<String, dynamic>;
+    final runs = [
+      for (final w in j['workflow_runs'] as List<dynamic>) GhWorkflowRun.fromJson(w as Map<String, dynamic>),
+    ];
+    // This endpoint answers an object, so the page count comes from the total.
+    final total = (j['total_count'] as int?) ?? 0;
+    return GhPage(runs, hasNext: runs.length == perPage && page * perPage < total);
+  }
+
+  Future<GhWorkflowRun> workflowRun(RepoRef r, int runId) async =>
+      GhWorkflowRun.fromJson(await client.getJson('${_r(r)}/actions/runs/$runId') as Map<String, dynamic>);
+
+  /// Jobs of a run's latest attempt.
+  Future<List<GhJob>> runJobs(RepoRef r, int runId) async {
+    final j = await client.getJson(
+      '${_r(r)}/actions/runs/$runId/jobs',
+      query: {'filter': 'latest', 'per_page': 100},
+    ) as Map<String, dynamic>;
+    return [for (final job in j['jobs'] as List<dynamic>) GhJob.fromJson(job as Map<String, dynamic>)];
+  }
+
+  Future<GhJob> job(RepoRef r, int jobId) async =>
+      GhJob.fromJson(await client.getJson('${_r(r)}/actions/jobs/$jobId') as Map<String, dynamic>);
+
+  /// A job's log as plain text. GitHub redirects to a short-lived download
+  /// link; it isn't JSON, so it's fetched like a tarball (never saved offline).
+  Future<String> jobLog(RepoRef r, int jobId) async => utf8.decode(
+    await client.getBytes('${_r(r)}/actions/jobs/$jobId/logs', maxBytes: 20 * 1000 * 1000),
+    allowMalformed: true,
+  );
+
+  /// Starts a workflow that has a `workflow_dispatch` trigger, on [ref].
+  /// GitHub fills in defaults for [inputs] left out.
+  Future<void> dispatchWorkflow(
+    RepoRef r,
+    int workflowId, {
+    required String ref,
+    Map<String, String> inputs = const {},
+  }) => client.postJson('${_r(r)}/actions/workflows/$workflowId/dispatches', {
+    'ref': ref,
+    if (inputs.isNotEmpty) 'inputs': inputs,
+  });
+
+  /// Runs every job of a finished run again (a new attempt).
+  Future<void> rerunWorkflowRun(RepoRef r, int runId) => client.postJson('${_r(r)}/actions/runs/$runId/rerun', {});
+
+  /// Runs the failed jobs of a finished run again, and the jobs that need them.
+  Future<void> rerunFailedJobs(RepoRef r, int runId) =>
+      client.postJson('${_r(r)}/actions/runs/$runId/rerun-failed-jobs', {});
+
+  Future<void> cancelWorkflowRun(RepoRef r, int runId) => client.postJson('${_r(r)}/actions/runs/$runId/cancel', {});
 }

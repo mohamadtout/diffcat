@@ -73,16 +73,22 @@ void main() {
     await tester.tap(find.text(DemoGitHub.openPullTitle).first);
     await shot('08_pull_detail');
 
+    await _backTo(tester, find.text('Actions'));
+    await tester.tap(find.text('Actions').last);
+    await shot('09_actions');
+    await tester.tap(find.text('Fix rounding of JPY amounts').first);
+    await shot('10_run_detail');
+
     await _backTo(tester, find.text('Settings'));
     await tester.tap(find.text('Settings').last);
-    await shot('09_settings');
+    await shot('11_settings');
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       expect(find.textContaining('Android'), findsNothing, reason: 'no Android-only advice on iOS');
     }
     await tester.tap(find.text('Terminal').last);
-    await shot('10_terminal');
+    await shot('12_terminal');
     await tester.tap(find.text('Inbox').last);
-    await shot('11_inbox');
+    await shot('13_inbox');
 
     expect(env.github.unknown, isEmpty, reason: 'unexpected GitHub calls: ${env.github.unknown}');
     expect(tester.takeException(), isNull);
