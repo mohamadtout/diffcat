@@ -7,6 +7,7 @@ import 'package:git_reviewer/core/routing/app_router.dart';
 import 'package:git_reviewer/core/routing/routes.dart';
 import 'package:git_reviewer/core/widgets/text_size_sheet.dart';
 import 'package:git_reviewer/data/github/models/models.dart';
+import 'package:git_reviewer/features/actions/run_workflow_sheet.dart';
 import 'package:git_reviewer/features/offline/download_button.dart';
 import 'package:git_reviewer/features/offline/offline_store.dart';
 import 'package:git_reviewer/features/pulls/review_widgets.dart';
@@ -49,11 +50,15 @@ final _screens = <String>[
   Routes.repo(_r),
   Routes.repo(_r, tab: 'files'),
   Routes.repo(_r, tab: 'pulls'),
+  Routes.repo(_r, tab: 'actions'),
   Routes.repo(_r, tab: 'console'),
   Routes.commit(_r, _sha),
   Routes.commit(_r, _sha, file: DemoGitHub.retryGo),
   Routes.compare(_r, 'main', DemoGitHub.featureBranch),
   Routes.pull(_r, DemoGitHub.openPullNumber),
+  Routes.run(_r, DemoGitHub.failedRunId),
+  Routes.run(_r, 5001), // in progress
+  Routes.jobLog(_r, DemoGitHub.failedJobId),
   Routes.file(_r, DemoGitHub.retryGo, 'main'),
   Routes.file(_r, DemoGitHub.retryGo, 'main', blame: true),
   Routes.history(_r, DemoGitHub.retryGo, 'main'),
@@ -183,6 +188,22 @@ void main() {
             isScrollControlled: true,
             builder: (_) =>
                 ReviewSubmitSheet(pullKey: (repo: _r, number: DemoGitHub.openPullNumber), headSha: DemoGitHub.sha(1)),
+          ),
+        );
+        await show(
+          'run workflow sheet',
+          (c) => showRunWorkflowSheet(
+            c,
+            repo: _r,
+            gitRef: 'main',
+            workflows: const [
+              GhWorkflow(
+                id: DemoGitHub.deployWorkflowId,
+                name: 'Deploy',
+                path: '.github/workflows/deploy.yml',
+                state: 'active',
+              ),
+            ],
           ),
         );
         await show('text size sheet', (c) => showTextSizeSheet(c, value: 13, min: 8, max: 24, onChanged: (_) {}));

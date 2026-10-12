@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/github/models/repo.dart';
+import '../../features/actions/job_log_screen.dart';
+import '../../features/actions/run_screen.dart';
 import '../../features/auth/auth_controller.dart';
 import '../../features/auth/token_screen.dart';
 import '../../features/commands/commands_screen.dart';
@@ -87,6 +89,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                       GoRoute(
                         path: 'pull/:number',
                         builder: (_, s) => PullScreen(repo: _repo(s), number: int.parse(s.pathParameters['number']!)),
+                      ),
+                      GoRoute(
+                        path: 'actions/runs/:id',
+                        builder: (_, s) => RunScreen(repo: _repo(s), runId: int.parse(s.pathParameters['id']!)),
+                      ),
+                      GoRoute(
+                        path: 'actions/jobs/:id',
+                        builder: (_, s) => JobLogScreen(repo: _repo(s), jobId: int.parse(s.pathParameters['id']!)),
                       ),
                       GoRoute(
                         path: 'file',

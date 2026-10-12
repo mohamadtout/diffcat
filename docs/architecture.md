@@ -76,6 +76,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 | `git blame` | GraphQL `repository.object(expression:).blame(path:)` (token required) | File viewer blame |
 | PRs | `GET …/pulls`, `…/pulls/{n}`, `…/files`, `…/commits` | PRs tab, PR screen, poller |
 | Inbox | `GET /search/issues?q=is:pr is:open archived:false review-requested:@me` (and `author:`, `mentions:`, `assignee:`) | Inbox tab, review-request notifications |
+| GitHub Actions | `GET …/actions/workflows`, `…/actions/runs` (or `…/workflows/{id}/runs`), `…/runs/{id}`, `…/runs/{id}/jobs`, `…/jobs/{id}`, `…/jobs/{id}/logs` (redirects to a download link, fetched like a tarball); a workflow's inputs come from its file (`contents`, parsed in `workflow_dispatch.dart`); `POST …/workflows/{id}/dispatches`, `…/runs/{id}/rerun`, `…/rerun-failed-jobs`, `…/cancel` | Actions tab, run and job log screens |
 | Reviews | `GET …/pulls/{n}/comments`, `…/reviews`; `POST …/reviews` (with line comments), `…/comments`, `…/comments/{id}/replies` | PR screen (signed in, online) |
 
 Known API limits: the tree is truncated for huge repos, compare returns at most 300 files, a single commit returns at most 3000 files, and file history doesn't follow renames. The UI says so wherever one of these applies.
@@ -96,10 +97,12 @@ Known API limits: the tree is truncated for huge repos, compare returns at most 
 | `/` · `/setup` | splash · optional token sign-in (pushed from Repos/Settings) |
 | `/repos` | repository list |
 | `/inbox` | pull requests that need you (search) |
-| `/repos/:owner/:name?tab=&ref=` | repo home (Commits / Files / PRs / Console) |
+| `/repos/:owner/:name?tab=&ref=` | repo home (Commits / Files / PRs / Actions / Console) |
 | `/repos/:owner/:name/commit/:sha?file=` | commit diff, optionally focused on a file |
 | `/repos/:owner/:name/compare?base=&head=&file=` | range diff (multi-commit notifications land here) |
 | `/repos/:owner/:name/pull/:number` | pull request |
+| `/repos/:owner/:name/actions/runs/:id` | workflow run: jobs and steps, re-run, cancel |
+| `/repos/:owner/:name/actions/jobs/:id` | a job's log |
 | `/repos/:owner/:name/file?path=&ref=&blame=1` | file viewer (optionally with blame) |
 | `/repos/:owner/:name/history?path=&ref=` | file history |
 | `/repos/:owner/:name/since?ref=&base=` | "files changed since commit X" |
