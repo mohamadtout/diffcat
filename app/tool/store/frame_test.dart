@@ -32,10 +32,10 @@ const _phone = <_Shot>[
   ('01_repos', 'All your repos,\nyour way', 'Colored folders, pins and an archive.'),
   ('03_diff', 'Diffs made for\nsmall screens', 'Wrapped lines and line numbers.'),
   ('04_pull', 'Review pull requests\nanywhere', 'Overview, changed files and commits.'),
+  ('13_actions', 'Keep CI moving', 'Read logs, re-run jobs, start workflows.'),
   ('07_offline_mode', 'Download once,\nread offline', 'For flights, trains and slow networks.'),
   ('09_terminal', 'Your own machine,\nover SSH', 'Run git, tests and lazygit in a real terminal.'),
   ('06_changed_since', 'Everything since\nthe last release', 'Compare any branch, tag or commit.'),
-  ('10_console', 'Git commands,\nno clone needed', 'log, branches and PRs, straight from GitHub.'),
   ('11_diff_dark', 'Easy on the eyes\nat night', 'Light and dark themes.'),
 ];
 
@@ -43,7 +43,7 @@ const _tablet = <_Shot>[
   ('02_commit_split', 'Commits and diffs,\nside by side', 'Built for iPad and tablets.'),
   ('03_diff_full_width', 'Go full width', 'Hide the list when you need the space.'),
   ('04_pull', 'Review pull requests\nanywhere', 'Overview, changed files and commits.'),
-  ('05_file', 'Browse code at\nany branch or tag', 'With file history one tap away.'),
+  ('13_actions', 'Keep CI moving', 'Read logs, re-run jobs, start workflows.'),
   ('07_offline_mode', 'Download once,\nread offline', 'For flights, trains and slow networks.'),
   ('09_terminal', 'Your own machine,\nover SSH', 'Run git, tests and lazygit in a real terminal.'),
   ('06_changed_since', 'Everything since\nthe last release', 'Compare any branch, tag or commit.'),

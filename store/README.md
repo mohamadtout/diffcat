@@ -44,11 +44,15 @@ The captions live in `app/tool/store/frame_test.dart`:
 | 1 | All your repos, your way | Commits and diffs, side by side |
 | 2 | Diffs made for small screens | Go full width |
 | 3 | Review pull requests anywhere | Review pull requests anywhere |
-| 4 | Download once, read offline | Browse code at any branch or tag |
-| 5 | Your own machine, over SSH | Download once, read offline |
-| 6 | Everything since the last release | Your own machine, over SSH |
-| 7 | Git commands, no clone needed | Everything since the last release |
+| 4 | Keep CI moving | Keep CI moving |
+| 5 | Download once, read offline | Download once, read offline |
+| 6 | Your own machine, over SSH | Your own machine, over SSH |
+| 7 | Everything since the last release | Everything since the last release |
 | 8 | Easy on the eyes at night | Easy on the eyes at night |
+
+Google Play takes at most 8 screenshots per device type, so a new shot replaces one. The raw run also captures the
+commit list, file view, downloads, console and settings (`app/build/store/raw/`), so a caption can be swapped in
+`frame_test.dart` without retaking anything.
 
 ## Name and trademarks
 

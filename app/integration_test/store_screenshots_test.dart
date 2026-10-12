@@ -99,6 +99,12 @@ void main() {
     await _settle(tester, frames: 30);
     await shot('04_pull');
 
+    // Actions: the failed CI run with its failed job open, beside the runs when split.
+    await go(Routes.repo(DemoGitHub.repo, tab: 'actions'));
+    await tester.tap(find.text('Fix rounding of JPY amounts').first);
+    await _settle(tester, frames: 30);
+    await shot('13_actions');
+
     if (split) {
       await go(Routes.repo(DemoGitHub.repo, tab: 'files'));
       for (final part in DemoGitHub.retryGo.split('/')) {
