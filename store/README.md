@@ -37,18 +37,25 @@ Folder names the frame tool expects, and the devices that produce the right size
 - **Start the emulators with `-gpu host`** (`emulator -avd Shots_Phone -gpu host`). With less than about 5 GB of free
   memory the emulator otherwise falls back to software rendering, and the app dies mid-run ("Service has disappeared").
 
-The captions live in `app/tool/store/frame_test.dart`:
+The captions and each store's pick live in `app/tool/store/frame_test.dart`. The App Store takes up to 10 screenshots
+per device and Google Play up to 8, so the App Store gets two more:
 
-| # | Phone | Tablet |
-|---|---|---|
-| 1 | All your repos, your way | Commits and diffs, side by side |
-| 2 | Diffs made for small screens | Go full width |
-| 3 | Review pull requests anywhere | Review pull requests anywhere |
-| 4 | Download once, read offline | Browse code at any branch or tag |
-| 5 | Your own machine, over SSH | Download once, read offline |
-| 6 | Everything since the last release | Your own machine, over SSH |
-| 7 | Git commands, no clone needed | Everything since the last release |
-| 8 | Easy on the eyes at night | Easy on the eyes at night |
+| # | iPhone (App Store) | Android phone (Play) | iPad (App Store) | Android tablets (Play) |
+|---|---|---|---|---|
+| 1 | All your repos, your way | All your repos, your way | Commits and diffs, side by side | Commits and diffs, side by side |
+| 2 | Diffs made for small screens | Diffs made for small screens | Go full width | Go full width |
+| 3 | Review pull requests anywhere | Review pull requests anywhere | Review pull requests anywhere | Review pull requests anywhere |
+| 4 | Keep CI moving | Keep CI moving | Keep CI moving | Keep CI moving |
+| 5 | Deploy from anywhere | Every change to a file, across branches | Deploy from anywhere | Every change to a file, across branches |
+| 6 | Every change to a file, across branches | Download once, read offline | Every change to a file, across branches | Download once, read offline |
+| 7 | Who changed what, and when | Your own machine, over SSH | Who changed what, and when | Your own machine, over SSH |
+| 8 | Download once, read offline | Easy on the eyes at night | Download once, read offline | Easy on the eyes at night |
+| 9 | Your own machine, over SSH | | Your own machine, over SSH | |
+| 10 | Easy on the eyes at night | | Easy on the eyes at night | |
+
+The first three carry the core (browse, read diffs, review), since search results show only those. The raw run also
+has the commit list, file view, changed-since, downloads, console, settings and inbox (`app/build/store/raw/`), so a
+pick can change in `frame_test.dart` without retaking anything.
 
 ## Name and trademarks
 

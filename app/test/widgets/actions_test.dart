@@ -49,6 +49,7 @@ void main() {
     final env = await _open(tester, Routes.run(_r, DemoGitHub.failedRunId));
     expect(find.text('go test ./...'), findsOneWidget, reason: 'the failed job starts expanded');
     expect(find.text('Cancel run'), findsNothing);
+    expect(find.text('Skipped'), findsOneWidget, reason: 'no duration for a job that never ran');
 
     await tester.tap(find.text('Re-run failed jobs'));
     await settle(tester);

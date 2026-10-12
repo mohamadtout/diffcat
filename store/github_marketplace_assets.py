@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / 'store/screenshots/github-marketplace'
 RAW = ROOT / 'app/build/store/raw/android-tablet-10'
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-SHOTS = ['02_commit_split', '04_pull', '03_diff_full_width', '07_offline_mode', '09_terminal']
+SHOTS = ['02_commit_split', '04_pull', '13_actions', '15_history', '09_terminal']
 
 
 def logo_svg() -> str:
