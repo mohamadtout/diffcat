@@ -7,7 +7,8 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 ## Unreleased
 
 - Store screenshots and the README show GitHub Actions (a failed run, its jobs and the Re-run buttons; the run list
-  beside it on tablets). It replaces the API console on phones and file browsing on tablets: Google Play takes 8.
+  beside it on tablets) and a file's history graph. The App Store gets 10 per device (adding Run workflow and blame),
+  Google Play 8. The sparse changed-since and console shots are out.
 - Skipped jobs no longer show a "0s" duration.
 - `make run DEVICE=<id>` picks the device, like the test targets, and `MODE=profile` or `MODE=release` builds
   in that mode (debug by default). No app changes.

@@ -94,8 +94,8 @@ Screenshot captions, in order:
 
 1. `Commits and diffs side by side on a tablet`
 2. `Review pull requests: line comments, replies, and approvals`
-3. `Full-width diffs with syntax highlighting`
-4. `Downloaded repos open with no connection`
+3. `GitHub Actions: runs, jobs, logs, and re-runs`
+4. `A file's history across branches, with rebases and reverts linked`
 5. `A real terminal to your own machine for git and lazygit`
 
 ## Pricing plan
