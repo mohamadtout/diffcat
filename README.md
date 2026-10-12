@@ -75,7 +75,7 @@ docs/       Architecture, features, commands, notifications, conventions, decisi
 
 ```bash
 make setup     # flutter pub get
-make run       # run on a connected phone
+make run       # run on a connected phone (several? add DEVICE=<id from `flutter devices`>)
 make check     # format + analyze + all tests (what CI runs)
 ```
 

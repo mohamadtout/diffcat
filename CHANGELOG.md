@@ -6,6 +6,7 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- `make run DEVICE=<id>` picks the device, like the test targets. No app changes.
 - README: screenshots section (phone, plus tablet in a collapsible block). No app changes.
 - Smaller APK: GitHub releases have one APK per CPU type (25 MB for nearly every phone) instead of one 73 MB APK
   carrying all three, and release builds leave Dart debug info out (1.6 MB less, on Google Play too). Installs of
