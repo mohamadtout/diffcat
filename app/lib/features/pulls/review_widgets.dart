@@ -6,6 +6,7 @@ import '../../core/utils/relative_time.dart';
 import '../../core/widgets/common.dart';
 import '../../data/github/github_exception.dart';
 import '../../data/github/models/models.dart';
+import 'pull_markdown.dart';
 import 'pulls_providers.dart';
 import 'review.dart';
 import 'review_providers.dart';
@@ -16,12 +17,16 @@ class LineComments extends StatelessWidget {
     super.key,
     required this.threads,
     required this.drafts,
+    this.repo,
     this.onReply,
     this.onEditDraft,
     this.onDeleteDraft,
   });
 
   final List<ReviewThread> threads;
+
+  /// For links in comments (`#12`, SHAs); null renders them as plain text.
+  final RepoRef? repo;
   final List<DraftComment> drafts;
   final ValueChanged<ReviewThread>? onReply;
   final ValueChanged<DraftComment>? onEditDraft;
@@ -48,7 +53,7 @@ class LineComments extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final c in [t.root, ...t.replies]) _CommentBody(comment: c),
+                for (final c in [t.root, ...t.replies]) _CommentBody(comment: c, repo: repo),
                 if (onReply != null)
                   Align(
                     alignment: Alignment.centerRight,
@@ -99,9 +104,10 @@ class LineComments extends StatelessWidget {
 }
 
 class _CommentBody extends StatelessWidget {
-  const _CommentBody({required this.comment});
+  const _CommentBody({required this.comment, this.repo});
 
   final GhReviewComment comment;
+  final RepoRef? repo;
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +131,10 @@ class _CommentBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          SelectableText(comment.body, style: theme.textTheme.bodyMedium),
+          if (repo case final repo?)
+            PullMarkdown(comment.body, repo: repo)
+          else
+            SelectableText(comment.body, style: theme.textTheme.bodyMedium),
         ],
       ),
     );
@@ -232,10 +241,13 @@ class _ComposerState extends State<_Composer> {
 
 /// Bottom bar of a pull request you can review: pending count and Review….
 class ReviewBar extends ConsumerWidget {
-  const ReviewBar({super.key, required this.pullKey, required this.headSha});
+  const ReviewBar({super.key, required this.pullKey, required this.headSha, this.onDiff = true});
 
   final PullKey pullKey;
   final String headSha;
+
+  /// Whether the diff is showing: the "Tap a line" hint only makes sense there.
+  final bool onDiff;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -252,7 +264,11 @@ class ReviewBar extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  n == 0 ? 'Tap a line to comment' : '$n pending comment${n == 1 ? '' : 's'}',
+                  n > 0
+                      ? '$n pending comment${n == 1 ? '' : 's'}'
+                      : onDiff
+                      ? 'Tap a line to comment'
+                      : '',
                   style: theme.textTheme.bodyMedium,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -357,10 +373,26 @@ class _ReviewSubmitSheetState extends ConsumerState<ReviewSubmitSheet> {
                 decoration: const InputDecoration(hintText: 'Summary (Markdown)', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
-              SegmentedButton<ReviewEvent>(
-                segments: [for (final e in ReviewEvent.values) ButtonSegment(value: e, label: Text(e.label))],
-                selected: {_event},
-                onSelectionChanged: (s) => setState(() => _event = s.first),
+              // A list, not a segmented button: "Request changes" never fits a third of a phone.
+              RadioGroup<ReviewEvent>(
+                groupValue: _event,
+                onChanged: (e) => setState(() => _event = e ?? _event),
+                child: Column(
+                  children: [
+                    for (final e in ReviewEvent.values)
+                      RadioListTile<ReviewEvent>(
+                        value: e,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(e.label),
+                        subtitle: Text(switch (e) {
+                          ReviewEvent.comment => 'Feedback without a verdict',
+                          ReviewEvent.approve => 'Ready to merge',
+                          ReviewEvent.requestChanges => 'Must be addressed before merging',
+                        }),
+                      ),
+                  ],
+                ),
               ),
               if (_error != null)
                 Padding(
@@ -411,7 +443,7 @@ class ReviewersSummary extends ConsumerWidget {
     final states = reviewerStates(reviews);
     final outdated = comments == null ? 0 : threadComments(comments).outdatedCount;
     final scheme = Theme.of(context).colorScheme;
-    final c = DiffColors.of(context);
+    final status = StatusColors.from(context);
     if (states.isEmpty && outdated == 0) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -435,8 +467,8 @@ class ReviewersSummary extends ConsumerWidget {
                     },
                     size: 18,
                     color: switch (e.value) {
-                      ReviewState.approved => c.addFg,
-                      ReviewState.changesRequested => c.delFg,
+                      ReviewState.approved => status.success,
+                      ReviewState.changesRequested => status.failure,
                       _ => scheme.outline,
                     },
                   ),

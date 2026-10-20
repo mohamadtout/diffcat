@@ -6,6 +6,37 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Tablets: the first pull request, commit or run opens beside the list instead of an empty "Select a…" pane (not in
+  data saver mode), the repo's sections are tabs, and the console, changed-since and run screens keep a readable
+  width. The handle that hides the list is easier to hit.
+- Pull request descriptions and review comments are formatted like on GitHub: headings, lists and checklists,
+  highlighted code, quotes, tables and links. `#123`, `@user` and commit SHAs are links, and links to pull requests,
+  commits and repos open in the app. Template comments (`<!-- … -->`) are hidden.
+- Pull requests say whether they're ready to merge: one line under the title on every tab ("Ready to merge · 3
+  passed", "Checks failing", "Has conflicts", "Changes requested", "Checks running", "Needs approval"), and a card on
+  Overview with the checks (tap for Actions), conflicts with the base branch and approvals. The review bar's "Tap a
+  line to comment" shows only on Files.
+- Diffs come first: a commit's header is shorter (the body folds to two lines with **More**, the SHA shows once,
+  actions sit in one row of chips) and the pull request header is two lines, so code shows on the first screen.
+  With a large system font, code grows less than the rest of the app (it has its own size setting), and blame on
+  phones shows age and initials so the code keeps the width.
+- Phones: the repo screen's top bar keeps the repo's name readable (the branch picker moves to a row below it, and
+  notifications, changed-since and offline mode to its menu); repo rows keep the name on the first line. Pull request
+  tabs scroll instead of being cut off, the review verdict is a list (no more "Comme/nt" with large text), the
+  download sheet's button stays in view, and the inbox filters no longer clip with large text.
+- SSH: when a host's key changes, the warning shows the old and new fingerprints in groups of four, in a monospace
+  font, so they can be compared, and Cancel is the highlighted choice.
+- Empty screens offer the next step: "Show closed" for a repo without open pull requests, "Browse repos" when
+  nothing is downloaded, "Back to hosts" for a deleted SSH host. Hitting GitHub's hourly limit says when it resets,
+  and signed out offers signing in (5,000 requests an hour instead of 60). The Diffcat cat appears on first run, when
+  nothing waits for your review, and when nothing is downloaded.
+- Colors: the app's blue is now the brand blue instead of a muted slate, the "Offline" chip is teal instead of pink,
+  and CI, pull request and review states keep their colors when you change diff colors. Changed diff lines have a bar
+  at their left edge, removed and added lines stand out more in dark mode, and line numbers are easier to read. Text
+  fields share one outlined style, and the download sheet's choices show a check like the other selectors. The
+  "Trust new key" button's text is readable in dark mode.
+- `make design-shots`: screenshots of every screen on demo data (phone light and dark, tablet, large text) in
+  `app/build/design/`, for reviewing the UI without a device. No app changes.
 - Store screenshots and the README show GitHub Actions (a failed run, its jobs and the Re-run buttons; the run list
   beside it on tablets) and a file's history graph. The App Store gets 10 per device (adding Run workflow and blame),
   Google Play 8. The sparse changed-since and console shots are out.

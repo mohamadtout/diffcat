@@ -6,7 +6,13 @@ Duration? retryTransient(int count, Object error) =>
 
 /// Error raised by [GitHubClient] for any non-successful GitHub API call.
 class GitHubException implements Exception {
-  GitHubException(this.message, {this.statusCode, this.rateLimitResetAt, this.notDownloaded = false});
+  GitHubException(
+    this.message, {
+    this.statusCode,
+    this.rateLimitResetAt,
+    this.signedOut = false,
+    this.notDownloaded = false,
+  });
 
   /// Offline mode asked for something that was never downloaded.
   GitHubException.notDownloaded()
@@ -17,6 +23,10 @@ class GitHubException implements Exception {
 
   /// Set when the request failed because the rate limit was exhausted.
   final DateTime? rateLimitResetAt;
+
+  /// The request was made without a token, so signing in raises the limit
+  /// (60 → 5,000 an hour). Only set for rate-limit errors.
+  final bool signedOut;
 
   bool get isUnauthorized => statusCode == 401;
   bool get isNotFound => statusCode == 404;

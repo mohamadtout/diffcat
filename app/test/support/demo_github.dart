@@ -275,6 +275,7 @@ class DemoGitHub implements HttpClientAdapter {
     'changed_files': _files.length,
     'commits': 2,
     'html_url': 'https://github.com/$owner/$repoName/pull/$n',
+    'mergeable_state': n == openPullNumber ? 'clean' : (draft ? 'draft' : 'unknown'),
   };
 
   List<Map<String, dynamic>> get _pulls => [
@@ -623,6 +624,16 @@ jobs:
     if (path == '$base/commits') {
       final perPage = int.tryParse('${query['per_page'] ?? ''}') ?? 30;
       return [for (var i = 0; i < _commits.length && i < perPage; i++) _commit(i)];
+    }
+    if (path.startsWith('$base/commits/') && path.endsWith('/check-runs')) {
+      final runs = [('lint', 'success'), ('test', 'success'), ('build', 'success'), ('CodeQL', 'neutral')];
+      return {
+        'total_count': runs.length,
+        'check_runs': [
+          for (final (i, (name, conclusion)) in runs.indexed)
+            {'id': 9100 + i, 'name': name, 'status': 'completed', 'conclusion': conclusion, 'html_url': null},
+        ],
+      };
     }
     if (path.startsWith('$base/commits/')) return _commit(0, withFiles: true);
     if (path.startsWith('$base/compare/')) {

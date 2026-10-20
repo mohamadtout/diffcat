@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/layout/readable_width.dart';
 import '../../core/routing/routes.dart';
+import '../../core/theme/app_theme.dart';
 import 'ssh_host.dart';
 import 'ssh_session.dart';
 
@@ -48,7 +49,9 @@ class HostsScreen extends ConsumerWidget {
                 ListTile(
                   leading: Icon(
                     Icons.dns_outlined,
-                    color: (registry.existing(h.id)?.status == SshStatus.connected) ? Colors.green : null,
+                    color: (registry.existing(h.id)?.status == SshStatus.connected)
+                        ? StatusColors.from(context).success
+                        : null,
                   ),
                   title: Text(h.label),
                   subtitle: Text(h.address),

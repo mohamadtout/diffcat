@@ -2,8 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/core/layout/split_view.dart';
+import 'package:git_reviewer/core/routing/app_router.dart';
+import 'package:git_reviewer/core/routing/routes.dart';
 import 'package:git_reviewer/core/storage/storage.dart';
+import 'package:git_reviewer/features/pulls/pull_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/demo_app.dart';
+import '../support/settle.dart';
 
 Future<SharedPreferences> _pump(
   WidgetTester tester, {
@@ -57,5 +63,34 @@ void main() {
     await _pump(tester, detail: const Text('DETAIL'), size: const Size(400, 800));
     expect(find.text('DETAIL'), findsNothing);
     expect(find.byTooltip('Hide list (full-width view)'), findsNothing);
+  });
+
+  Future<void> openInbox(WidgetTester tester, {bool dataSaver = false}) async {
+    tester.view
+      ..physicalSize = const Size(1376, 1032) * 2
+      ..devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
+    final env = await DemoEnv.create();
+    if (dataSaver) await env.prefs.setBool(StoreKeys.dataSaver, true);
+    await tester.pumpWidget(env.app());
+    await settle(tester);
+    ProviderScope.containerOf(tester.element(find.byType(MaterialApp))).read(routerProvider).go(Routes.inbox);
+    await settle(tester);
+    await settle(tester);
+  }
+
+  testWidgets('tablets open the first item beside the list instead of an empty pane', (tester) async {
+    await openInbox(tester);
+    expect(find.text('Select a pull request'), findsNothing);
+    expect(find.byType(PullView), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
+  });
+
+  testWidgets('not in data saver mode: each detail costs requests', (tester) async {
+    await openInbox(tester, dataSaver: true);
+    expect(find.text('Select a pull request'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await settle(tester);
   });
 }

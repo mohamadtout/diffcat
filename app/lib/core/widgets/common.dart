@@ -13,6 +13,9 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CircleAvatar(
     radius: size / 2,
+    // Quieter than the default primary container: a column of initials shouldn't outweigh the titles.
+    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
     foregroundImage: url == null ? null : NetworkImage(url!),
     child: Text(fallback.isEmpty ? '?' : fallback[0].toUpperCase(), style: TextStyle(fontSize: size * 0.4)),
   );
@@ -109,6 +112,56 @@ class SectionHeader extends StatelessWidget {
     return Padding(
       padding: padding,
       child: Text(title, style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.primary)),
+    );
+  }
+}
+
+/// Selectable text shown to [maxLines] lines, with "More" / "Less" when it's
+/// longer: commit bodies shouldn't push the diff off the first screen.
+class ExpandableText extends StatefulWidget {
+  const ExpandableText(this.text, {super.key, this.maxLines = 2, this.style});
+
+  final String text;
+  final int maxLines;
+  final TextStyle? style;
+
+  @override
+  State<ExpandableText> createState() => _ExpandableTextState();
+}
+
+class _ExpandableTextState extends State<ExpandableText> {
+  var _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = widget.style ?? Theme.of(context).textTheme.bodyMedium;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final painter = TextPainter(
+          text: TextSpan(text: widget.text, style: style),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: widget.maxLines,
+        )..layout(maxWidth: c.maxWidth);
+        final long = painter.didExceedMaxLines;
+        painter.dispose();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Collapsed: plain text with an ellipsis (SelectableText would scroll inside its lines).
+            if (_open || !long)
+              SelectableText(widget.text, style: style)
+            else
+              Text(widget.text, style: style, maxLines: widget.maxLines, overflow: TextOverflow.ellipsis),
+            if (long)
+              TextButton(
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                onPressed: () => setState(() => _open = !_open),
+                child: Text(_open ? 'Less' : 'More'),
+              ),
+          ],
+        );
+      },
     );
   }
 }

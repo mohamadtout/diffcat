@@ -10,9 +10,9 @@ import '../support/demo_app.dart';
 import '../support/demo_github.dart';
 import '../support/settle.dart';
 
-Future<void> _open(WidgetTester tester, {required bool signedIn}) async {
+Future<void> _open(WidgetTester tester, {required bool signedIn, double width = 700}) async {
   tester.view
-    ..physicalSize = const Size(900, 1800)
+    ..physicalSize = Size(width * 2, 1800)
     ..devicePixelRatio = 2;
   addTearDown(tester.view.reset);
   final env = await DemoEnv.create(signedIn: signedIn);
@@ -41,6 +41,13 @@ void main() {
     final commit = tester.widget<CommitScreen>(find.byType(CommitScreen));
     expect(commit.sha, DemoGitHub.sha(102));
     expect(commit.focusPath, DemoGitHub.retryGo);
+  });
+
+  testWidgets('on a phone the gutter shows age and initials, so the code keeps the width', (tester) async {
+    await _open(tester, signedIn: true, width: 393);
+    expect(find.textContaining('lena-k'), findsNothing);
+    expect(find.textContaining(' LK'), findsNWidgets(2));
+    expect(find.textContaining(' PS'), findsOneWidget);
   });
 
   testWidgets('signed out, blame explains it needs a token', (tester) async {

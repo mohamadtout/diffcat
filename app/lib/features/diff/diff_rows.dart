@@ -353,6 +353,12 @@ class _LineView extends StatelessWidget {
       },
       child: Container(
         color: bg,
+        // A bar at the edge of changed lines: a second cue besides the row tint and the +/- sign.
+        foregroundDecoration: bg == null
+            ? null
+            : BoxDecoration(
+                border: Border(left: BorderSide(color: signColor, width: 3)),
+              ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/layout/readable_width.dart';
 import '../../core/routing/routes.dart';
 import '../../core/utils/relative_time.dart';
 import '../../core/widgets/async_view.dart';
@@ -63,29 +64,36 @@ class _ChangedSinceScreenState extends ConsumerState<ChangedSinceScreen> {
         onRetry: () => ref.invalidate(repoProvider(widget.repo)),
         data: (repo) {
           final head = _head ?? repo.defaultBranch;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [_headPicker(head), _basePicker(head)],
-                ),
+          // Tablets: a readable column, not pickers and rows stretched across the screen.
+          return ReadableWidth(
+            maxWidth: 960,
+            builder: (sides) => Padding(
+              padding: sides,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [_headPicker(head), _basePicker(head)],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: _base == null
+                        ? const EmptyView(
+                            icon: Icons.difference_outlined,
+                            message: 'Pick a starting commit to list every file changed since then.',
+                          )
+                        : _result(head, _base!),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              const Divider(height: 1),
-              Expanded(
-                child: _base == null
-                    ? const EmptyView(
-                        icon: Icons.difference_outlined,
-                        message: 'Pick a starting commit to list every file changed since then.',
-                      )
-                    : _result(head, _base!),
-              ),
-            ],
+            ),
           );
         },
       ),

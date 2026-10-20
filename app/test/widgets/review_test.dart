@@ -30,6 +30,20 @@ Future<DemoEnv> _openPull(WidgetTester tester, {bool signedIn = true}) async {
 }
 
 void main() {
+  testWidgets('the header says whether the PR is ready to merge; Overview has the details', (tester) async {
+    await _openPull(tester);
+    expect(find.text('Ready to merge · 3 passed, 1 skipped'), findsOneWidget);
+    expect(find.text('Tap a line to comment'), findsOneWidget, reason: 'Files is the first tab shown');
+
+    await tester.tap(find.text('Ready to merge · 3 passed, 1 skipped'));
+    await settle(tester);
+    expect(find.text('Checks: 3 passed, 1 skipped'), findsOneWidget);
+    expect(find.text('No conflicts with main'), findsOneWidget);
+    expect(find.text('Approved by lena-k'), findsOneWidget);
+    expect(find.text('Tap a line to comment'), findsNothing, reason: 'no lines to tap on Overview');
+    expect(find.widgetWithText(FilledButton, 'Review'), findsOneWidget, reason: 'reviewing still works from here');
+  });
+
   testWidgets('existing threads show under their line', (tester) async {
     await _openPull(tester);
     expect(find.text('Should max be configurable per endpoint?'), findsOneWidget);

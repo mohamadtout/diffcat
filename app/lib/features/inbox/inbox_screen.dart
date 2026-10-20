@@ -11,6 +11,7 @@ import '../../core/widgets/common.dart';
 import '../../data/github/models/models.dart';
 import '../auth/auth_controller.dart';
 import '../notifications/watch_controller.dart';
+import '../offline/offline_providers.dart';
 import '../pulls/pull_screen.dart';
 import '../repos/repos_providers.dart';
 import 'inbox_providers.dart';
@@ -32,20 +33,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     if (!ref.watch(isSignedInProvider)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Inbox')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const EmptyView(
-                  icon: Icons.inbox_outlined,
-                  message: 'Sign in to see pull requests waiting for your review, yours, and where you are mentioned.',
-                ),
-                FilledButton(onPressed: () => context.push(Routes.setup), child: const Text('Sign in')),
-              ],
-            ),
-          ),
+        body: EmptyView(
+          icon: Icons.inbox_outlined,
+          mascot: true,
+          message: 'Sign in to see pull requests waiting for your review, yours, and where you are mentioned.',
+          action: FilledButton(onPressed: () => context.push(Routes.setup), child: const Text('Sign in')),
         ),
       );
     }
@@ -60,6 +52,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
               if (!library.isHidden(p.repo.fullName)) p,
           ], total: r.total),
         );
+    SplitView.autoSelect(
+      context,
+      current: _selected,
+      first: value.value?.items.firstOrNull,
+      enabled: !ref.watch(dataSaverProvider),
+      select: (p) => setState(() => _selected ??= p),
+    );
     final selected = _selected;
     return Scaffold(
       appBar: AppBar(title: const Text('Inbox')),
@@ -67,11 +66,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         placeholder: 'Select a pull request',
         master: Column(
           children: [
-            SizedBox(
-              height: 52,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            // Sized by its chips, so large text doesn't clip them; scrolls sideways when they don't fit.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
                 children: [
                   for (final s in InboxSection.values)
                     Padding(
@@ -97,12 +96,14 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                   child: r.items.isEmpty
                       ? ListView(
                           children: [
-                            EmptyView(
-                              icon: _section.icon,
-                              message: _section == InboxSection.reviewRequested
-                                  ? 'Nothing waiting for your review.'
-                                  : 'No open pull requests here.',
-                            ),
+                            _section == InboxSection.reviewRequested
+                                ? const EmptyView(
+                                    icon: Icons.done_all,
+                                    mascot: true,
+                                    title: 'All clear',
+                                    message: 'Nothing waiting for your review.',
+                                  )
+                                : EmptyView(icon: _section.icon, message: 'No open pull requests here.'),
                           ],
                         )
                       : ReadableWidth(

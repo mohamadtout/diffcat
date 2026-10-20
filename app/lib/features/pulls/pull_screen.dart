@@ -14,6 +14,8 @@ import '../diff/diff_parser.dart';
 import '../diff/diff_view.dart';
 import '../offline/download_button.dart';
 import '../offline/offline_providers.dart';
+import 'merge_readiness_view.dart';
+import 'pull_markdown.dart';
 import 'pulls_providers.dart';
 import 'pulls_tab.dart';
 import 'review.dart';
@@ -53,6 +55,9 @@ class PullView extends ConsumerWidget {
           children: [
             _PullHeader(pull: pull, repo: repo),
             TabBar(
+              // Scrollable so "Commits (n)" isn't cut off on phones or with large text.
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               tabs: [
                 const Tab(text: 'Overview'),
                 Tab(text: 'Files${pull.changedFiles == null ? '' : ' (${pull.changedFiles})'}'),
@@ -83,7 +88,15 @@ class PullView extends ConsumerWidget {
               ),
             ),
             if (_canReview(ref, pull, repo))
-              ReviewBar(pullKey: key, headSha: pull.headSha)
+              Builder(
+                builder: (context) {
+                  final tabs = DefaultTabController.of(context);
+                  return ListenableBuilder(
+                    listenable: tabs,
+                    builder: (_, _) => ReviewBar(pullKey: key, headSha: pull.headSha, onDiff: tabs.index == 1),
+                  );
+                },
+              )
             else if (_reviewableOnline(ref, pull) && ref.watch(isOfflineProvider(repo)))
               _OfflineReviewNote(repo: repo),
           ],
@@ -231,6 +244,7 @@ class _ReviewableDiff extends ConsumerWidget {
         return LineComments(
           threads: t,
           drafts: d,
+          repo: pullKey.repo,
           onReply: canReview ? reply : null,
           onEditDraft: edit,
           onDeleteDraft: drafts.remove,
@@ -249,7 +263,7 @@ class _PullHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -258,17 +272,29 @@ class _PullHeader extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              // Two short blocks above every tab, so the diff keeps the screen; Overview has the full title.
               children: [
-                Text(pull.title, style: theme.textTheme.titleMedium),
-                const SizedBox(height: 4),
-                Text(
-                  '${pull.author.login} wants to merge ${pull.headRef} → ${pull.baseRef}',
-                  style: theme.textTheme.bodySmall,
+                _FoldedTitle(pull.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${pull.author.login} · ${pull.headRef} → ${pull.baseRef}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                    if (pull.additions != null) ...[
+                      const SizedBox(width: 8),
+                      LineCounts(additions: pull.additions!, deletions: pull.deletions ?? 0),
+                    ],
+                  ],
                 ),
-                if (pull.additions != null) ...[
-                  const SizedBox(height: 4),
-                  LineCounts(additions: pull.additions!, deletions: pull.deletions ?? 0),
-                ],
+                // "Is this safe to merge?" on every tab; tapping it opens Overview.
+                if (pull.state == PullState.open || pull.state == PullState.draft)
+                  MergeReadinessLine(repo: repo, pull: pull),
               ],
             ),
           ),
@@ -277,6 +303,31 @@ class _PullHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The PR title, two lines at most so the diff keeps the screen; a tap shows all of it.
+class _FoldedTitle extends StatefulWidget {
+  const _FoldedTitle(this.title, {this.style});
+  final String title;
+  final TextStyle? style;
+
+  @override
+  State<_FoldedTitle> createState() => _FoldedTitleState();
+}
+
+class _FoldedTitleState extends State<_FoldedTitle> {
+  var _open = false;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => setState(() => _open = !_open),
+    child: Text(
+      widget.title,
+      maxLines: _open ? null : 2,
+      overflow: _open ? null : TextOverflow.ellipsis,
+      style: widget.style,
+    ),
+  );
 }
 
 class _Overview extends StatelessWidget {
@@ -290,6 +341,12 @@ class _Overview extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        Text(
+          '${pull.author.login} wants to merge ${pull.headRef} into ${pull.baseRef}',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        if (pull.state == PullState.open || pull.state == PullState.draft) MergeReadinessCard(repo: repo, pull: pull),
         ReviewersSummary(pullKey: (repo: repo, number: pull.number)),
         Row(
           children: [
@@ -302,7 +359,10 @@ class _Overview extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        SelectableText(pull.body.isEmpty ? 'No description provided.' : pull.body, style: theme.textTheme.bodyMedium),
+        if (pull.body.trim().isEmpty)
+          Text('No description provided.', style: theme.textTheme.bodyMedium)
+        else
+          PullMarkdown(pull.body, repo: repo),
       ],
     );
   }

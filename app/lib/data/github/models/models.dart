@@ -1,5 +1,6 @@
 export 'actions.dart';
 export 'blame.dart';
+export 'checks.dart';
 export 'commit.dart';
 export 'file_change.dart';
 export 'notification.dart';

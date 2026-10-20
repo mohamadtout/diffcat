@@ -268,7 +268,9 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppTheme.codeTextScale(child: Builder(builder: _build));
+
+  Widget _build(BuildContext context) {
     final settings = ref.watch(diffSettingsProvider);
     final mono = settings.codeStyle(context);
     if (settings.syntax && _hlFor != widget.content) {
@@ -284,7 +286,7 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
     final tp = TextPainter(
       text: TextSpan(text: 'MMMMMMMMMM', style: mono),
       textDirection: TextDirection.ltr,
-      // Same scaling as the Text widgets it sizes (system text size setting).
+      // Same scaling as the Text widgets it sizes (system text size, clamped for code).
       textScaler: MediaQuery.textScalerOf(context),
     )..layout();
     final charW = tp.width / 10;
@@ -292,7 +294,9 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
     final gutterW = math.max(3, lines.length.toString().length) * charW + 16;
     final blame = widget.blame;
     final byLine = blame == null ? null : blameByLine(blame, lines.length);
-    final blameW = byLine == null ? 0.0 : 15 * charW + 12;
+    // Phones: age and initials ("2d LK") instead of age and login, so the code keeps the width.
+    final compactBlame = MediaQuery.sizeOf(context).width < 600;
+    final blameW = byLine == null ? 0.0 : (compactBlame ? 6 : 15) * charW + 12;
 
     Widget line(int i) => Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,6 +306,7 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
             range: byLine[i],
             first: i == 0 || byLine[i - 1] != byLine[i],
             width: blameW,
+            compact: compactBlame,
             style: gutterStyle,
             onTap: widget.onBlameTap,
           ),
@@ -336,14 +341,31 @@ class _CodeLinesState extends ConsumerState<CodeLines> {
   }
 }
 
+/// "Lena Kovač" → "LK", "lena-k" → "LK", "sam" → "S": blame's author on narrow screens.
+String initials(String name) {
+  final words = name.split(RegExp(r'[\s\-_.]+')).where((w) => w.isNotEmpty).toList();
+  if (words.isEmpty) return '?';
+  return (words.length == 1 ? words.first[0] : '${words.first[0]}${words.last[0]}').toUpperCase();
+}
+
 /// One line's blame: who and when at the start of each range, and a bar
 /// whose color fades with the change's age (GitHub's 1-10 buckets).
 class _BlameCell extends StatelessWidget {
-  const _BlameCell({required this.range, required this.first, required this.width, required this.style, this.onTap});
+  const _BlameCell({
+    required this.range,
+    required this.first,
+    required this.width,
+    required this.style,
+    this.compact = false,
+    this.onTap,
+  });
 
   final BlameRange? range;
   final bool first;
   final double width;
+
+  /// Initials instead of the login (narrow screens).
+  final bool compact;
   final TextStyle style;
   final ValueChanged<BlameRange>? onTap;
 
@@ -376,7 +398,7 @@ class _BlameCell extends StatelessWidget {
         padding: const EdgeInsets.only(left: 6, right: 4),
         child: first && r != null
             ? Text(
-                '${age(r.date)} ${r.authorLogin ?? r.authorName}',
+                '${age(r.date)} ${compact ? initials(r.authorName) : r.authorLogin ?? r.authorName}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: style.copyWith(color: scheme.onSurfaceVariant),

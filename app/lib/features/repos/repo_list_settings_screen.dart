@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/layout/readable_width.dart';
 import '../../core/routing/routes.dart';
+import '../../core/widgets/async_view.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/text_input_dialog.dart';
 import 'repo_library.dart';
@@ -157,15 +158,12 @@ class RepoFoldersScreen extends ConsumerWidget {
         onPressed: () => createFolder(context, ref),
       ),
       body: library.folders.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text(
+          ? const EmptyView(
+              icon: Icons.folder_outlined,
+              title: 'No folders yet',
+              message:
                   'Folders group repos in the list, each with its own color. Create one here, or long-press '
                   'repos in the list and move them.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
             )
           : ReadableWidth(
               builder: (sides) => ReorderableListView(
