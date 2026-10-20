@@ -7,6 +7,16 @@ someone's eyes and hands). Tick them off before merging.
 Run `make run DEVICE=<id>` on a phone and a tablet, in light and dark, and once with the system font size at its
 largest.
 
+## 0. Device tests the cloud can't run
+
+- [ ] `make device-test DEVICE=<phone>` and `DEVICE=<tablet>`: the smoke test taps through the main screens; its
+      finders should still match (repo tabs are now a TabBar on tablets; the PR header and review sheet changed).
+- [ ] `make offline-test DEVICE=<id>`: downloads, offline mode, the download sheet's new sticky button.
+- [ ] `make ssh-test …`: host-key prompt (first connection still uses "Trust").
+- [ ] `make store-screenshots` + `make store-frames` for every device: the UI changed (colors, headers, merge
+      readiness, Markdown), so the store images and README screenshots need regenerating. Look at each before upload.
+- [ ] iOS build (`make ipa` or run on a simulator): nothing here is Android-only, but it hasn't been run on iOS.
+
 ## 1. Colors (brand scheme, status colors, diff bars)
 
 - [ ] The blue looks like the brand (#2F81F7 family) on a real screen, in light and dark, and isn't too loud on
