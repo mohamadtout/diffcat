@@ -411,7 +411,7 @@ class ReviewersSummary extends ConsumerWidget {
     final states = reviewerStates(reviews);
     final outdated = comments == null ? 0 : threadComments(comments).outdatedCount;
     final scheme = Theme.of(context).colorScheme;
-    final c = DiffColors.of(context);
+    final status = StatusColors.from(context);
     if (states.isEmpty && outdated == 0) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -435,8 +435,8 @@ class ReviewersSummary extends ConsumerWidget {
                     },
                     size: 18,
                     color: switch (e.value) {
-                      ReviewState.approved => c.addFg,
-                      ReviewState.changesRequested => c.delFg,
+                      ReviewState.approved => status.success,
+                      ReviewState.changesRequested => status.failure,
                       _ => scheme.outline,
                     },
                   ),

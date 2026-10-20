@@ -50,6 +50,29 @@ void main() {
     expect(find.text('new line'), findsNothing);
   });
 
+  testWidgets('changed lines carry an edge bar in their sign color, context lines none', (tester) async {
+    await tester.pumpWidget(
+      await _scope(
+        MaterialApp(
+          theme: AppTheme.light(),
+          home: const Scaffold(
+            body: DiffView(repo: (owner: 'o', name: 'r'), files: _files, fileRef: 'sha'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Color? bar(String text) {
+      final row = tester.widget<Container>(find.ancestor(of: find.text(text), matching: find.byType(Container)).first);
+      return ((row.foregroundDecoration as BoxDecoration?)?.border as Border?)?.left.color;
+    }
+
+    expect(bar('new line'), DiffColors.light.addFg);
+    expect(bar('old line'), DiffColors.light.delFg);
+    expect(bar('context'), isNull);
+  });
+
   testWidgets('first launch without a token opens the public repo browser, sign-in is optional', (tester) async {
     FlutterSecureStorage.setMockInitialValues({});
     await tester.pumpWidget(await _scope(const GitReviewerApp()));

@@ -27,7 +27,12 @@ Future<bool> confirmHostKey(
       actions: [
         TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
         FilledButton(
-          style: changed ? FilledButton.styleFrom(backgroundColor: Theme.of(ctx).colorScheme.error) : null,
+          style: changed
+              ? FilledButton.styleFrom(
+                  backgroundColor: Theme.of(ctx).colorScheme.error,
+                  foregroundColor: Theme.of(ctx).colorScheme.onError,
+                )
+              : null,
           onPressed: () => Navigator.pop(ctx, true),
           child: Text(changed ? 'Trust new key' : 'Trust'),
         ),

@@ -196,7 +196,6 @@ class _DownloadSheetState extends ConsumerState<_DownloadSheet> {
             Text('Commits with their diffs', style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             SegmentedButton<CommitRange>(
-              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(value: CommitRange.recent, label: Text('Latest')),
                 ButtonSegment(value: CommitRange.since, label: Text('Since…')),
@@ -245,7 +244,6 @@ class _DownloadSheetState extends ConsumerState<_DownloadSheet> {
             Text('Pull requests', style: theme.textTheme.labelLarge),
             const SizedBox(height: 8),
             SegmentedButton<PullScope>(
-              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(value: PullScope.none, label: Text('None')),
                 ButtonSegment(value: PullScope.open, label: Text('Open')),

@@ -6,6 +6,11 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Colors: the app's blue is now the brand blue instead of a muted slate, the "Offline" chip is teal instead of pink,
+  and CI, pull request and review states keep their colors when you change diff colors. Changed diff lines have a bar
+  at their left edge, removed and added lines stand out more in dark mode, and line numbers are easier to read. Text
+  fields share one outlined style, and the download sheet's choices show a check like the other selectors. The
+  "Trust new key" button's text is readable in dark mode.
 - `make design-shots`: screenshots of every screen on demo data (phone light and dark, tablet, large text) in
   `app/build/design/`, for reviewing the UI without a device. No app changes.
 - Store screenshots and the README show GitHub Actions (a failed run, its jobs and the Re-run buttons; the run list

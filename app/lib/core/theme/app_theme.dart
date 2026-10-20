@@ -10,14 +10,34 @@ abstract final class AppTheme {
   static ThemeData dark({DiffColors? diff}) => _build(Brightness.dark, diff);
 
   static ThemeData _build(Brightness b, DiffColors? diff) {
-    final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: b);
+    final scheme = schemeFor(b);
     return ThemeData(
       colorScheme: scheme,
       useMaterial3: true,
       visualDensity: VisualDensity.standard,
-      extensions: [diff ?? (b == Brightness.dark ? DiffColors.dark : DiffColors.light)],
+      extensions: [diff ?? (b == Brightness.dark ? DiffColors.dark : DiffColors.light), StatusColors.of(b)],
       listTileTheme: const ListTileThemeData(dense: false),
       appBarTheme: const AppBarTheme(centerTitle: false),
+      // One text field style everywhere; fields that sit in a bar set InputBorder.none themselves.
+      inputDecorationTheme: const InputDecorationThemeData(border: OutlineInputBorder()),
+    );
+  }
+
+  /// The app's colors. `fidelity` keeps primary close to the brand blue (the
+  /// default `tonalSpot` washes it out to slate), and tertiary, used for
+  /// "downloaded" accents, is a calm teal instead of the variant's orange.
+  /// The contrast pairs are checked in test/core/app_theme_test.dart.
+  static ColorScheme schemeFor(Brightness b) {
+    final light = b == Brightness.light;
+    return ColorScheme.fromSeed(
+      seedColor: _seed,
+      brightness: b,
+      dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+    ).copyWith(
+      tertiary: light ? const Color(0xFF00696E) : const Color(0xFF4FD8DF),
+      onTertiary: light ? Colors.white : const Color(0xFF003739),
+      tertiaryContainer: light ? const Color(0xFFC8F4F5) : const Color(0xFF004F53),
+      onTertiaryContainer: light ? const Color(0xFF002022) : const Color(0xFFC8F4F5),
     );
   }
 
@@ -69,17 +89,18 @@ class DiffColors extends ThemeExtension<DiffColors> {
     delFg: Color(0xFFCF222E),
     hunkBg: Color(0xFFDDF4FF),
     hunkFg: Color(0xFF0969DA),
-    gutter: Color(0xFF8C959F),
+    gutter: Color(0xFF656D76),
   );
 
+  // Row tints strong enough to tell apart from the dark surface at night.
   static const dark = DiffColors(
-    addBg: Color(0xFF12261E),
+    addBg: Color(0xFF1A3A28),
     addFg: Color(0xFF3FB950),
-    delBg: Color(0xFF25171C),
+    delBg: Color(0xFF3D1E24),
     delFg: Color(0xFFF85149),
     hunkBg: Color(0xFF121D2F),
     hunkFg: Color(0xFF58A6FF),
-    gutter: Color(0xFF6E7681),
+    gutter: Color(0xFF8B949E),
   );
 
   final Color addBg;
@@ -120,4 +141,58 @@ class DiffColors extends ThemeExtension<DiffColors> {
 
   @override
   DiffColors lerp(DiffColors? other, double t) => t < 0.5 ? this : (other ?? this);
+}
+
+/// Colors for the state of CI runs, pull requests and reviews. Separate from
+/// [DiffColors], which users edit for diffs: a colorblind diff palette
+/// shouldn't recolor "passed" and "failed". Always paired with a distinct icon.
+@immutable
+class StatusColors extends ThemeExtension<StatusColors> {
+  const StatusColors({
+    required this.success,
+    required this.failure,
+    required this.warning,
+    required this.merged,
+    required this.neutral,
+  });
+
+  static const light = StatusColors(
+    success: Color(0xFF1A7F37),
+    failure: Color(0xFFCF222E),
+    warning: Color(0xFF9A6700),
+    merged: Color(0xFF8250DF),
+    neutral: Color(0xFF6E7781),
+  );
+
+  static const dark = StatusColors(
+    success: Color(0xFF3FB950),
+    failure: Color(0xFFF85149),
+    warning: Color(0xFFD29922),
+    merged: Color(0xFFA371F7),
+    neutral: Color(0xFF8B949E),
+  );
+
+  static StatusColors of(Brightness b) => b == Brightness.dark ? dark : light;
+
+  /// Passed, approved, open.
+  final Color success;
+
+  /// Failed, closed, changes requested.
+  final Color failure;
+
+  /// Running, queued, waiting for something.
+  final Color warning;
+  final Color merged;
+
+  /// Skipped, cancelled, draft.
+  final Color neutral;
+
+  static StatusColors from(BuildContext context) =>
+      Theme.of(context).extension<StatusColors>() ?? of(Theme.of(context).brightness);
+
+  @override
+  StatusColors copyWith() => this;
+
+  @override
+  StatusColors lerp(StatusColors? other, double t) => t < 0.5 ? this : (other ?? this);
 }

@@ -158,6 +158,14 @@ build signed out. Unchanged responses are 304s, which don't count against the ra
 behind a redirect, so they're fetched like tarballs and never saved offline; GitHub only has a job's log once the job
 has finished, so the log screen waits for that instead of asking early.
 
+### D20: Colors keep the brand blue; status colors are separate from diff colors
+`ColorScheme.fromSeed`'s default `tonalSpot` variant turned the brand blue (#2F81F7) into a slate blue, so the scheme
+uses `fidelity`, which keeps primary close to the seed (#0059BA light). Its tertiary is orange, which read as a second
+brand on the "Offline" chip, so tertiary is set to a calm teal. CI, pull request and review states have their own
+`StatusColors` instead of borrowing `DiffColors`, because users edit diff colors (a colorblind diff palette shouldn't
+recolor "passed" and "failed"). Changed diff lines get a 3 dp bar at the left edge besides the tint and the +/- sign,
+and the dark tints are stronger: at night the old ones were barely brighter than the page.
+
 ### D19: Design direction from the 2026-10 design review
 [design-review.md](design-review.md) plans the redesign; the owner settled its open questions. Code, line numbers and
 the blame gutter may scale less than UI text with large system text (code size has its own setting), so a phone at

@@ -6,10 +6,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/utils/relative_time.dart';
 import '../../data/github/models/models.dart';
 
-/// GitHub's "attention" yellow, for runs that are still going.
-const _pending = Color(0xFFBF8700);
-
-/// Status of a run, job or step, in GitHub's colors.
+/// Status of a run, job or step: a distinct icon per state, in [StatusColors].
 class RunStateIcon extends StatelessWidget {
   const RunStateIcon(this.state, {super.key, this.size = 24});
 
@@ -18,17 +15,17 @@ class RunStateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = DiffColors.of(context);
+    final c = StatusColors.from(context);
     final muted = Theme.of(context).colorScheme.outline;
     final (icon, color) = switch (state) {
-      RunState.queued || RunState.waiting => (Icons.schedule, _pending),
-      RunState.inProgress => (Icons.timelapse, _pending),
-      RunState.success => (Icons.check_circle, c.addFg),
-      RunState.failure => (Icons.cancel, c.delFg),
+      RunState.queued || RunState.waiting => (Icons.schedule, c.warning),
+      RunState.inProgress => (Icons.timelapse, c.warning),
+      RunState.success => (Icons.check_circle, c.success),
+      RunState.failure => (Icons.cancel, c.failure),
       RunState.cancelled => (Icons.block, muted),
       RunState.skipped => (Icons.skip_next_outlined, muted),
       RunState.neutral => (Icons.remove_circle_outline, muted),
-      RunState.actionRequired => (Icons.error_outline, _pending),
+      RunState.actionRequired => (Icons.error_outline, c.warning),
     };
     return Semantics(
       label: state.label,

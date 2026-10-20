@@ -167,7 +167,7 @@ class _LogViewState extends ConsumerState<_LogView> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final mono = TextStyle(fontFamily: AppTheme.monoFamily, fontSize: 12, height: 1.35);
-    final c = DiffColors.of(context);
+    final status = StatusColors.from(context);
     return Scrollbar(
       controller: _scroll,
       interactive: true,
@@ -180,8 +180,8 @@ class _LogViewState extends ConsumerState<_LogView> {
           final index = visible[i];
           final line = lines[index];
           final (Color? bg, Color? fg) = switch (line.kind) {
-            LogKind.error => (c.delBg, c.delFg),
-            LogKind.warning => (const Color(0x33BF8700), null),
+            LogKind.error => (status.failure.withValues(alpha: 0.14), status.failure),
+            LogKind.warning => (status.warning.withValues(alpha: 0.2), null),
             LogKind.command => (null, scheme.primary),
             LogKind.debug => (null, scheme.outline),
             LogKind.notice => (null, scheme.tertiary),

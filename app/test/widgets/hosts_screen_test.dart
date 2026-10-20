@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/core/storage/storage.dart';
+import 'package:git_reviewer/core/theme/app_theme.dart';
 import 'package:git_reviewer/features/terminal/hosts_screen.dart';
 import 'package:git_reviewer/features/terminal/ssh_host.dart';
 import 'package:git_reviewer/features/terminal/ssh_session.dart';
@@ -33,7 +34,7 @@ void main() {
     session.status = SshStatus.connected;
     session.toggleCtrl(); // any change notifies
     await tester.pump();
-    expect(iconColor(), Colors.green);
+    expect(iconColor(), StatusColors.light.success);
 
     container.read(sshSessionsProvider).close(host.id);
     await tester.pump();

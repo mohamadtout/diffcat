@@ -13,6 +13,9 @@ class UserAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => CircleAvatar(
     radius: size / 2,
+    // Quieter than the default primary container: a column of initials shouldn't outweigh the titles.
+    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+    foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
     foregroundImage: url == null ? null : NetworkImage(url!),
     child: Text(fallback.isEmpty ? '?' : fallback[0].toUpperCase(), style: TextStyle(fontSize: size * 0.4)),
   );

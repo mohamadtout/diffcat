@@ -219,6 +219,9 @@ void main() {
       tester.platformDispatcher.textScaleFactorTestValue = textScale;
       addTearDown(tester.view.reset);
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      // Widget tests draw shadows as solid black outlines; real ones look like the app. Put back
+      // before the test ends: the framework checks debug flags before tear-downs run.
+      debugDisableShadows = false;
 
       final out = Directory('$_outRoot/$folder');
       if (out.existsSync()) out.deleteSync(recursive: true); // no stale shots from an older run
@@ -271,6 +274,7 @@ void main() {
         }
       } finally {
         FlutterError.onError = previous;
+        debugDisableShadows = true;
       }
 
       File('${out.path}/index.md').writeAsStringSync(_index(folder, size, textScale, theme, written, unknown));

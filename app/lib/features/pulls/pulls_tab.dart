@@ -107,13 +107,12 @@ class PullStateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = DiffColors.of(context);
-    final scheme = Theme.of(context).colorScheme;
+    final c = StatusColors.from(context);
     final (icon, color) = switch (state) {
-      PullState.open => (Icons.merge_type, c.addFg),
-      PullState.draft => (Icons.edit_note, scheme.outline),
-      PullState.merged => (Icons.merge, Colors.purple),
-      PullState.closed => (Icons.cancel_outlined, c.delFg),
+      PullState.open => (Icons.merge_type, c.success),
+      PullState.draft => (Icons.edit_note, c.neutral),
+      PullState.merged => (Icons.merge, c.merged),
+      PullState.closed => (Icons.cancel_outlined, c.failure),
     };
     return Icon(icon, color: color);
   }
