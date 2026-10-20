@@ -121,9 +121,10 @@ Redirects: while auth is loading the app stays on `/`, then goes to `LocalNotifi
 ## Responsive layout
 
 - `WindowSize.compact` (<600dp) gets a bottom `NavigationBar`, which only appears on top-level screens so it never stacks with the repo tab bar. Repo tabs go in a bottom bar.
-- `medium` / `expanded` get a `NavigationRail`, and repo tabs become a segmented control in the app bar.
-- List-style screens (repo list, Settings, Downloads, SSH hosts, command buttons, host form) use `ReadableWidth`, which keeps rows at a 720dp reading width on wide screens. It pads the list rather than shrinking it, so the list still scrolls when dragged in the margins.
-- `expanded` (≥840dp) activates `SplitView`: the commit, file and PR lists show their detail beside them instead of pushing a route. Each list checks `SplitView.isActive(context)`. The handle between the panes collapses the list for a full-width detail (`splitCollapsedProvider`, shared by all split views and remembered). The list stays mounted while hidden, so its scroll position survives.
+- `medium` / `expanded` get a `NavigationRail`, and repo tabs become secondary tabs (`TabBar.secondary`) under the app bar. Phones keep the bottom bar for reach (owner decision, D19).
+- On phones the repo screen's top bar keeps only the name, Download and a menu; branch, owner and watch state sit in a row below it.
+- List-style screens (repo list, Settings, Downloads, SSH hosts, command buttons, host form; and at 960dp the console, changed-since and a run's jobs) use `ReadableWidth`, which keeps rows at a 720dp reading width on wide screens. It pads the list rather than shrinking it, so the list still scrolls when dragged in the margins.
+- `expanded` (≥840dp) activates `SplitView`: the commit, file and PR lists show their detail beside them instead of pushing a route. Each list checks `SplitView.isActive(context)`. The handle between the panes collapses the list for a full-width detail (`splitCollapsedProvider`, shared by all split views and remembered). The list stays mounted while hidden, so its scroll position survives. Once a list loads, `SplitView.autoSelect` opens its first item (inbox, commits, PRs, runs) so the detail pane isn't empty, except in data saver mode.
 
 ## Diff rendering
 

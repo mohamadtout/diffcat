@@ -81,3 +81,15 @@ largest.
       tap.
 - [ ] Long code lines in a fenced block scroll sideways inside the block, not the whole page.
 - [ ] Review comments in the diff are formatted too and keep the full system font size.
+
+## 8. Tablets
+
+- [ ] On a tablet (landscape and portrait), the inbox, commits, PRs and Actions open their first item beside the
+      list. With data saver on they don't. Switching branch or PR filter doesn't leave a stale detail.
+- [ ] Repo sections as top tabs: easy to reach with two hands on a tablet; deep links (`?tab=actions`) select the
+      right tab; the bottom bar on phones is unchanged.
+- [ ] The list collapse handle (24 dp wide, full height) is easy to hit with a finger and with a mouse.
+- [ ] Console, changed-since and run screens look balanced at 960 dp; dragging in the side margins of changed-since
+      and the run screen doesn't scroll (the margins are padding outside the list there).
+- [ ] Not done yet (follow-ups from the review): PR Overview beside its Files on wide screens, and a run's jobs beside
+      the selected job's log. Decide on a device whether they're worth it.

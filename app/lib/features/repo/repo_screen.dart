@@ -46,8 +46,11 @@ class RepoScreen extends ConsumerStatefulWidget {
   ConsumerState<RepoScreen> createState() => _RepoScreenState();
 }
 
-class _RepoScreenState extends ConsumerState<RepoScreen> {
+class _RepoScreenState extends ConsumerState<RepoScreen> with SingleTickerProviderStateMixin {
   late RepoTab _tab = RepoTab.parse(widget.initialTab);
+
+  /// Drives the sections' TabBar on wide windows (phones use the bottom bar).
+  late final _tabs = TabController(length: RepoTab.values.length, vsync: this, initialIndex: _tab.index);
   late String? _ref = widget.initialRef;
   late final Set<RepoTab> _visited = {_tab};
 
@@ -64,7 +67,14 @@ class _RepoScreenState extends ConsumerState<RepoScreen> {
   void _select(RepoTab t) => setState(() {
     _tab = t;
     _visited.add(t);
+    if (_tabs.index != t.index) _tabs.index = t.index;
   });
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
 
   Future<void> _toggleWatch() async {
     final notifier = ref.read(watchedReposProvider.notifier);
@@ -206,19 +216,21 @@ class _RepoScreenState extends ConsumerState<RepoScreen> {
                   onPressed: _toggleWatch,
                 ),
               ],
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(56),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: SegmentedButton<RepoTab>(
-                    showSelectedIcon: false,
-                    segments: [
-                      for (final t in RepoTab.values) ButtonSegment(value: t, icon: Icon(t.icon), label: Text(t.label)),
-                    ],
-                    selected: {_tab},
-                    onSelectionChanged: (s) => _select(s.first),
-                  ),
-                ),
+              // Sections as secondary tabs (navigation), not a segmented button (a value picker).
+              bottom: TabBar.secondary(
+                controller: _tabs,
+                isScrollable: true,
+                tabAlignment: TabAlignment.center,
+                onTap: (i) => _select(RepoTab.values[i]),
+                tabs: [
+                  for (final t in RepoTab.values)
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [Icon(t.icon, size: 18), const SizedBox(width: 8), Text(t.label)],
+                      ),
+                    ),
+                ],
               ),
             ),
       bottomNavigationBar: compact

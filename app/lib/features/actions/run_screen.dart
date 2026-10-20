@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/layout/readable_width.dart';
 import '../../core/routing/routes.dart';
 import '../../core/utils/relative_time.dart';
 import '../../core/widgets/async_view.dart';
@@ -117,68 +118,71 @@ class _RunViewState extends ConsumerState<RunView> {
             _refresh();
             await ref.read(runProvider(_key).future);
           },
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 24),
-            children: [
-              _RunHeader(run: r, repo: widget.repo),
-              if (canAct || r.htmlUrl != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      if (canAct && r.state.isActive)
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.stop_circle_outlined),
-                          label: const Text('Cancel run'),
-                          onPressed: _busy ? null : _cancel,
-                        ),
-                      if (canAct && r.state == RunState.failure)
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.replay),
-                          label: const Text('Re-run failed jobs'),
-                          onPressed: _busy
-                              ? null
-                              : () => _act('Re-running failed jobs', () => api.rerunFailedJobs(widget.repo, r.id)),
-                        ),
-                      if (canAct && !r.state.isActive)
-                        OutlinedButton.icon(
-                          icon: const Icon(Icons.replay),
-                          label: const Text('Re-run all jobs'),
-                          onPressed: _busy
-                              ? null
-                              : () => _act('Re-running all jobs', () => api.rerunWorkflowRun(widget.repo, r.id)),
-                        ),
-                      if (r.htmlUrl case final url?)
-                        TextButton.icon(
-                          icon: const Icon(Icons.open_in_new),
-                          label: const Text('Open on GitHub'),
-                          onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-                        ),
-                    ],
+          child: ReadableWidth(
+            maxWidth: 960,
+            builder: (sides) => ListView(
+              padding: sides + const EdgeInsets.only(bottom: 24),
+              children: [
+                _RunHeader(run: r, repo: widget.repo),
+                if (canAct || r.htmlUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (canAct && r.state.isActive)
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.stop_circle_outlined),
+                            label: const Text('Cancel run'),
+                            onPressed: _busy ? null : _cancel,
+                          ),
+                        if (canAct && r.state == RunState.failure)
+                          FilledButton.tonalIcon(
+                            icon: const Icon(Icons.replay),
+                            label: const Text('Re-run failed jobs'),
+                            onPressed: _busy
+                                ? null
+                                : () => _act('Re-running failed jobs', () => api.rerunFailedJobs(widget.repo, r.id)),
+                          ),
+                        if (canAct && !r.state.isActive)
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.replay),
+                            label: const Text('Re-run all jobs'),
+                            onPressed: _busy
+                                ? null
+                                : () => _act('Re-running all jobs', () => api.rerunWorkflowRun(widget.repo, r.id)),
+                          ),
+                        if (r.htmlUrl case final url?)
+                          TextButton.icon(
+                            icon: const Icon(Icons.open_in_new),
+                            label: const Text('Open on GitHub'),
+                            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              const Divider(height: 1),
-              const SectionHeader('Jobs'),
-              switch (jobs) {
-                AsyncValue(hasValue: true, :final requireValue) when requireValue.isEmpty => const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text('No jobs yet.'),
-                ),
-                AsyncValue(hasValue: true, :final requireValue) => Column(
-                  children: [for (final j in requireValue) _JobTile(key: ValueKey(j.id), job: j, repo: widget.repo)],
-                ),
-                AsyncError(:final error) => ErrorView(
-                  error: error,
-                  onRetry: () => ref.invalidate(runJobsProvider(_key)),
-                ),
-                _ => const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              },
-            ],
+                const Divider(height: 1),
+                const SectionHeader('Jobs'),
+                switch (jobs) {
+                  AsyncValue(hasValue: true, :final requireValue) when requireValue.isEmpty => const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('No jobs yet.'),
+                  ),
+                  AsyncValue(hasValue: true, :final requireValue) => Column(
+                    children: [for (final j in requireValue) _JobTile(key: ValueKey(j.id), job: j, repo: widget.repo)],
+                  ),
+                  AsyncError(:final error) => ErrorView(
+                    error: error,
+                    onRetry: () => ref.invalidate(runJobsProvider(_key)),
+                  ),
+                  _ => const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                },
+              ],
+            ),
           ),
         ),
       ),

@@ -9,6 +9,7 @@ import '../../core/utils/relative_time.dart';
 import '../../core/widgets/async_view.dart';
 import '../../core/widgets/common.dart';
 import '../../data/github/models/models.dart';
+import '../offline/offline_providers.dart';
 import 'pull_screen.dart';
 import 'pulls_providers.dart';
 
@@ -29,6 +30,13 @@ class _PullsTabState extends ConsumerState<PullsTab> {
   Widget build(BuildContext context) {
     final key = (repo: widget.repo, state: _state);
     final split = SplitView.isActive(context);
+    SplitView.autoSelect(
+      context,
+      current: _selected,
+      first: ref.watch(pullListProvider(key)).value?.firstOrNull?.number,
+      enabled: !ref.watch(dataSaverProvider),
+      select: (n) => setState(() => _selected ??= n),
+    );
     return SplitView(
       placeholder: 'Select a pull request',
       master: Column(

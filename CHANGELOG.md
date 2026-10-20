@@ -6,6 +6,9 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Tablets: the first pull request, commit or run opens beside the list instead of an empty "Select a…" pane (not in
+  data saver mode), the repo's sections are tabs, and the console, changed-since and run screens keep a readable
+  width. The handle that hides the list is easier to hit.
 - Pull request descriptions and review comments are formatted like on GitHub: headings, lists and checklists,
   highlighted code, quotes, tables and links. `#123`, `@user` and commit SHAs are links, and links to pull requests,
   commits and repos open in the app. Template comments (`<!-- … -->`) are hidden.

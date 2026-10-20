@@ -11,6 +11,7 @@ import '../../core/widgets/common.dart';
 import '../../data/github/models/models.dart';
 import '../auth/auth_controller.dart';
 import '../notifications/watch_controller.dart';
+import '../offline/offline_providers.dart';
 import '../pulls/pull_screen.dart';
 import '../repos/repos_providers.dart';
 import 'inbox_providers.dart';
@@ -51,6 +52,13 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
               if (!library.isHidden(p.repo.fullName)) p,
           ], total: r.total),
         );
+    SplitView.autoSelect(
+      context,
+      current: _selected,
+      first: value.value?.items.firstOrNull,
+      enabled: !ref.watch(dataSaverProvider),
+      select: (p) => setState(() => _selected ??= p),
+    );
     final selected = _selected;
     return Scaffold(
       appBar: AppBar(title: const Text('Inbox')),

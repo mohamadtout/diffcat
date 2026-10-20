@@ -61,6 +61,13 @@ class _ActionsTabState extends ConsumerState<ActionsTab> {
     final list = ref.watch(runListProvider(_key));
     final runs = list.value?.items ?? const <GhWorkflowRun>[];
     final expecting = _expectRunUntil?.isAfter(DateTime.now()) ?? false;
+    SplitView.autoSelect(
+      context,
+      current: _selected,
+      first: runs.firstOrNull?.id,
+      enabled: !ref.watch(dataSaverProvider),
+      select: (id) => setState(() => _selected ??= id),
+    );
     return SplitView(
       placeholder: 'Select a workflow run',
       master: Column(
