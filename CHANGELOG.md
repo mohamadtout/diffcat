@@ -6,6 +6,8 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- SSH: when a host's key changes, the warning shows the old and new fingerprints in groups of four, in a monospace
+  font, so they can be compared, and Cancel is the highlighted choice.
 - Empty screens offer the next step: "Show closed" for a repo without open pull requests, "Browse repos" when
   nothing is downloaded, "Back to hosts" for a deleted SSH host. Hitting GitHub's hourly limit says when it resets,
   and signed out offers signing in (5,000 requests an hour instead of 60). The Diffcat cat appears on first run, when

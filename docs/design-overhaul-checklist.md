@@ -28,3 +28,9 @@ largest.
       reset time in your time zone and "Sign in for 5,000 an hour" opens sign-in.
 - [ ] "Show closed" on a repo with no open PRs switches the filter; "Browse repos" goes to the repo list; "Back to
       hosts" after deleting a host from another screen.
+
+## 3. Host-key dialog
+
+- [ ] Connect to a host whose key changed (or edit the saved fingerprint): the dialog reads well, Cancel is the
+      highlighted button, and the fingerprints are selectable and easy to compare with `ssh-keygen -lf` output.
+- [ ] `make ssh-test` still passes (it trusts a first connection with the "Trust" button).
