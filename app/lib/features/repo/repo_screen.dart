@@ -93,73 +93,120 @@ class _RepoScreenState extends ConsumerState<RepoScreen> {
     final offline = ref.watch(isOfflineProvider(widget.repo));
     void setOffline(bool value) => ref.read(offlineModeProvider.notifier).set(widget.repo, offline: value);
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.repo.name, overflow: TextOverflow.ellipsis),
-            Text(
-              saved == null ? widget.repo.owner : '${widget.repo.owner} · $saved',
-              style: Theme.of(context).textTheme.labelSmall,
+    final refPicker = repoAsync.value == null
+        ? null
+        : RefPickerButton(
+            repo: widget.repo,
+            current: _ref ?? repoAsync.value!.defaultBranch,
+            onSelected: (r) => setState(() => _ref = r),
+          );
+    final subtitle = saved == null ? widget.repo.owner : '${widget.repo.owner} · $saved';
+    final menu = PopupMenuButton<String>(
+      tooltip: 'More',
+      onSelected: (v) => switch (v) {
+        'watch' => _toggleWatch(),
+        'since' => context.push(Routes.changedSince(widget.repo, ref: _ref)),
+        'offline' => setOffline(!offline),
+        _ => null,
+      },
+      itemBuilder: (_) => [
+        if (compact)
+          PopupMenuItem(
+            value: 'watch',
+            child: ListTile(
+              leading: Icon(watched ? Icons.notifications_off_outlined : Icons.notifications_none),
+              title: Text(watched ? 'Stop notifications' : 'Notify me of commits & PRs'),
             ),
-          ],
-        ),
-        actions: [
-          if (repoAsync.value case final repo?)
-            RefPickerButton(
-              repo: widget.repo,
-              current: _ref ?? repo.defaultBranch,
-              onSelected: (r) => setState(() => _ref = r),
-            ),
-          if (downloaded && !compact)
-            IconButton(
-              tooltip: offline ? 'Offline mode. Tap to go online' : 'Go offline (downloaded data only)',
-              isSelected: offline,
-              icon: const Icon(Icons.cloud_outlined),
-              selectedIcon: const Icon(Icons.cloud_off),
-              onPressed: () => setOffline(!offline),
-            ),
-          if (branch != null && !offline) DownloadButton(repo: widget.repo, branch: branch),
-          if (!compact)
-            IconButton(
-              tooltip: 'Files changed since…',
-              icon: const Icon(Icons.difference_outlined),
-              onPressed: () => context.push(Routes.changedSince(widget.repo, ref: _ref)),
-            ),
-          IconButton(
-            tooltip: watched ? 'Stop notifications' : 'Notify me of commits & PRs',
-            icon: Icon(watched ? Icons.notifications_active : Icons.notifications_none),
-            onPressed: _toggleWatch,
           ),
-          // Phones: keep the title readable by moving the rarer actions here.
-          if (compact)
-            PopupMenuButton<String>(
-              onSelected: (v) => switch (v) {
-                'since' => context.push(Routes.changedSince(widget.repo, ref: _ref)),
-                'offline' => setOffline(!offline),
-                _ => null,
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: 'since',
-                  child: ListTile(leading: Icon(Icons.difference_outlined), title: Text('Files changed since…')),
-                ),
-                if (downloaded)
-                  PopupMenuItem(
-                    value: 'offline',
-                    child: ListTile(
-                      leading: Icon(offline ? Icons.cloud_outlined : Icons.cloud_off),
-                      title: Text(offline ? 'Go online' : 'Go offline (downloaded data only)'),
-                    ),
-                  ),
-              ],
+        const PopupMenuItem(
+          value: 'since',
+          child: ListTile(leading: Icon(Icons.difference_outlined), title: Text('Files changed since…')),
+        ),
+        if (downloaded)
+          PopupMenuItem(
+            value: 'offline',
+            child: ListTile(
+              leading: Icon(offline ? Icons.cloud_outlined : Icons.cloud_off),
+              title: Text(offline ? 'Go online' : 'Go offline (downloaded data only)'),
             ),
-        ],
-        bottom: compact
-            ? null
-            : PreferredSize(
+          ),
+      ],
+    );
+
+    return Scaffold(
+      appBar: compact
+          // Phones: the name gets the top bar; branch, owner and watch state move to a row below it.
+          ? AppBar(
+              titleSpacing: 0,
+              title: Text(widget.repo.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+              actions: [
+                if (branch != null && !offline) DownloadButton(repo: widget.repo, branch: branch),
+                menu,
+              ],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(48),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      ?refPicker,
+                      Expanded(
+                        child: Text(
+                          refPicker == null ? subtitle : '· $subtitle',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      if (watched)
+                        Tooltip(
+                          message: 'Notifications on',
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Icon(
+                              Icons.notifications_active,
+                              size: 16,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          : AppBar(
+              titleSpacing: 0,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.repo.name, overflow: TextOverflow.ellipsis),
+                  Text(subtitle, style: Theme.of(context).textTheme.labelSmall),
+                ],
+              ),
+              actions: [
+                ?refPicker,
+                if (downloaded)
+                  IconButton(
+                    tooltip: offline ? 'Offline mode. Tap to go online' : 'Go offline (downloaded data only)',
+                    isSelected: offline,
+                    icon: const Icon(Icons.cloud_outlined),
+                    selectedIcon: const Icon(Icons.cloud_off),
+                    onPressed: () => setOffline(!offline),
+                  ),
+                if (branch != null && !offline) DownloadButton(repo: widget.repo, branch: branch),
+                IconButton(
+                  tooltip: 'Files changed since…',
+                  icon: const Icon(Icons.difference_outlined),
+                  onPressed: () => context.push(Routes.changedSince(widget.repo, ref: _ref)),
+                ),
+                IconButton(
+                  tooltip: watched ? 'Stop notifications' : 'Notify me of commits & PRs',
+                  icon: Icon(watched ? Icons.notifications_active : Icons.notifications_none),
+                  onPressed: _toggleWatch,
+                ),
+              ],
+              bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(56),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -173,7 +220,7 @@ class _RepoScreenState extends ConsumerState<RepoScreen> {
                   ),
                 ),
               ),
-      ),
+            ),
       bottomNavigationBar: compact
           ? NavigationBar(
               height: 64,

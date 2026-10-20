@@ -178,153 +178,178 @@ class _DownloadSheetState extends ConsumerState<_DownloadSheet> {
               (_options.files ? 1 : 0);
     final tooMany = requests != null && remaining != null && requests > remaining;
 
+    // The options scroll; the main button stays in view below them, even with large text.
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(saved == null ? 'Download for offline' : 'Offline copy', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 4),
-            Text(
-              '${widget.repo.fullName} · ${widget.branch}'
-              '${saved == null ? '' : ' · saved ${relativeTime(saved.updatedAt)} · ${formatBytes(savedRepo!.branchBytes(widget.branch))}'}',
-              style: theme.textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            Text('Commits with their diffs', style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            SegmentedButton<CommitRange>(
-              segments: const [
-                ButtonSegment(value: CommitRange.recent, label: Text('Latest')),
-                ButtonSegment(value: CommitRange.since, label: Text('Since…')),
-                ButtonSegment(value: CommitRange.all, label: Text('All')),
-              ],
-              selected: {_options.range},
-              onSelectionChanged: running ? null : (s) => setState(() => _options = _options.copyWith(range: s.first)),
-            ),
-            const SizedBox(height: 12),
-            switch (_options.range) {
-              CommitRange.recent => TextField(
-                controller: _count,
-                enabled: !running,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Number of commits',
-                  helperText: 'The newest ones on ${widget.branch}',
-                  errorText: _countError,
-                  border: const OutlineInputBorder(),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(saved == null ? 'Download for offline' : 'Offline copy', style: theme.textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${widget.repo.fullName} · ${widget.branch}'
+                      '${saved == null ? '' : ' · saved ${relativeTime(saved.updatedAt)} · ${formatBytes(savedRepo!.branchBytes(widget.branch))}'}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 16),
+                    Text('Commits with their diffs', style: theme.textTheme.labelLarge),
+                    const SizedBox(height: 8),
+                    SegmentedButton<CommitRange>(
+                      segments: const [
+                        ButtonSegment(value: CommitRange.recent, label: Text('Latest')),
+                        ButtonSegment(value: CommitRange.since, label: Text('Since…')),
+                        ButtonSegment(value: CommitRange.all, label: Text('All')),
+                      ],
+                      selected: {_options.range},
+                      onSelectionChanged: running
+                          ? null
+                          : (s) => setState(() => _options = _options.copyWith(range: s.first)),
+                    ),
+                    const SizedBox(height: 12),
+                    switch (_options.range) {
+                      CommitRange.recent => TextField(
+                        controller: _count,
+                        enabled: !running,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: 'Number of commits',
+                          helperText: 'The newest ones on ${widget.branch}',
+                          errorText: _countError,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      CommitRange.since => TextField(
+                        controller: _since,
+                        enabled: !running,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        style: TextStyle(fontFamily: AppTheme.monoFamily),
+                        decoration: InputDecoration(
+                          labelText: 'From commit',
+                          hintText: 'a1b2c3d or a full SHA',
+                          helperText: 'That commit and everything after it. Copy a SHA from a commit\'s screen.',
+                          helperMaxLines: 2,
+                          errorText: _since.text.isEmpty ? null : _sinceError,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      CommitRange.all => Text(switch (total) {
+                        AsyncData(:final value) => '${widget.branch} has ${_n(value)} commit${value == 1 ? '' : 's'}.',
+                        AsyncError() => "Couldn't count the commits.",
+                        _ => 'Counting commits…',
+                      }, style: muted),
+                    },
+                    const SizedBox(height: 16),
+                    Text('Pull requests', style: theme.textTheme.labelLarge),
+                    const SizedBox(height: 8),
+                    SegmentedButton<PullScope>(
+                      segments: const [
+                        ButtonSegment(value: PullScope.none, label: Text('None')),
+                        ButtonSegment(value: PullScope.open, label: Text('Open')),
+                        ButtonSegment(value: PullScope.openAndClosed, label: Text('Open & closed')),
+                      ],
+                      selected: {_options.pulls},
+                      onSelectionChanged: running
+                          ? null
+                          : (s) => setState(() => _options = _options.copyWith(pulls: s.first)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'With their diffs, commits and review threads. Closed: the 30 most recently updated. '
+                      'Any single pull request can also be downloaded from its screen.',
+                      style: muted,
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('All files'),
+                      subtitle: Text(switch (files) {
+                        null =>
+                          'Every text file at ${widget.branch}, as one archive download. Off: only diffs and the file '
+                              'list are saved, and opening a file needs the network.',
+                        AsyncData(:final value) =>
+                          'About ${value.truncated ? 'at least ' : ''}${formatBytes(value.bytes)} '
+                              'for ${_n(value.files)} text file${value.files == 1 ? '' : 's'} at ${widget.branch}, '
+                              'as one archive download.',
+                        AsyncError() => 'Every text file at ${widget.branch}, as one archive download (size unknown).',
+                        _ => 'Estimating the size…',
+                      }),
+                      value: _options.files,
+                      onChanged: running ? null : (v) => setState(() => _options = _options.copyWith(files: v)),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${requests == null ? 'One' : 'About ${_n(requests)}'} GitHub request${requests == 1 ? '' : 's'}'
+                      '${requests == null ? ' per commit up to that one, plus one per 30 for the list' : ''}'
+                      '${_options.pulls == PullScope.none ? '' : ', plus 5 per pull request'}. '
+                      'Commits already saved are skipped.'
+                      '${remaining == null ? '' : ' ${_n(remaining)} left this hour.'}'
+                      '${signedIn ? '' : ' Signed out, GitHub allows 60 requests an hour; sign in for bigger downloads.'}',
+                      style: muted,
+                    ),
+                    if (tooMany) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'More than you have left this hour: the download stops when they run out and keeps what it saved. '
+                        'Update later to continue.',
+                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
+                      ),
+                    ],
+                  ],
                 ),
-                onChanged: (_) => setState(() {}),
               ),
-              CommitRange.since => TextField(
-                controller: _since,
-                enabled: !running,
-                autocorrect: false,
-                enableSuggestions: false,
-                style: TextStyle(fontFamily: AppTheme.monoFamily),
-                decoration: InputDecoration(
-                  labelText: 'From commit',
-                  hintText: 'a1b2c3d or a full SHA',
-                  helperText: 'That commit and everything after it. Copy a SHA from a commit\'s screen.',
-                  helperMaxLines: 2,
-                  errorText: _since.text.isEmpty ? null : _sinceError,
-                  border: const OutlineInputBorder(),
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              CommitRange.all => Text(switch (total) {
-                AsyncData(:final value) => '${widget.branch} has ${_n(value)} commit${value == 1 ? '' : 's'}.',
-                AsyncError() => "Couldn't count the commits.",
-                _ => 'Counting commits…',
-              }, style: muted),
-            },
-            const SizedBox(height: 16),
-            Text('Pull requests', style: theme.textTheme.labelLarge),
-            const SizedBox(height: 8),
-            SegmentedButton<PullScope>(
-              segments: const [
-                ButtonSegment(value: PullScope.none, label: Text('None')),
-                ButtonSegment(value: PullScope.open, label: Text('Open')),
-                ButtonSegment(value: PullScope.openAndClosed, label: Text('Open & closed')),
-              ],
-              selected: {_options.pulls},
-              onSelectionChanged: running ? null : (s) => setState(() => _options = _options.copyWith(pulls: s.first)),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'With their diffs, commits and review threads. Closed: the 30 most recently updated. '
-              'Any single pull request can also be downloaded from its screen.',
-              style: muted,
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (running) ...[
+                    LinearProgressIndicator(value: progress.fraction),
+                    const SizedBox(height: 8),
+                    Text('${progress.phase} · ${progress.done}/${progress.total}', style: theme.textTheme.bodySmall),
+                    const SizedBox(height: 8),
+                    OutlinedButton(
+                      onPressed: () => ref.read(downloadsProvider.notifier).cancel(_key),
+                      child: const Text('Cancel'),
+                    ),
+                  ] else ...[
+                    if (progress?.error != null) ...[
+                      Text(
+                        'Stopped during ${progress!.phase}: ${progress.error}. What was saved before that is kept.',
+                        style: TextStyle(color: theme.colorScheme.error),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    FilledButton.icon(
+                      icon: Icon(saved == null ? Icons.download : Icons.sync),
+                      label: Text(saved == null ? 'Download' : 'Update'),
+                      onPressed: _valid ? _start : null,
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        context.push(Routes.downloads);
+                      },
+                      child: const Text('Manage downloads'),
+                    ),
+                  ],
+                ],
+              ),
             ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('All files'),
-              subtitle: Text(switch (files) {
-                null =>
-                  'Every text file at ${widget.branch}, as one archive download. Off: only diffs and the file '
-                      'list are saved, and opening a file needs the network.',
-                AsyncData(:final value) =>
-                  'About ${value.truncated ? 'at least ' : ''}${formatBytes(value.bytes)} '
-                      'for ${_n(value.files)} text file${value.files == 1 ? '' : 's'} at ${widget.branch}, '
-                      'as one archive download.',
-                AsyncError() => 'Every text file at ${widget.branch}, as one archive download (size unknown).',
-                _ => 'Estimating the size…',
-              }),
-              value: _options.files,
-              onChanged: running ? null : (v) => setState(() => _options = _options.copyWith(files: v)),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${requests == null ? 'One' : 'About ${_n(requests)}'} GitHub request${requests == 1 ? '' : 's'}'
-              '${requests == null ? ' per commit up to that one, plus one per 30 for the list' : ''}'
-              '${_options.pulls == PullScope.none ? '' : ', plus 5 per pull request'}. '
-              'Commits already saved are skipped.'
-              '${remaining == null ? '' : ' ${_n(remaining)} left this hour.'}'
-              '${signedIn ? '' : ' Signed out, GitHub allows 60 requests an hour; sign in for bigger downloads.'}',
-              style: muted,
-            ),
-            if (tooMany) ...[
-              const SizedBox(height: 4),
-              Text(
-                'More than you have left this hour: the download stops when they run out and keeps what it saved. '
-                'Update later to continue.',
-                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 16),
-            if (running) ...[
-              LinearProgressIndicator(value: progress.fraction),
-              const SizedBox(height: 8),
-              Text('${progress.phase} · ${progress.done}/${progress.total}', style: theme.textTheme.bodySmall),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: () => ref.read(downloadsProvider.notifier).cancel(_key),
-                child: const Text('Cancel'),
-              ),
-            ] else ...[
-              if (progress?.error != null) ...[
-                Text(
-                  'Stopped during ${progress!.phase}: ${progress.error}. What was saved before that is kept.',
-                  style: TextStyle(color: theme.colorScheme.error),
-                ),
-                const SizedBox(height: 12),
-              ],
-              FilledButton.icon(
-                icon: Icon(saved == null ? Icons.download : Icons.sync),
-                label: Text(saved == null ? 'Download' : 'Update'),
-                onPressed: _valid ? _start : null,
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  context.push(Routes.downloads);
-                },
-                child: const Text('Manage downloads'),
-              ),
-            ],
           ],
         ),
       ),

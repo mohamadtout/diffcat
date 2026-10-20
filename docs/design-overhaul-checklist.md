@@ -34,3 +34,15 @@ largest.
 - [ ] Connect to a host whose key changed (or edit the saved fingerprint): the dialog reads well, Cancel is the
       highlighted button, and the fingerprints are selectable and easy to compare with `ssh-keygen -lf` output.
 - [ ] `make ssh-test` still passes (it trusts a first connection with the "Trust" button).
+
+## 4. Phone chrome
+
+- [ ] Repo screen on a phone: the row under the top bar (branch, owner, bell) feels like part of the bar, the branch
+      picker is easy to hit with a thumb, and the menu's "Notify me of commits & PRs" toggles watching (and the bell
+      appears in the row).
+- [ ] Repo rows with pin, bell and Offline chip still read well; the Offline chip is tappable.
+- [ ] PR tabs scroll sideways smoothly at the largest font size; swipe between tabs still works.
+- [ ] Review sheet: the radio list feels natural with one hand; Submit review stays reachable with the keyboard open.
+- [ ] Download sheet at the largest font: options scroll, Download/Update stays at the bottom, also with the keyboard
+      open (typing the number of commits).
+- [ ] Downloads → a repo: the menu's Update and Delete work (Delete asks first).

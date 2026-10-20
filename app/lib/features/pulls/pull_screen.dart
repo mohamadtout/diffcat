@@ -53,6 +53,9 @@ class PullView extends ConsumerWidget {
           children: [
             _PullHeader(pull: pull, repo: repo),
             TabBar(
+              // Scrollable so "Commits (n)" isn't cut off on phones or with large text.
+              isScrollable: true,
+              tabAlignment: TabAlignment.start,
               tabs: [
                 const Tab(text: 'Overview'),
                 Tab(text: 'Files${pull.changedFiles == null ? '' : ' (${pull.changedFiles})'}'),

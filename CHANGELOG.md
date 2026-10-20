@@ -6,6 +6,10 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Phones: the repo screen's top bar keeps the repo's name readable (the branch picker moves to a row below it, and
+  notifications, changed-since and offline mode to its menu); repo rows keep the name on the first line. Pull request
+  tabs scroll instead of being cut off, the review verdict is a list (no more "Comme/nt" with large text), the
+  download sheet's button stays in view, and the inbox filters no longer clip with large text.
 - SSH: when a host's key changes, the warning shows the old and new fingerprints in groups of four, in a monospace
   font, so they can be compared, and Cancel is the highlighted choice.
 - Empty screens offer the next step: "Show closed" for a repo without open pull requests, "Browse repos" when

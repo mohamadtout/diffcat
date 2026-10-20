@@ -54,6 +54,22 @@ class RepoTile extends ConsumerWidget {
           ],
           Flexible(child: Text(repo.name, overflow: TextOverflow.ellipsis)),
           if (repo.isPrivate) ...[const SizedBox(width: 6), Icon(Icons.lock_outline, size: 14, color: scheme.outline)],
+        ],
+      ),
+      // Pin, watch and Offline sit with the details, so the name keeps the first line.
+      subtitle: Row(
+        children: [
+          Flexible(
+            child: Text(
+              [
+                repo.owner,
+                ?repo.language,
+                if (repo.pushedAt != null) relativeTime(repo.pushedAt!),
+                if (repo.archived) 'archived on GitHub',
+              ].join(' · '),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
           if (pinned) ...[const SizedBox(width: 6), Icon(Icons.push_pin, size: 14, color: scheme.outline)],
           if (watched) ...[
             const SizedBox(width: 6),
@@ -61,15 +77,6 @@ class RepoTile extends ConsumerWidget {
           ],
           OfflineChip(repo: repo.ref),
         ],
-      ),
-      subtitle: Text(
-        [
-          repo.owner,
-          ?repo.language,
-          if (repo.pushedAt != null) relativeTime(repo.pushedAt!),
-          if (repo.archived) 'archived on GitHub',
-        ].join(' · '),
-        overflow: TextOverflow.ellipsis,
       ),
       trailing: trailing,
       onTap: onTap ?? () => openRepo(context, ref, repo.ref),

@@ -357,10 +357,26 @@ class _ReviewSubmitSheetState extends ConsumerState<ReviewSubmitSheet> {
                 decoration: const InputDecoration(hintText: 'Summary (Markdown)', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
-              SegmentedButton<ReviewEvent>(
-                segments: [for (final e in ReviewEvent.values) ButtonSegment(value: e, label: Text(e.label))],
-                selected: {_event},
-                onSelectionChanged: (s) => setState(() => _event = s.first),
+              // A list, not a segmented button: "Request changes" never fits a third of a phone.
+              RadioGroup<ReviewEvent>(
+                groupValue: _event,
+                onChanged: (e) => setState(() => _event = e ?? _event),
+                child: Column(
+                  children: [
+                    for (final e in ReviewEvent.values)
+                      RadioListTile<ReviewEvent>(
+                        value: e,
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(e.label),
+                        subtitle: Text(switch (e) {
+                          ReviewEvent.comment => 'Feedback without a verdict',
+                          ReviewEvent.approve => 'Ready to merge',
+                          ReviewEvent.requestChanges => 'Must be addressed before merging',
+                        }),
+                      ),
+                  ],
+                ),
               ),
               if (_error != null)
                 Padding(

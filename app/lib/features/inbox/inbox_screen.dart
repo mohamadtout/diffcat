@@ -58,11 +58,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
         placeholder: 'Select a pull request',
         master: Column(
           children: [
-            SizedBox(
-              height: 52,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            // Sized by its chips, so large text doesn't clip them; scrolls sideways when they don't fit.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
                 children: [
                   for (final s in InboxSection.values)
                     Padding(
