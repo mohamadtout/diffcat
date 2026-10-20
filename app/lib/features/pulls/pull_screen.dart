@@ -252,7 +252,7 @@ class _PullHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -261,17 +261,31 @@ class _PullHeader extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              // Two short blocks above every tab, so the diff keeps the screen; Overview has the full title.
               children: [
-                Text(pull.title, style: theme.textTheme.titleMedium),
-                const SizedBox(height: 4),
                 Text(
-                  '${pull.author.login} wants to merge ${pull.headRef} → ${pull.baseRef}',
-                  style: theme.textTheme.bodySmall,
+                  pull.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                if (pull.additions != null) ...[
-                  const SizedBox(height: 4),
-                  LineCounts(additions: pull.additions!, deletions: pull.deletions ?? 0),
-                ],
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${pull.author.login} · ${pull.headRef} → ${pull.baseRef}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                    if (pull.additions != null) ...[
+                      const SizedBox(width: 8),
+                      LineCounts(additions: pull.additions!, deletions: pull.deletions ?? 0),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -293,6 +307,13 @@ class _Overview extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        SelectableText(pull.title, style: theme.textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Text(
+          '${pull.author.login} wants to merge ${pull.headRef} into ${pull.baseRef}',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 16),
         ReviewersSummary(pullKey: (repo: repo, number: pull.number)),
         Row(
           children: [

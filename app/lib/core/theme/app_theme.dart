@@ -41,6 +41,19 @@ abstract final class AppTheme {
     );
   }
 
+  /// Code (diffs, files, blame) follows the system text size only up to this:
+  /// code has its own size setting, and at 1.5x a phone would show about 22
+  /// columns. UI text keeps full scaling (owner decision, docs/decisions.md D19).
+  static const codeMaxTextScale = 1.15;
+
+  /// The text scaler code is laid out with; measure code text with this too.
+  static TextScaler codeTextScaler(BuildContext context) =>
+      MediaQuery.textScalerOf(context).clamp(maxScaleFactor: codeMaxTextScale);
+
+  /// [child] with code text scaling (see [codeMaxTextScale]).
+  static Widget codeTextScale({required Widget child}) =>
+      MediaQuery.withClampedTextScaling(maxScaleFactor: codeMaxTextScale, child: child);
+
   /// Platform monospace font, no bundled asset needed.
   static String get monoFamily => Platform.isIOS ? 'Menlo' : 'monospace';
 

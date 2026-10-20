@@ -275,7 +275,12 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppTheme.codeTextScale(child: _build(context));
+
+  /// The caller's header (commit or PR summary) is UI text: it keeps the full system text size.
+  Widget? get _header => widget.header == null ? null : MediaQuery(data: MediaQuery.of(context), child: widget.header!);
+
+  Widget _build(BuildContext context) {
     final settings = ref.watch(diffSettingsProvider);
     if (settings.syntax != _syntax) {
       _syntax = settings.syntax;
@@ -291,7 +296,7 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
     if (widget.files.isEmpty) {
       return CustomScrollView(
         slivers: [
-          if (widget.header != null) SliverToBoxAdapter(child: widget.header),
+          if (_header case final header?) SliverToBoxAdapter(child: header),
           const SliverFillRemaining(
             hasScrollBody: false,
             child: EmptyView(icon: Icons.difference_outlined, message: 'No file changes.'),
@@ -345,7 +350,7 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
                 child: CustomScrollView(
                   controller: _scroll,
                   slivers: [
-                    if (widget.header != null) SliverToBoxAdapter(child: widget.header),
+                    if (_header case final header?) SliverToBoxAdapter(child: header),
                     SuperSliverList.builder(
                       listController: _list,
                       itemCount: _doc.rows.length,
@@ -390,8 +395,8 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
     final tp = TextPainter(
       text: TextSpan(text: 'MMMMMMMMMM', style: style),
       textDirection: TextDirection.ltr,
-      // Same scaling as the Text widgets it sizes (system text size setting).
-      textScaler: MediaQuery.textScalerOf(context),
+      // Same scaling as the Text widgets it sizes (system text size, clamped for code).
+      textScaler: AppTheme.codeTextScaler(context),
     )..layout();
     final w = tp.width / 10;
     tp.dispose();

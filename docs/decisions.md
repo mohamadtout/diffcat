@@ -158,6 +158,12 @@ build signed out. Unchanged responses are 304s, which don't count against the ra
 behind a redirect, so they're fetched like tarballs and never saved offline; GitHub only has a job's log once the job
 has finished, so the log screen waits for that instead of asking early.
 
+### D21: Code scales less than UI text
+Code, line numbers and the blame gutter follow the system text size only up to 1.15× (`AppTheme.codeMaxTextScale`),
+because code has its own size setting (Settings → Code view) and at 1.5× a phone showed about 22 columns. Everything
+else, including the commit and PR headers above a diff, keeps full scaling, and the 2× sweep still has to pass. Owner
+decision, 2026-10 (D19).
+
 ### D20: Colors keep the brand blue; status colors are separate from diff colors
 `ColorScheme.fromSeed`'s default `tonalSpot` variant turned the brand blue (#2F81F7) into a slate blue, so the scheme
 uses `fidelity`, which keeps primary close to the seed (#0059BA light). Its tertiary is orange, which read as a second

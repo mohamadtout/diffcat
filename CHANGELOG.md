@@ -6,6 +6,10 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Diffs come first: a commit's header is shorter (the body folds to two lines with **More**, the SHA shows once,
+  actions sit in one row of chips) and the pull request header is two lines, so code shows on the first screen.
+  With a large system font, code grows less than the rest of the app (it has its own size setting), and blame on
+  phones shows age and initials so the code keeps the width.
 - Phones: the repo screen's top bar keeps the repo's name readable (the branch picker moves to a row below it, and
   notifications, changed-since and offline mode to its menu); repo rows keep the name on the first line. Pull request
   tabs scroll instead of being cut off, the review verdict is a list (no more "Comme/nt" with large text), the

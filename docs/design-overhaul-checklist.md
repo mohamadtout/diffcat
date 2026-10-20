@@ -46,3 +46,15 @@ largest.
 - [ ] Download sheet at the largest font: options scroll, Download/Update stays at the bottom, also with the keyboard
       open (typing the number of commits).
 - [ ] Downloads → a repo: the menu's Update and Delete work (Delete asks first).
+
+## 5. Diff first
+
+- [ ] A commit with a long message: the body shows two lines and More/Less works; the text stays selectable when
+      open. The header scrolls away with the diff and the sticky file bar still pins.
+- [ ] Set the system font to its largest: code and line numbers grow a little (1.15×) while the header, toolbars and
+      the rest of the app grow fully. Decide if 1.15 is the right cap.
+- [ ] The chip row under a commit (parents, Changed since this, Browse at this commit) scrolls sideways when it
+      doesn't fit, and each chip opens the right screen.
+- [ ] Blame on a phone: "2d LK" style labels are clear enough; tapping one still opens the commit. On a tablet the
+      login is shown as before.
+- [ ] PR header: a very long title folds to two lines; the Overview tab shows it in full.
