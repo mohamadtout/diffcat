@@ -22,12 +22,12 @@ your own token if you sign in (optional: public repos work without an account), 
   <img src="store/screenshots/google-play/phone/01_repos.png" width="23%" alt="All your repos, your way">
   <img src="store/screenshots/google-play/phone/02_diff.png" width="23%" alt="Diffs made for small screens">
   <img src="store/screenshots/google-play/phone/03_pull.png" width="23%" alt="Review pull requests anywhere">
-  <img src="store/screenshots/google-play/phone/04_offline_mode.png" width="23%" alt="Download once, read offline">
+  <img src="store/screenshots/google-play/phone/04_actions.png" width="23%" alt="Keep CI moving">
 </p>
 <p align="center">
-  <img src="store/screenshots/google-play/phone/05_terminal.png" width="23%" alt="Your own machine, over SSH">
-  <img src="store/screenshots/google-play/phone/06_changed_since.png" width="23%" alt="Everything since the last release">
-  <img src="store/screenshots/google-play/phone/07_console.png" width="23%" alt="Git commands, no clone needed">
+  <img src="store/screenshots/google-play/phone/05_history.png" width="23%" alt="Every change to a file, across branches">
+  <img src="store/screenshots/google-play/phone/06_offline_mode.png" width="23%" alt="Download once, read offline">
+  <img src="store/screenshots/google-play/phone/07_terminal.png" width="23%" alt="Your own machine, over SSH">
   <img src="store/screenshots/google-play/phone/08_diff_dark.png" width="23%" alt="Easy on the eyes at night">
 </p>
 
@@ -40,14 +40,14 @@ your own token if you sign in (optional: public repos work without an account), 
 </p>
 <p align="center">
   <img src="store/screenshots/google-play/tablet-10/03_pull.png" width="49%" alt="Review pull requests anywhere">
-  <img src="store/screenshots/google-play/tablet-10/04_file.png" width="49%" alt="Browse code at any branch or tag">
+  <img src="store/screenshots/google-play/tablet-10/04_actions.png" width="49%" alt="Keep CI moving">
 </p>
 <p align="center">
-  <img src="store/screenshots/google-play/tablet-10/05_offline_mode.png" width="49%" alt="Download once, read offline">
-  <img src="store/screenshots/google-play/tablet-10/06_terminal.png" width="49%" alt="Your own machine, over SSH">
+  <img src="store/screenshots/google-play/tablet-10/05_history.png" width="49%" alt="Every change to a file, across branches">
+  <img src="store/screenshots/google-play/tablet-10/06_offline_mode.png" width="49%" alt="Download once, read offline">
 </p>
 <p align="center">
-  <img src="store/screenshots/google-play/tablet-10/07_changed_since.png" width="49%" alt="Everything since the last release">
+  <img src="store/screenshots/google-play/tablet-10/07_terminal.png" width="49%" alt="Your own machine, over SSH">
   <img src="store/screenshots/google-play/tablet-10/08_diff_dark.png" width="49%" alt="Easy on the eyes at night">
 </p>
 </details>

@@ -266,7 +266,8 @@ class _JobTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final duration = job.duration();
+    // A skipped job never ran: GitHub gives it a zero duration.
+    final duration = job.state == RunState.skipped ? null : job.duration();
     return ExpansionTile(
       // Failures are what you came for.
       initiallyExpanded: job.state == RunState.failure,

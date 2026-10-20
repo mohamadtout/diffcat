@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:git_reviewer/core/routing/app_router.dart';
 import 'package:git_reviewer/core/routing/routes.dart';
 import 'package:git_reviewer/core/storage/storage.dart';
+import 'package:git_reviewer/features/actions/run_workflow_sheet.dart';
 import 'package:git_reviewer/features/notifications/local_notifications.dart';
 import 'package:git_reviewer/features/repos/repo_library.dart';
 import 'package:git_reviewer/features/settings/settings_screen.dart';
@@ -98,6 +99,44 @@ void main() {
     await tester.tap(find.text(DemoGitHub.openPullTitle).first);
     await _settle(tester, frames: 30);
     await shot('04_pull');
+
+    // Actions: the failed CI run with its failed job open, beside the runs when split.
+    await go(Routes.repo(DemoGitHub.repo, tab: 'actions'));
+    await tester.tap(find.text('Fix rounding of JPY amounts').first);
+    await _settle(tester, frames: 30);
+    await shot('13_actions');
+
+    // Run workflow, filled in for the manual Deploy workflow.
+    await go(Routes.repo(DemoGitHub.repo, tab: 'actions'));
+    await tester.tap(find.text('Run workflow'));
+    await _settle(tester, frames: 20);
+    await tester.tap(find.text('CI').last);
+    await _settle(tester);
+    await tester.tap(find.text('Deploy').last);
+    await _settle(tester, frames: 20);
+    await tester.enterText(find.widgetWithText(TextField, 'version'), 'v1.4.0');
+    await shot('14_run_workflow');
+    Navigator.of(tester.element(find.byType(RunWorkflowSheet)), rootNavigator: true).pop();
+    await _settle(tester);
+
+    await go(Routes.history(DemoGitHub.repo, DemoGitHub.retryGo, 'main'));
+    if (split) {
+      // A commit's diff beside the graph, rather than an empty detail pane.
+      await tester.tap(find.text('Cap backoff at one minute').first);
+      await _settle(tester, frames: 30);
+    }
+    await shot('15_history');
+
+    await go(Routes.file(DemoGitHub.repo, DemoGitHub.retryGo, 'main', blame: true));
+    await shot('16_blame');
+
+    // The inbox, with the pull request beside it when split.
+    await go(Routes.inbox);
+    if (split) {
+      await tester.tap(find.text(DemoGitHub.openPullTitle).first);
+      await _settle(tester, frames: 30);
+    }
+    await shot('17_inbox');
 
     if (split) {
       await go(Routes.repo(DemoGitHub.repo, tab: 'files'));
