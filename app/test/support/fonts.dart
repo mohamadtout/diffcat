@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -29,6 +30,36 @@ Future<bool> loadSdkFonts() async {
   ]);
   await load('MaterialIcons', ['MaterialIcons-Regular.otf']);
   return true;
+}
+
+/// Loads the code fonts the app bundles (pubspec `fonts:`), which widget
+/// tests don't load on their own. The platform monospace (`monospace`,
+/// `Menlo`, see AppTheme.monoFamily) doesn't exist in tests either, so
+/// Source Code Pro stands in for it (no ligatures, like the platform fonts).
+/// Call after [loadSdkFonts].
+Future<void> loadAppFonts() async {
+  final manifest = jsonDecode(await rootBundle.loadString('FontManifest.json')) as List<dynamic>;
+  Future<void> load(String family, List<String> assets) async {
+    final loader = FontLoader(family);
+    for (final a in assets) {
+      loader.addFont(rootBundle.load(a));
+    }
+    await loader.load();
+  }
+
+  for (final entry in manifest.cast<Map<String, dynamic>>()) {
+    final family = entry['family'] as String;
+    if (family == 'MaterialIcons') continue; // loaded by loadSdkFonts
+    final assets = [
+      for (final f in (entry['fonts'] as List<dynamic>).cast<Map<String, dynamic>>()) f['asset'] as String,
+    ];
+    await load(family, assets);
+    if (family == 'SourceCodePro') {
+      for (final stand in ['monospace', 'Menlo']) {
+        await load(stand, assets);
+      }
+    }
+  }
 }
 
 /// flutter_tester lives under `<sdk>/bin/cache/artifacts/engine/…`; the fonts

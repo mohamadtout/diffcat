@@ -6,6 +6,8 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- `make design-shots`: screenshots of every screen on demo data (phone light and dark, tablet, large text) in
+  `app/build/design/`, for reviewing the UI without a device. No app changes.
 - Store screenshots and the README show GitHub Actions (a failed run, its jobs and the Re-run buttons; the run list
   beside it on tablets) and a file's history graph. The App Store gets 10 per device (adding Run workflow and blame),
   Google Play 8. The sparse changed-since and console shots are out.

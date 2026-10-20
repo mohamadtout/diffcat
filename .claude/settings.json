@@ -10,7 +10,9 @@
       "Bash(dart format:*)",
       "Bash(git status)",
       "Bash(git diff:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(flutter precache:*)",
+      "Bash(flutter test tool/design/:*)"
     ],
     "deny": [
       "Read(./app/android/key.properties)"
