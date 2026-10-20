@@ -15,6 +15,7 @@ import '../diff/diff_view.dart';
 import '../offline/download_button.dart';
 import '../offline/offline_providers.dart';
 import 'merge_readiness_view.dart';
+import 'pull_markdown.dart';
 import 'pulls_providers.dart';
 import 'pulls_tab.dart';
 import 'review.dart';
@@ -243,6 +244,7 @@ class _ReviewableDiff extends ConsumerWidget {
         return LineComments(
           threads: t,
           drafts: d,
+          repo: pullKey.repo,
           onReply: canReview ? reply : null,
           onEditDraft: edit,
           onDeleteDraft: drafts.remove,
@@ -357,7 +359,10 @@ class _Overview extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 16),
-        SelectableText(pull.body.isEmpty ? 'No description provided.' : pull.body, style: theme.textTheme.bodyMedium),
+        if (pull.body.trim().isEmpty)
+          Text('No description provided.', style: theme.textTheme.bodyMedium)
+        else
+          PullMarkdown(pull.body, repo: repo),
       ],
     );
   }

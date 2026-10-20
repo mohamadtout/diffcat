@@ -6,6 +6,7 @@ import '../../core/utils/relative_time.dart';
 import '../../core/widgets/common.dart';
 import '../../data/github/github_exception.dart';
 import '../../data/github/models/models.dart';
+import 'pull_markdown.dart';
 import 'pulls_providers.dart';
 import 'review.dart';
 import 'review_providers.dart';
@@ -16,12 +17,16 @@ class LineComments extends StatelessWidget {
     super.key,
     required this.threads,
     required this.drafts,
+    this.repo,
     this.onReply,
     this.onEditDraft,
     this.onDeleteDraft,
   });
 
   final List<ReviewThread> threads;
+
+  /// For links in comments (`#12`, SHAs); null renders them as plain text.
+  final RepoRef? repo;
   final List<DraftComment> drafts;
   final ValueChanged<ReviewThread>? onReply;
   final ValueChanged<DraftComment>? onEditDraft;
@@ -48,7 +53,7 @@ class LineComments extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final c in [t.root, ...t.replies]) _CommentBody(comment: c),
+                for (final c in [t.root, ...t.replies]) _CommentBody(comment: c, repo: repo),
                 if (onReply != null)
                   Align(
                     alignment: Alignment.centerRight,
@@ -99,9 +104,10 @@ class LineComments extends StatelessWidget {
 }
 
 class _CommentBody extends StatelessWidget {
-  const _CommentBody({required this.comment});
+  const _CommentBody({required this.comment, this.repo});
 
   final GhReviewComment comment;
+  final RepoRef? repo;
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +131,10 @@ class _CommentBody extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          SelectableText(comment.body, style: theme.textTheme.bodyMedium),
+          if (repo case final repo?)
+            PullMarkdown(comment.body, repo: repo)
+          else
+            SelectableText(comment.body, style: theme.textTheme.bodyMedium),
         ],
       ),
     );

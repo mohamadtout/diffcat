@@ -158,6 +158,16 @@ build signed out. Unchanged responses are 304s, which don't count against the ra
 behind a redirect, so they're fetched like tarballs and never saved offline; GitHub only has a job's log once the job
 has finished, so the log screen waits for that instead of asking early.
 
+### D22: Our own Markdown renderer, publishable later
+PR descriptions and review comments needed Markdown. `flutter_markdown` is discontinued; its fork
+`flutter_markdown_plus` and the others (`markdown_widget`, `gpt_markdown`) render code blocks with their own
+highlighters and fonts, select one block at a time, and pull in extra dependencies (a second highlighter, LaTeX,
+visibility detection). `core/markdown/` is about 700 lines with no dependency: fenced code uses the app's highlighter
+and the user's code font, one `SelectionArea` covers the whole text, HTML comments from PR templates are dropped,
+`#123` / `@user` / SHAs become links, and links to pull requests, commits and repos open in the app. Images show as
+links instead of downloading (data and privacy). It imports nothing from the app, so it can become a pub package
+(see its README). Owner decision, 2026-10 (D19).
+
 ### D21: Code scales less than UI text
 Code, line numbers and the blame gutter follow the system text size only up to 1.15× (`AppTheme.codeMaxTextScale`),
 because code has its own size setting (Settings → Code view) and at 1.5× a phone showed about 22 columns. Everything

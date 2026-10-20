@@ -6,6 +6,9 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Pull request descriptions and review comments are formatted like on GitHub: headings, lists and checklists,
+  highlighted code, quotes, tables and links. `#123`, `@user` and commit SHAs are links, and links to pull requests,
+  commits and repos open in the app. Template comments (`<!-- … -->`) are hidden.
 - Pull requests say whether they're ready to merge: one line under the title on every tab ("Ready to merge · 3
   passed", "Checks failing", "Has conflicts", "Changes requested", "Checks running", "Needs approval"), and a card on
   Overview with the checks (tap for Actions), conflicts with the base branch and approvals. The review bar's "Tap a

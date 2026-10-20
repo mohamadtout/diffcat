@@ -70,3 +70,14 @@ largest.
       card may undercount. Decide whether to also read `GET …/commits/{sha}/status`.
 - [ ] Offline (downloaded PR, offline mode): the line says "Checks unavailable", nothing errors.
 - [ ] Rate limit: each open PR costs one more request (check runs); fine signed in, worth noticing signed out.
+
+## 7. Markdown
+
+- [ ] Open real PRs with rich descriptions (templates with checklists, tables, code blocks, images, `<details>`) and
+      compare with github.com. Note anything that renders worse than plain text did.
+- [ ] Links: a PR or commit link opens in the app; an issue link, `@user` and external links open the browser;
+      relative links (`docs/x.md`) open the file on github.com.
+- [ ] Selecting text across paragraphs, lists and code works with one long-press and drag; links still open with a
+      tap.
+- [ ] Long code lines in a fenced block scroll sideways inside the block, not the whole page.
+- [ ] Review comments in the diff are formatted too and keep the full system font size.

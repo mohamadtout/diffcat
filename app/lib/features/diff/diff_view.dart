@@ -220,9 +220,10 @@ class _DiffViewState extends ConsumerState<DiffView> with SingleTickerProviderSt
 
   Widget _withFooter(int file, DiffLine line, Widget lineView) {
     final footer = widget.lineFooter?.call(widget.files[file], line);
-    return footer == null
-        ? lineView
-        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [lineView, footer]);
+    if (footer == null) return lineView;
+    // Review comments are prose: full system text size, unlike the code around them.
+    final comments = MediaQuery(data: MediaQuery.of(context), child: footer);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [lineView, comments]);
   }
 
   List<HlSeg>? _segsFor(int file, DiffLine line) {
