@@ -29,7 +29,7 @@ const diffPalettes = [
       delFg: Color(0xFFBC4C00),
       hunkBg: Color(0xFFF6F8FA),
       hunkFg: Color(0xFF57606A),
-      gutter: Color(0xFF8C959F),
+      gutter: Color(0xFF656D76),
     ),
     DiffColors(
       addBg: Color(0xFF0C2D48),

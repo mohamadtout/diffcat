@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/layout/readable_width.dart';
 import '../../core/routing/routes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../data/github/models/models.dart';
@@ -82,11 +83,14 @@ class _ConsoleTabState extends ConsumerState<ConsoleTab> {
         Expanded(
           child: entries.isEmpty
               ? _Intro(gitRef: widget.gitRef, onRun: _run)
-              : ListView.builder(
-                  controller: _scroll,
-                  padding: const EdgeInsets.all(12),
-                  itemCount: entries.length,
-                  itemBuilder: (context, i) => _EntryView(entry: entries[i], mono: mono),
+              : ReadableWidth(
+                  maxWidth: 960,
+                  builder: (sides) => ListView.builder(
+                    controller: _scroll,
+                    padding: sides + const EdgeInsets.all(12),
+                    itemCount: entries.length,
+                    itemBuilder: (context, i) => _EntryView(entry: entries[i], mono: mono),
+                  ),
                 ),
         ),
         if (buttons.isNotEmpty)
@@ -178,26 +182,28 @@ class _Intro extends StatelessWidget {
   final ValueChanged<String> onRun;
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      Text('API console', style: Theme.of(context).textTheme.titleMedium),
-      const SizedBox(height: 8),
-      Text(
-        'Run git-style commands straight against GitHub — nothing is cloned. '
-        'HEAD is "$gitRef". For a real shell (lazygit, arbitrary commands) use '
-        'the Terminal tab with an SSH host.',
-      ),
-      const SizedBox(height: 16),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final cmd in ['help', 'log -n 10', 'show HEAD', 'diff HEAD~5..HEAD', 'prs'])
-            ActionChip(label: Text(cmd), onPressed: () => onRun(cmd)),
-        ],
-      ),
-    ],
+  Widget build(BuildContext context) => ReadableWidth(
+    builder: (sides) => ListView(
+      padding: sides + const EdgeInsets.all(24),
+      children: [
+        Text('API console', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        Text(
+          'Run git-style commands straight against GitHub — nothing is cloned. '
+          'HEAD is "$gitRef". For a real shell (lazygit, arbitrary commands) use '
+          'the Terminal tab with an SSH host.',
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final cmd in ['help', 'log -n 10', 'show HEAD', 'diff HEAD~5..HEAD', 'prs'])
+              ActionChip(label: Text(cmd), onPressed: () => onRun(cmd)),
+          ],
+        ),
+      ],
+    ),
   );
 }
 

@@ -61,9 +61,12 @@ class DownloadsScreen extends ConsumerWidget {
               message: 'Offline storage is unavailable on this device.',
             )
           : repos.isEmpty
-          ? const EmptyView(
+          ? EmptyView(
               icon: Icons.download_for_offline_outlined,
-              message: 'Nothing downloaded yet.\nOpen a repo and tap the download button to read it offline.',
+              mascot: true,
+              title: 'Nothing downloaded yet',
+              message: 'Open a repo and tap its download button to read it on a plane, a train or a slow network.',
+              action: FilledButton.tonal(onPressed: () => context.go(Routes.repos), child: const Text('Browse repos')),
             )
           : ReadableWidth(
               builder: (sides) => ListView(
@@ -125,29 +128,43 @@ class SavedRepoScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(repo.fullName),
+        // Name over owner, like the repo screen: "owner/name" alone truncates beside three actions.
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(repo.name, overflow: TextOverflow.ellipsis),
+            Text(repo.owner, style: theme.textTheme.labelSmall),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Open repo',
             icon: const Icon(Icons.open_in_new),
             onPressed: () => context.push(Routes.repo(repo)),
           ),
-          IconButton(
-            tooltip: 'Update all branches',
-            icon: const Icon(Icons.sync),
-            onPressed: () async {
-              final error = await ref.read(downloadsProvider.notifier).updateRepo(repo);
-              messenger.showSnackBar(SnackBar(content: Text(error == null ? 'Updated' : 'Update stopped: $error')));
+          // Rarer actions in a menu, so the title keeps its room.
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            onSelected: (v) async {
+              if (v == 'update') {
+                final error = await ref.read(downloadsProvider.notifier).updateRepo(repo);
+                messenger.showSnackBar(SnackBar(content: Text(error == null ? 'Updated' : 'Update stopped: $error')));
+              } else if (v == 'delete') {
+                if (!await _confirm(context, 'Delete ${repo.fullName}?', 'Frees ${formatBytes(saved.bytes)}.')) return;
+                await store.deleteRepo(repo.fullName);
+                if (context.mounted) context.pop();
+              }
             },
-          ),
-          IconButton(
-            tooltip: 'Delete this download',
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () async {
-              if (!await _confirm(context, 'Delete ${repo.fullName}?', 'Frees ${formatBytes(saved.bytes)}.')) return;
-              await store.deleteRepo(repo.fullName);
-              if (context.mounted) context.pop();
-            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'update',
+                child: ListTile(leading: Icon(Icons.sync), title: Text('Update all branches')),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: ListTile(leading: Icon(Icons.delete_outline), title: Text('Delete this download')),
+              ),
+            ],
           ),
         ],
       ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/routing/routes.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/mascot.dart';
 import '../../data/github/models/models.dart';
 import '../notifications/watch_controller.dart';
 import '../offline/offline_chip.dart';
@@ -54,6 +55,22 @@ class _SignedOutHomeState extends ConsumerState<SignedOutHome> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            // First run: a quiet hello from the cat, unless the screen is short (landscape phone).
+            if (MediaQuery.sizeOf(context).height >= 560) ...[
+              Row(
+                children: [
+                  const Mascot(size: 44),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Review code changes from your phone.',
+                      style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
             Text('Browse any public repo', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(

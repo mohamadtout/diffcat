@@ -88,6 +88,7 @@ flutter:
   # licenses page. JetBrains Mono is the Nerd Font build, so prompt glyphs
   # (starship, powerlevel10k) render; it has no bold file (Flutter emboldens).
   assets:
+    - assets/mascot/cat.png
     - assets/fonts/OFL-JetBrainsMono.txt
     - assets/fonts/LICENSE-NerdFonts.txt
     - assets/fonts/OFL-FiraCode.txt

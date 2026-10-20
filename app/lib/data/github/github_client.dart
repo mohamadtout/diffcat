@@ -283,6 +283,7 @@ class GitHubClient {
           : msg,
       statusCode: status,
       rateLimitResetAt: limited ? rateLimitReset : null,
+      signedOut: limited && isAnonymous,
     );
   }
 }

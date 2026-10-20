@@ -42,6 +42,23 @@ class SplitView extends ConsumerWidget {
   /// Whether callers should show details inline instead of pushing routes.
   static bool isActive(BuildContext context) => WindowSize.of(context).isSplit;
 
+  /// Wide windows: once the list has loaded and nothing is selected, select
+  /// its [first] item after this frame, so the detail pane shows something
+  /// instead of "Select a…". Callers turn it off ([enabled]) in data saver
+  /// mode, where opening a detail costs requests.
+  static void autoSelect<T>(
+    BuildContext context, {
+    required T? current,
+    required T? first,
+    required ValueChanged<T> select,
+    bool enabled = true,
+  }) {
+    if (!enabled || current != null || first == null || !isActive(context)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) select(first);
+    });
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (!isActive(context)) return master;
@@ -102,8 +119,9 @@ class _CollapseHandle extends StatelessWidget {
         color: scheme.surfaceContainerLow,
         child: InkWell(
           onTap: onToggle,
+          // The whole strip is the target: 24 dp wide (WCAG's minimum) and the full pane height.
           child: SizedBox(
-            width: 20,
+            width: 24,
             child: Column(
               children: [
                 const SizedBox(height: 8),

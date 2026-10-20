@@ -158,6 +158,30 @@ build signed out. Unchanged responses are 304s, which don't count against the ra
 behind a redirect, so they're fetched like tarballs and never saved offline; GitHub only has a job's log once the job
 has finished, so the log screen waits for that instead of asking early.
 
+### D22: Our own Markdown renderer, publishable later
+PR descriptions and review comments needed Markdown. `flutter_markdown` is discontinued; its fork
+`flutter_markdown_plus` and the others (`markdown_widget`, `gpt_markdown`) render code blocks with their own
+highlighters and fonts, select one block at a time, and pull in extra dependencies (a second highlighter, LaTeX,
+visibility detection). `core/markdown/` is about 700 lines with no dependency: fenced code uses the app's highlighter
+and the user's code font, one `SelectionArea` covers the whole text, HTML comments from PR templates are dropped,
+`#123` / `@user` / SHAs become links, and links to pull requests, commits and repos open in the app. Images show as
+links instead of downloading (data and privacy). It imports nothing from the app, so it can become a pub package
+(see its README). Owner decision, 2026-10 (D19).
+
+### D21: Code scales less than UI text
+Code, line numbers and the blame gutter follow the system text size only up to 1.15× (`AppTheme.codeMaxTextScale`),
+because code has its own size setting (Settings → Code view) and at 1.5× a phone showed about 22 columns. Everything
+else, including the commit and PR headers above a diff, keeps full scaling, and the 2× sweep still has to pass. Owner
+decision, 2026-10 (D19).
+
+### D20: Colors keep the brand blue; status colors are separate from diff colors
+`ColorScheme.fromSeed`'s default `tonalSpot` variant turned the brand blue (#2F81F7) into a slate blue, so the scheme
+uses `fidelity`, which keeps primary close to the seed (#0059BA light). Its tertiary is orange, which read as a second
+brand on the "Offline" chip, so tertiary is set to a calm teal. CI, pull request and review states have their own
+`StatusColors` instead of borrowing `DiffColors`, because users edit diff colors (a colorblind diff palette shouldn't
+recolor "passed" and "failed"). Changed diff lines get a 3 dp bar at the left edge besides the tint and the +/- sign,
+and the dark tints are stronger: at night the old ones were barely brighter than the page.
+
 ### D19: Design direction from the 2026-10 design review
 [design-review.md](design-review.md) plans the redesign; the owner settled its open questions. Code, line numbers and
 the blame gutter may scale less than UI text with large system text (code size has its own setting), so a phone at

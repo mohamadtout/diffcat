@@ -135,6 +135,14 @@ String? languageForPath(String path) {
   return dot < 0 ? null : _byExtension[lower.substring(dot + 1)];
 }
 
+/// The highlighter's language for a Markdown fence's info string (`go`, `js`,
+/// `yaml`…), or null when it isn't one we highlight.
+String? languageForFence(String? info) {
+  if (info == null || info.isEmpty) return null;
+  final l = info.toLowerCase();
+  return _languages.containsKey(l) ? l : languageForPath('x.$l');
+}
+
 /// Files bigger than this aren't highlighted (highlight.js is regex-heavy).
 const maxHighlightChars = 400 * 1000;
 

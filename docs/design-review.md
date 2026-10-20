@@ -3,6 +3,12 @@
 A review of Diffcat's UI against [design-brief.md](design-brief.md) (the source of truth), written from the
 `make design-shots` screenshots and the code in `app/lib/`. No app code was changed for it.
 
+**Status (2026-10-20).** Implemented on `feature/design-overhaul`, one commit per feature: tokens, state views
+and the cat, host-key dialog, phone chrome, diff first, merge readiness, Markdown, tablet panes. What still needs a
+device is in [design-overhaul-checklist.md](design-overhaul-checklist.md). Changes from this plan: the review bar
+stays on every PR tab (approving from Overview matters) and only its "Tap a line" hint is limited to Files; PR
+Overview beside Files and run jobs beside the log are left as follow-ups.
+
 **Evidence.** 220 screenshots, all read one by one: 55 screens in four setups (`phone-light` and `phone-dark` at
 393×852, `tablet-light` at 1376×1032, `phone-text150-light` at 393×852 with text at 1.5×), all at pixel ratio 2. They
 are not committed; run `make design-shots` and open `app/build/design/<setup>/<screen>.png`. Paths below are written

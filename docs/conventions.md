@@ -14,9 +14,11 @@
 - **Models:** hand-written immutable classes with `fromJson` and explicit casts. No codegen, which keeps the build simple for agents and CI.
 - **Providers:** declare them next to the feature that owns them (`*_providers.dart`). Use records as family keys. Prefer `autoDispose` unless state must survive navigation, and say why in a comment when it must.
 - **Async UI:** render `AsyncValue` with `AsyncView` (consistent loading, error and retry).
+- **Empty states:** use `EmptyView`, and give it an `action` when there's an obvious next step ("Show closed", "Browse repos"). `mascot: true` puts the cat in place of the icon; keep it to first run and calm "all clear / nothing yet" moments, never working screens or errors.
 - **Navigation:** always go through `Routes.*` builders, never string literals. Use `context.push` for drill-down and `go` for deep links.
 - **Layouts:** check `WindowSize` / `SplitView.isActive`; wrap list-style screens in `ReadableWidth`. Never assume a phone. When you measure text yourself (`TextPainter`), pass `textScaler: MediaQuery.textScalerOf(context)`, or large system text overflows.
 - **Secrets:** use `SecureStore` with keys from `StoreKeys`. Non-secrets go in `sharedPrefsProvider` via the `JsonPrefs` helpers.
+- **Colors:** use `ColorScheme` roles, `DiffColors` for diffs, and `StatusColors` (both in `core/theme/app_theme.dart`) for CI, pull request and review states. Don't write `Color(0x…)` outside `core/theme/`, the terminal themes and the user-selectable palettes (diff presets, folder colors), and never color a status with `DiffColors`: users edit those for diffs. Pair a foreground with its own background role (`onError` on `error`…). `test/core/app_theme_test.dart` checks the contrast pairs.
 - **Text:** user-facing strings are plain English in widgets for now (see roadmap: i18n).
 
 ## Adding a feature (checklist)

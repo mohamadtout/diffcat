@@ -20,6 +20,7 @@ class GhPull {
     this.changedFiles,
     this.commits,
     this.htmlUrl,
+    this.mergeableState,
   });
 
   factory GhPull.fromJson(Map<String, dynamic> j) {
@@ -51,6 +52,7 @@ class GhPull {
       changedFiles: j['changed_files'] as int?,
       commits: j['commits'] as int?,
       htmlUrl: j['html_url'] as String?,
+      mergeableState: j['mergeable_state'] as String?,
     );
   }
 
@@ -75,4 +77,9 @@ class GhPull {
   final int? changedFiles;
   final int? commits;
   final String? htmlUrl;
+
+  /// GitHub's merge state, on single-PR fetches: `clean`, `dirty` (conflicts),
+  /// `behind` (base moved), `blocked` (required reviews or checks), `unstable`
+  /// (non-required checks failing), `draft`, `unknown` (still being computed).
+  final String? mergeableState;
 }

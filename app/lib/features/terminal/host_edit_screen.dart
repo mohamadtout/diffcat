@@ -164,10 +164,11 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
             children: [
               TextFormField(
                 controller: _label,
-                decoration: const InputDecoration(labelText: 'Name (e.g. Dev box)'),
+                decoration: const InputDecoration(labelText: 'Name', hintText: 'Dev box'),
               ),
               const SizedBox(height: 12),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start, // the host field's helper text sits below both
                 children: [
                   Expanded(
                     flex: 3,
@@ -176,7 +177,11 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
                       validator: _required,
                       keyboardType: TextInputType.url,
                       autocorrect: false,
-                      decoration: const InputDecoration(labelText: 'Host / IP (Tailscale name works)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Host or IP',
+                        helperText: 'A Tailscale name works too',
+                        helperMaxLines: 2,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -243,7 +248,7 @@ class _HostEditScreenState extends ConsumerState<HostEditScreen> {
                 TextFormField(
                   controller: _passphrase,
                   obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Key passphrase (if any)'),
+                  decoration: const InputDecoration(labelText: 'Key passphrase', helperText: 'Only if the key has one'),
                 ),
                 if (_publicLine != null) ...[
                   const SizedBox(height: 16),

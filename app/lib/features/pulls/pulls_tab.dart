@@ -9,6 +9,7 @@ import '../../core/utils/relative_time.dart';
 import '../../core/widgets/async_view.dart';
 import '../../core/widgets/common.dart';
 import '../../data/github/models/models.dart';
+import '../offline/offline_providers.dart';
 import 'pull_screen.dart';
 import 'pulls_providers.dart';
 
@@ -29,6 +30,13 @@ class _PullsTabState extends ConsumerState<PullsTab> {
   Widget build(BuildContext context) {
     final key = (repo: widget.repo, state: _state);
     final split = SplitView.isActive(context);
+    SplitView.autoSelect(
+      context,
+      current: _selected,
+      first: ref.watch(pullListProvider(key)).value?.firstOrNull?.number,
+      enabled: !ref.watch(dataSaverProvider),
+      select: (n) => setState(() => _selected ??= n),
+    );
     return SplitView(
       placeholder: 'Select a pull request',
       master: Column(
@@ -50,7 +58,16 @@ class _PullsTabState extends ConsumerState<PullsTab> {
               value: ref.watch(pullListProvider(key)),
               onRetry: () => ref.invalidate(pullListProvider(key)),
               data: (pulls) => pulls.isEmpty
-                  ? const EmptyView(icon: Icons.merge_type, message: 'No pull requests.')
+                  ? EmptyView(
+                      icon: Icons.merge_type,
+                      message: _state == 'open' ? 'No open pull requests.' : 'No pull requests.',
+                      action: _state == 'open'
+                          ? FilledButton.tonal(
+                              onPressed: () => setState(() => _state = 'closed'),
+                              child: const Text('Show closed'),
+                            )
+                          : null,
+                    )
                   : RefreshIndicator(
                       onRefresh: () => ref.refresh(pullListProvider(key).future),
                       child: ListView.builder(
@@ -107,13 +124,12 @@ class PullStateIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = DiffColors.of(context);
-    final scheme = Theme.of(context).colorScheme;
+    final c = StatusColors.from(context);
     final (icon, color) = switch (state) {
-      PullState.open => (Icons.merge_type, c.addFg),
-      PullState.draft => (Icons.edit_note, scheme.outline),
-      PullState.merged => (Icons.merge, Colors.purple),
-      PullState.closed => (Icons.cancel_outlined, c.delFg),
+      PullState.open => (Icons.merge_type, c.success),
+      PullState.draft => (Icons.edit_note, c.neutral),
+      PullState.merged => (Icons.merge, c.merged),
+      PullState.closed => (Icons.cancel_outlined, c.failure),
     };
     return Icon(icon, color: color);
   }

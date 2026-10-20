@@ -54,6 +54,20 @@ abstract final class Routes {
   static String changedSince(RepoRef r, {String? ref, String? base}) =>
       '${_base(r)}/since${_q({'ref': ref, 'base': base})}';
 
+  /// The in-app screen for a github.com link to a repo, pull request or
+  /// commit, or null when the app has no screen for it (issues, wikis…).
+  static String? fromGitHubUrl(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null || !(uri.host == 'github.com' || uri.host == 'www.github.com')) return null;
+    final s = uri.pathSegments.where((p) => p.isNotEmpty).toList();
+    if (s.length < 2) return null;
+    final r = (owner: s[0], name: s[1]);
+    if (s.length == 2) return repo(r);
+    if (s.length >= 4 && s[2] == 'pull' && int.tryParse(s[3]) != null) return pull(r, int.parse(s[3]));
+    if (s.length >= 4 && s[2] == 'commit' && RegExp(r'^[0-9a-f]{7,40}$').hasMatch(s[3])) return commit(r, s[3]);
+    return null;
+  }
+
   static String terminalSession(String hostId) => '$terminal/$hostId';
   static String hostEdit(String? hostId) => '$terminal/edit${_q({'id': hostId})}';
 }
