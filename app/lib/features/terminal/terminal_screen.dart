@@ -92,7 +92,11 @@ class _TerminalScreenState extends ConsumerState<TerminalScreen> {
     if (session == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const EmptyView(icon: Icons.dns_outlined, message: 'Host not found.'),
+        body: EmptyView(
+          icon: Icons.dns_outlined,
+          message: 'Host not found. It may have been deleted.',
+          action: FilledButton.tonal(onPressed: () => context.go(Routes.terminal), child: const Text('Back to hosts')),
+        ),
       );
     }
     final buttons = ref.watch(customCommandsProvider).where((c) => c.target == CommandTarget.ssh).toList();

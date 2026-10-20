@@ -14,6 +14,7 @@
 - **Models:** hand-written immutable classes with `fromJson` and explicit casts. No codegen, which keeps the build simple for agents and CI.
 - **Providers:** declare them next to the feature that owns them (`*_providers.dart`). Use records as family keys. Prefer `autoDispose` unless state must survive navigation, and say why in a comment when it must.
 - **Async UI:** render `AsyncValue` with `AsyncView` (consistent loading, error and retry).
+- **Empty states:** use `EmptyView`, and give it an `action` when there's an obvious next step ("Show closed", "Browse repos"). `mascot: true` puts the cat in place of the icon; keep it to first run and calm "all clear / nothing yet" moments, never working screens or errors.
 - **Navigation:** always go through `Routes.*` builders, never string literals. Use `context.push` for drill-down and `go` for deep links.
 - **Layouts:** check `WindowSize` / `SplitView.isActive`; wrap list-style screens in `ReadableWidth`. Never assume a phone. When you measure text yourself (`TextPainter`), pass `textScaler: MediaQuery.textScalerOf(context)`, or large system text overflows.
 - **Secrets:** use `SecureStore` with keys from `StoreKeys`. Non-secrets go in `sharedPrefsProvider` via the `JsonPrefs` helpers.

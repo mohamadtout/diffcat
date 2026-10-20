@@ -81,7 +81,11 @@ void main() {
     );
     await expectLater(
       client.getJson('/user'),
-      throwsA(isA<GitHubException>().having((e) => e.isRateLimited, 'rate limited', isTrue)),
+      throwsA(
+        isA<GitHubException>()
+            .having((e) => e.isRateLimited, 'rate limited', isTrue)
+            .having((e) => e.signedOut, 'signed out', isFalse),
+      ),
     );
   });
 
@@ -116,5 +120,6 @@ void main() {
         .then<Object?>((_) => null, onError: (Object e) => e);
     expect(error, isA<GitHubException>().having((e) => e.isRateLimited, 'isRateLimited', isTrue));
     expect(error.toString(), allOf(contains('60 requests'), contains('Sign in')));
+    expect((error! as GitHubException).signedOut, isTrue);
   });
 }

@@ -61,9 +61,12 @@ class DownloadsScreen extends ConsumerWidget {
               message: 'Offline storage is unavailable on this device.',
             )
           : repos.isEmpty
-          ? const EmptyView(
+          ? EmptyView(
               icon: Icons.download_for_offline_outlined,
-              message: 'Nothing downloaded yet.\nOpen a repo and tap the download button to read it offline.',
+              mascot: true,
+              title: 'Nothing downloaded yet',
+              message: 'Open a repo and tap its download button to read it on a plane, a train or a slow network.',
+              action: FilledButton.tonal(onPressed: () => context.go(Routes.repos), child: const Text('Browse repos')),
             )
           : ReadableWidth(
               builder: (sides) => ListView(

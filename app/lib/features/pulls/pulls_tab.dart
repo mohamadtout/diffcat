@@ -50,7 +50,16 @@ class _PullsTabState extends ConsumerState<PullsTab> {
               value: ref.watch(pullListProvider(key)),
               onRetry: () => ref.invalidate(pullListProvider(key)),
               data: (pulls) => pulls.isEmpty
-                  ? const EmptyView(icon: Icons.merge_type, message: 'No pull requests.')
+                  ? EmptyView(
+                      icon: Icons.merge_type,
+                      message: _state == 'open' ? 'No open pull requests.' : 'No pull requests.',
+                      action: _state == 'open'
+                          ? FilledButton.tonal(
+                              onPressed: () => setState(() => _state = 'closed'),
+                              child: const Text('Show closed'),
+                            )
+                          : null,
+                    )
                   : RefreshIndicator(
                       onRefresh: () => ref.refresh(pullListProvider(key).future),
                       child: ListView.builder(

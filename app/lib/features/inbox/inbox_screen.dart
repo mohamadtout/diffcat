@@ -32,20 +32,11 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
     if (!ref.watch(isSignedInProvider)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Inbox')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const EmptyView(
-                  icon: Icons.inbox_outlined,
-                  message: 'Sign in to see pull requests waiting for your review, yours, and where you are mentioned.',
-                ),
-                FilledButton(onPressed: () => context.push(Routes.setup), child: const Text('Sign in')),
-              ],
-            ),
-          ),
+        body: EmptyView(
+          icon: Icons.inbox_outlined,
+          mascot: true,
+          message: 'Sign in to see pull requests waiting for your review, yours, and where you are mentioned.',
+          action: FilledButton(onPressed: () => context.push(Routes.setup), child: const Text('Sign in')),
         ),
       );
     }
@@ -97,12 +88,14 @@ class _InboxScreenState extends ConsumerState<InboxScreen> {
                   child: r.items.isEmpty
                       ? ListView(
                           children: [
-                            EmptyView(
-                              icon: _section.icon,
-                              message: _section == InboxSection.reviewRequested
-                                  ? 'Nothing waiting for your review.'
-                                  : 'No open pull requests here.',
-                            ),
+                            _section == InboxSection.reviewRequested
+                                ? const EmptyView(
+                                    icon: Icons.done_all,
+                                    mascot: true,
+                                    title: 'All clear',
+                                    message: 'Nothing waiting for your review.',
+                                  )
+                                : EmptyView(icon: _section.icon, message: 'No open pull requests here.'),
                           ],
                         )
                       : ReadableWidth(

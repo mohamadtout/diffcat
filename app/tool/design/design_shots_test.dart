@@ -244,6 +244,9 @@ void main() {
           await tester.pumpWidget(RepaintBoundary(key: _boundary, child: env.app()));
           await settle(tester);
           final container = ProviderScope.containerOf(tester.element(find.byType(MaterialApp)));
+          // Decode the mascot up front: an image still loading would be missing from the shot.
+          final element = tester.element(find.byType(MaterialApp));
+          await tester.runAsync(() => precacheImage(const AssetImage('assets/mascot/cat.png'), element));
           final router = container.read(routerProvider);
           BuildContext ctx() => tester.element(find.byType(Scaffold).last);
 

@@ -18,3 +18,13 @@ largest.
 - [ ] Your own diff color profiles (if you had any) look as before; only the default "GitHub" preset changed.
 - [ ] Text fields: every form still looks right with the outlined style (host editor, dialogs, sheets, search
       fields), and nothing has a double border.
+
+## 2. Empty and error states, the cat
+
+- [ ] The cat looks sharp (not blurry or jagged) and calm in light and dark: signed-out home, Inbox "All clear",
+      Downloads "Nothing downloaded yet", signed-out Inbox. It should feel friendly, not like an ad.
+- [ ] In landscape on a phone the cat hides and the message and button stay visible.
+- [ ] Rate limit: signed out, use up the 60 requests (or wait for a real limit) and check the message shows the right
+      reset time in your time zone and "Sign in for 5,000 an hour" opens sign-in.
+- [ ] "Show closed" on a repo with no open PRs switches the filter; "Browse repos" goes to the repo list; "Back to
+      hosts" after deleting a host from another screen.

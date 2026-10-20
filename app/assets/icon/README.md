@@ -9,6 +9,9 @@ It is not the Octocat, because GitHub's logo policy doesn't allow that in app ic
 | `foreground.*` / `background.*` | Android adaptive icon (art sits inside the 66dp safe circle) |
 | `monochrome.*` | Android 13+ themed icon (shape carried by alpha) |
 
+`assets/mascot/cat.png` (the in-app cat for first run and empty states, tinted by the theme) is `monochrome.png`
+cropped to the drawing and scaled to 288 px wide; redo it after changing the icon.
+
 The SVGs are the source, written by `generate_svgs.py`. To change the icon:
 
 ```bash

@@ -6,6 +6,10 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Empty screens offer the next step: "Show closed" for a repo without open pull requests, "Browse repos" when
+  nothing is downloaded, "Back to hosts" for a deleted SSH host. Hitting GitHub's hourly limit says when it resets,
+  and signed out offers signing in (5,000 requests an hour instead of 60). The Diffcat cat appears on first run, when
+  nothing waits for your review, and when nothing is downloaded.
 - Colors: the app's blue is now the brand blue instead of a muted slate, the "Offline" chip is teal instead of pink,
   and CI, pull request and review states keep their colors when you change diff colors. Changed diff lines have a bar
   at their left edge, removed and added lines stand out more in dark mode, and line numbers are easier to read. Text
