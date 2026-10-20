@@ -58,3 +58,15 @@ largest.
 - [ ] Blame on a phone: "2d LK" style labels are clear enough; tapping one still opens the commit. On a tablet the
       login is shown as before.
 - [ ] PR header: a very long title folds to two lines; the Overview tab shows it in full.
+
+## 6. Merge readiness
+
+- [ ] On a real repo, open PRs in each state and check the line under the title matches what github.com shows:
+      ready, failing checks, running checks (it doesn't refresh by itself yet: pull to refresh or reopen), conflicts
+      (`mergeable_state: dirty`), changes requested, required reviews missing (`blocked`), draft.
+- [ ] GitHub sometimes answers `mergeable_state: unknown` right after a push: the line says "Checking…"; reopening
+      later should resolve it.
+- [ ] Repos with many checks (more than 100) or with only commit statuses (old CI integrations, not check runs): the
+      card may undercount. Decide whether to also read `GET …/commits/{sha}/status`.
+- [ ] Offline (downloaded PR, offline mode): the line says "Checks unavailable", nothing errors.
+- [ ] Rate limit: each open PR costs one more request (check runs); fine signed in, worth noticing signed out.

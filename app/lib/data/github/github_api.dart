@@ -165,6 +165,13 @@ query($owner: String!, $name: String!, $ref: String!, $path: String!) {
   Future<GhPull> pull(RepoRef r, int number) async =>
       GhPull.fromJson(await client.getJson('${_r(r)}/pulls/$number') as Map<String, dynamic>);
 
+  /// Checks on commit [sha] (Actions jobs and other apps' checks), up to 100.
+  Future<List<GhCheckRun>> checkRuns(RepoRef r, String sha) async {
+    final j =
+        await client.getJson('${_r(r)}/commits/$sha/check-runs', query: {'per_page': 100}) as Map<String, dynamic>;
+    return [for (final c in j['check_runs'] as List<dynamic>) GhCheckRun.fromJson(c as Map<String, dynamic>)];
+  }
+
   Future<List<GhFileChange>> pullFiles(RepoRef r, int number) =>
       client.getAll('${_r(r)}/pulls/$number/files', parse: GhFileChange.fromJson, maxPages: 30);
 

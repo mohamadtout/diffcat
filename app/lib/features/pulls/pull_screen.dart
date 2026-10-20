@@ -14,6 +14,7 @@ import '../diff/diff_parser.dart';
 import '../diff/diff_view.dart';
 import '../offline/download_button.dart';
 import '../offline/offline_providers.dart';
+import 'merge_readiness_view.dart';
 import 'pulls_providers.dart';
 import 'pulls_tab.dart';
 import 'review.dart';
@@ -86,7 +87,15 @@ class PullView extends ConsumerWidget {
               ),
             ),
             if (_canReview(ref, pull, repo))
-              ReviewBar(pullKey: key, headSha: pull.headSha)
+              Builder(
+                builder: (context) {
+                  final tabs = DefaultTabController.of(context);
+                  return ListenableBuilder(
+                    listenable: tabs,
+                    builder: (_, _) => ReviewBar(pullKey: key, headSha: pull.headSha, onDiff: tabs.index == 1),
+                  );
+                },
+              )
             else if (_reviewableOnline(ref, pull) && ref.watch(isOfflineProvider(repo)))
               _OfflineReviewNote(repo: repo),
           ],
@@ -263,12 +272,7 @@ class _PullHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               // Two short blocks above every tab, so the diff keeps the screen; Overview has the full title.
               children: [
-                Text(
-                  pull.title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-                ),
+                _FoldedTitle(pull.title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -286,6 +290,9 @@ class _PullHeader extends StatelessWidget {
                     ],
                   ],
                 ),
+                // "Is this safe to merge?" on every tab; tapping it opens Overview.
+                if (pull.state == PullState.open || pull.state == PullState.draft)
+                  MergeReadinessLine(repo: repo, pull: pull),
               ],
             ),
           ),
@@ -294,6 +301,31 @@ class _PullHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The PR title, two lines at most so the diff keeps the screen; a tap shows all of it.
+class _FoldedTitle extends StatefulWidget {
+  const _FoldedTitle(this.title, {this.style});
+  final String title;
+  final TextStyle? style;
+
+  @override
+  State<_FoldedTitle> createState() => _FoldedTitleState();
+}
+
+class _FoldedTitleState extends State<_FoldedTitle> {
+  var _open = false;
+
+  @override
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: () => setState(() => _open = !_open),
+    child: Text(
+      widget.title,
+      maxLines: _open ? null : 2,
+      overflow: _open ? null : TextOverflow.ellipsis,
+      style: widget.style,
+    ),
+  );
 }
 
 class _Overview extends StatelessWidget {
@@ -307,13 +339,12 @@ class _Overview extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        SelectableText(pull.title, style: theme.textTheme.titleLarge),
-        const SizedBox(height: 4),
         Text(
           '${pull.author.login} wants to merge ${pull.headRef} into ${pull.baseRef}',
           style: theme.textTheme.bodyMedium,
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        if (pull.state == PullState.open || pull.state == PullState.draft) MergeReadinessCard(repo: repo, pull: pull),
         ReviewersSummary(pullKey: (repo: repo, number: pull.number)),
         Row(
           children: [

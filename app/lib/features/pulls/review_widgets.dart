@@ -232,10 +232,13 @@ class _ComposerState extends State<_Composer> {
 
 /// Bottom bar of a pull request you can review: pending count and Review….
 class ReviewBar extends ConsumerWidget {
-  const ReviewBar({super.key, required this.pullKey, required this.headSha});
+  const ReviewBar({super.key, required this.pullKey, required this.headSha, this.onDiff = true});
 
   final PullKey pullKey;
   final String headSha;
+
+  /// Whether the diff is showing: the "Tap a line" hint only makes sense there.
+  final bool onDiff;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -252,7 +255,11 @@ class ReviewBar extends ConsumerWidget {
             children: [
               Expanded(
                 child: Text(
-                  n == 0 ? 'Tap a line to comment' : '$n pending comment${n == 1 ? '' : 's'}',
+                  n > 0
+                      ? '$n pending comment${n == 1 ? '' : 's'}'
+                      : onDiff
+                      ? 'Tap a line to comment'
+                      : '',
                   style: theme.textTheme.bodyMedium,
                   overflow: TextOverflow.ellipsis,
                 ),

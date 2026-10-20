@@ -75,6 +75,7 @@ Dependencies only point downwards: features may use `core` and `data`, but `core
 | branches / tags | `GET …/branches`, `GET …/tags` | Ref picker, console, poller |
 | `git blame` | GraphQL `repository.object(expression:).blame(path:)` (token required) | File viewer blame |
 | PRs | `GET …/pulls`, `…/pulls/{n}`, `…/files`, `…/commits` | PRs tab, PR screen, poller |
+| Checks | `GET …/commits/{sha}/check-runs` (head commit of a PR) | PR merge readiness (not saved offline) |
 | Inbox | `GET /search/issues?q=is:pr is:open archived:false review-requested:@me` (and `author:`, `mentions:`, `assignee:`) | Inbox tab, review-request notifications |
 | GitHub Actions | `GET …/actions/workflows`, `…/actions/runs` (or `…/workflows/{id}/runs`), `…/runs/{id}`, `…/runs/{id}/jobs`, `…/jobs/{id}`, `…/jobs/{id}/logs` (redirects to a download link, fetched like a tarball); a workflow's inputs come from its file (`contents`, parsed in `workflow_dispatch.dart`); `POST …/workflows/{id}/dispatches`, `…/runs/{id}/rerun`, `…/rerun-failed-jobs`, `…/cancel` | Actions tab, run and job log screens |
 | Reviews | `GET …/pulls/{n}/comments`, `…/reviews`; `POST …/reviews` (with line comments), `…/comments`, `…/comments/{id}/replies` | PR screen (signed in, online) |

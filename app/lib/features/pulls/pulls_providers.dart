@@ -57,3 +57,10 @@ final pullFilesProvider = FutureProvider.autoDispose.family<List<GhFileChange>, 
 final pullCommitsProvider = FutureProvider.autoDispose.family<List<GhCommit>, PullKey>(
   (ref, k) => ref.watch(githubApiProvider).pullCommits(k.repo, k.number),
 );
+
+typedef CommitKey = ({RepoRef repo, String sha});
+
+/// The checks on a commit, for a pull request's merge readiness.
+final checkRunsProvider = FutureProvider.autoDispose.family<List<GhCheckRun>, CommitKey>(
+  (ref, k) => ref.watch(githubApiProvider).checkRuns(k.repo, k.sha),
+);

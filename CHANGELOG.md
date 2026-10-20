@@ -6,6 +6,10 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- Pull requests say whether they're ready to merge: one line under the title on every tab ("Ready to merge · 3
+  passed", "Checks failing", "Has conflicts", "Changes requested", "Checks running", "Needs approval"), and a card on
+  Overview with the checks (tap for Actions), conflicts with the base branch and approvals. The review bar's "Tap a
+  line to comment" shows only on Files.
 - Diffs come first: a commit's header is shorter (the body folds to two lines with **More**, the SHA shows once,
   actions sit in one row of chips) and the pull request header is two lines, so code shows on the first screen.
   With a large system font, code grows less than the rest of the app (it has its own size setting), and blame on
