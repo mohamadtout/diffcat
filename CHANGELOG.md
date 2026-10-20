@@ -6,6 +6,8 @@ Releases are tagged `vX.Y.Z` on `main` and published as GitHub releases with the
 
 ## Unreleased
 
+- `make design-shots`: screenshots of every screen on demo data (phone light and dark, tablet, large text) in
+  `app/build/design/`, for reviewing the UI without a device. No app changes.
 - `make run DEVICE=<id>` picks the device, like the test targets, and `MODE=profile` or `MODE=release` builds
   in that mode (debug by default). No app changes.
 - GitHub Actions: a new **Actions** tab on every repo lists workflow runs (filter by workflow) with their jobs,

@@ -1,5 +1,5 @@
 # One-word entry points for humans and agents. `make check` before every PR.
-.PHONY: setup check fmt run apk release-apk aab ipa no-team-id device-test ssh-test offline-test store-screenshots store-frames
+.PHONY: setup check fmt run apk release-apk aab ipa no-team-id device-test ssh-test offline-test store-screenshots store-frames design-shots
 
 setup:            ## Install dependencies
 	cd app && flutter pub get
@@ -37,6 +37,9 @@ store-screenshots: ## Store screenshots on demo data: make store-screenshots DEV
 	rm -rf app/build/store/raw/$(NAME)  # a failed or partial run must not leave older shots to be framed
 	cd app && SCREENSHOT_DIR=build/store/raw/$(NAME) flutter drive --driver=test_driver/integration_test.dart \
 		--target=integration_test/store_screenshots_test.dart $(if $(DEVICE),-d $(DEVICE))
+
+design-shots:     ## UI screenshots on demo data, no device needed → app/build/design/<size>-<theme>/ (see index.md there)
+	cd app && flutter test tool/design/design_shots_test.dart
 
 store-frames:     ## Captioned store images from the raw screenshots → store/screenshots/
 	cd app && flutter test tool/store/frame_test.dart
