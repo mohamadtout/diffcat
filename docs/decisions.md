@@ -157,3 +157,10 @@ repo tab's visibility, `TickerMode` and the app's lifecycle) and only signed in:
 build signed out. Unchanged responses are 304s, which don't count against the rate limit. Job logs are plain text
 behind a redirect, so they're fetched like tarballs and never saved offline; GitHub only has a job's log once the job
 has finished, so the log screen waits for that instead of asking early.
+
+### D19: Design direction from the 2026-10 design review
+[design-review.md](design-review.md) plans the redesign; the owner settled its open questions. Code, line numbers and
+the blame gutter may scale less than UI text with large system text (code size has its own setting), so a phone at
+1.5× still shows useful code. Repo sections stay in a bottom navigation bar on phones for reach; wider windows use top
+tabs. Markdown may come from a package, but a lean hand-made renderer (publishable later as a pub package) is preferred
+if it does the job better. The cat mascot can appear in first run and a few empty states, never on working screens.

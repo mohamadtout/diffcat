@@ -17,7 +17,7 @@ app:
 - *Critique:* the native-platform method, "design review only". Its detector, browser overlay, live mode and
   dual sub-agent setup read HTML in a browser and **do not apply to Flutter**, so they were skipped. So were the
   snapshot it saves to `.impeccable/` and its closing questions, because only this file is committed. The questions
-  are in [§ 7](#7-questions-for-the-owner).
+  and the owner's answers are in [§ 7](#7-owner-decisions).
 - *Audit:* the native audit (`audit.native.md`), scored against the skill's Android reference. Web-only checks in
   the skill (CSS, bundle size, `px` units, hover states, Lighthouse) were skipped: they don't map to Flutter.
 
@@ -156,6 +156,7 @@ L (a week or more). Ordered by impact, then by effort.
 | 12 | Repo navigation idiom consistent across sizes | M | M |
 | 13 | Render PR/commit Markdown | M | M |
 | 14 | Labels for ambiguous app bar icons | L | S |
+| 15 | The cat in first run and a few empty states | L | S |
 
 **1. Diff-first commit and PR layout.**
 
@@ -236,8 +237,9 @@ L (a week or more). Ordered by impact, then by effort.
 - **Files:** `diff/diff_view.dart:394`, `files/file_view_screen.dart:288`, `diff/diff_rows.dart`.
 - **Flutter / M3 approach:** `TextScaler.clamp`, plus a `LayoutBuilder` that switches the blame gutter style below a
   width.
-- **Risk:** **this touches the brief's "works at 2× text" constraint.** It is defensible because code size is
-  user-set (Settings → Code view), but it needs the owner's decision. UI text keeps full scaling.
+- **Risk:** this touches the brief's "works at 2× text" constraint. **Owner decision (§ 7): approved.** Code and
+  gutters may grow less than UI text, because code size has its own setting (Settings → Code view). UI text keeps
+  full scaling, and the 2× sweep still has to pass.
 
 **7. One empty/error vocabulary with actions.**
 
@@ -314,14 +316,14 @@ L (a week or more). Ordered by impact, then by effort.
 **12. Repo navigation idiom consistent across sizes.**
 
 - **What:** on medium and expanded widths, show repo sections as a `TabBar` (secondary tabs) under the app bar
-  instead of a `SegmentedButton`. On compact width keep the `NavigationBar`, or move to the same `TabBar` so the
-  global bar stays visible. That second choice is the owner's (§ 7).
+  instead of a `SegmentedButton`. **Owner decision (§ 7): on compact width keep the bottom `NavigationBar`**, which
+  is easier to reach on tall phones.
 - **Why:** a segmented button is for choosing a value, not for navigation, and phone and tablet use different
   patterns.
 - **Files:** `repo/repo_screen.dart:166–190`.
 - **Flutter / M3 approach:** `TabBar.secondary`.
-- **Risk:** reach. A top `TabBar` is further from the thumb than the bottom `NavigationBar`, which matters for the
-  brief's one-handed use. Decide with § 7.
+- **Risk:** phone and tablet still differ (bottom bar vs top tabs). That is deliberate: each suits how the device is
+  held. On phones the global destinations stay one Back away, as today.
 
 **13. Render PR/commit Markdown.**
 
@@ -329,9 +331,19 @@ L (a week or more). Ordered by impact, then by effort.
   bodies.
 - **Why:** raw `- ` lists and backticks look unfinished on the screen people read most.
 - **Files:** `pulls/pull_screen.dart:305`, `pulls/review_widgets.dart`, `commits/commit_screen.dart`.
-- **Flutter / M3 approach:** a small pure-Dart renderer for the common subset (paragraphs, lists, code, links,
-  emphasis) producing `TextSpan`s, unit-tested like `diff_parser.dart`.
-- **Risk:** **"No new heavy dependencies".** A Markdown package would be the fast route; the owner decides (§ 7).
+- **Flutter / M3 approach (owner decision, § 7):** a package is acceptable, but build our own if it can be leaner
+  and better suited than what's published. Phase 5 starts with a short comparison:
+  - **Off-the-shelf widget packages:** check their current maintenance status, size and selection support first;
+    the Flutter team's `flutter_markdown` was discontinued and has community forks.
+  - **Our own renderer:** GitHub-flavoured subset (paragraphs, headings, lists, task lists, code spans and fenced
+    blocks, links, emphasis, quotes, tables later) to `TextSpan`s and a few widgets. Pure Dart parsing (on the
+    `markdown` parser package or hand-written), code in the user's code font, links through `url_launcher` (already a
+    dependency), and text selectable. Unit-tested like `diff_parser.dart`.
+
+  Pick our own if it is smaller and handles GitHub's dialect and selection better, and design its API so it can be
+  published as a pub package later (no app imports, its own tests and README in a folder like `packages/`).
+- **Risk:** "no new heavy dependencies": a package must stay small, and our own renderer has to cover GitHub's
+  dialect well enough that PR descriptions never look worse than plain text.
 
 **14. Labels for ambiguous app bar icons.**
 
@@ -345,6 +357,20 @@ L (a week or more). Ordered by impact, then by effort.
 - **Flutter / M3 approach:** `MenuAnchor` items with labels, or a `FilledButton.tonalIcon` with a short label
   where space allows.
 - **Risk:** none.
+
+**15. The cat in first run and a few empty states.**
+
+- **What (owner decision, § 7: yes, if it doesn't get in the way of work):** use the mascot's monochrome drawing
+  (`app/assets/icon/monochrome.svg`) in place of the generic icon in a few calm moments only: the signed-out home and
+  first run, "Inbox zero" (nothing waiting for review), and "Nothing downloaded yet". Never on working screens
+  (diffs, lists with content, the terminal, dialogs, errors).
+- **Why:** the brand is nearly invisible inside the app (problem 3), and the brief's tone is "a bit friendly".
+- **Files:** `repos/signed_out_home.dart`, `inbox/inbox_screen.dart`, `offline/downloads_screen.dart`,
+  `core/widgets/async_view.dart` (an optional `illustration` on `EmptyView`), `pubspec.yaml` (asset).
+- **Flutter / M3 approach:** the PNG (or SVG rasterised at build time, so no new SVG dependency) tinted with
+  `ColorFilter.mode(scheme.outline, BlendMode.srcIn)`, at most 96 dp, sharing `EmptyView`'s layout so nothing shifts.
+- **Risk:** must stay small and quiet at 320 dp and 2× text; hide it when the screen is short (landscape phone) so
+  the message and action stay in view.
 
 ---
 
@@ -469,7 +495,7 @@ All phases keep `test/widgets/screen_sizes_test.dart` green. Phases that add or 
 - **Docs:** `conventions.md` (a "Design tokens" section: no colour literals outside `core/theme`, use
   `StatusColors`/`AppSpace`), `decisions.md` (why fidelity, why teal tertiary).
 
-**Phase 2: `feature/state-views`.** Changes 7 and 9.
+**Phase 2: `feature/state-views`.** Changes 7, 9 and 15.
 
 - **Code:** `EmptyView(title, action)`, a richer `ErrorView` (rate-limit actions and countdown, not-found layout
   shared with the repo screen), each empty state with its action, the folders empty state converted, the host-key
@@ -503,26 +529,29 @@ All phases keep `test/widgets/screen_sizes_test.dart` green. Phases that add or 
   - The sweep stays green.
 - **Docs:** `features.md` (diff screen layout), `decisions.md` (the code-text clamp and why it respects the 2× rule),
   `architecture.md` only if a widget moves layer.
-- **Owner decision first:** the text clamp (§ 7).
+- **Owner decision:** the text clamp is approved (§ 7).
 
 **Phase 5: `feature/pr-merge-readiness`.** Changes 2 and 13.
 
 - **Code:** a check-runs/status endpoint in `data/github/` (keyed by the head SHA), the `mergeable_state` field, a
-  merge-readiness card and a header line, a Markdown subset renderer (pure Dart), and `ReviewBar` only on the Files
-  tab.
+  merge-readiness card and a header line, Markdown rendering (package or our own renderer, chosen by the comparison in
+  change 13), and `ReviewBar` only on the Files tab.
 - **Tests:**
   - Unit tests for the checks summary model and the Markdown renderer (`test/features/…`).
   - A `GitHubClient` scripted-adapter test for the new endpoint.
   - `DemoGitHub` gains the check-runs route (or the sweep fails on unknown calls).
   - `review_test.dart`: the bar only shows on Files.
-- **Docs:** `architecture.md` (the new endpoint), `features.md`, `docs/notifications.md` if the poller ever uses
-  checks (it shouldn't in this phase), and `offline/downloader.dart` docs if offline copies save checks.
+- **Docs:** `architecture.md` (the new endpoint), `features.md`, `decisions.md` (package vs own renderer, with the
+  comparison), `docs/notifications.md` if the poller ever uses checks (it shouldn't in this phase), and
+  `offline/downloader.dart` docs if offline copies save checks. If the Markdown phase grows, split it into its own
+  `feature/markdown` PR.
 
 **Phase 6: `feature/tablet-panes`.** Changes 10 and 12.
 
 - **Code:** a `SplitView` `initialSelection`, auto-select in inbox, commits, PRs and runs (skipped in data-saver
   mode), PR Overview beside Files and run jobs beside the log on expanded width, `ReadableWidth` on console,
-  changed-since and the run header, a 48 dp collapse handle, repo sections as `TabBar.secondary` on medium and wider.
+  changed-since and the run header, a 48 dp collapse handle, repo sections as `TabBar.secondary` on medium and wider
+  (phones keep the bottom `NavigationBar`).
 - **Tests:**
   - `split_view_test.dart`: initial selection and the 48 dp handle hit area.
   - `screen_sizes_test.dart`: add any new pane routes. It already covers foldable, tablet and desktop.
@@ -635,13 +664,15 @@ The brand is nearly absent: no cat outside the launcher icon, and the seed blue 
 
 ---
 
-## 7. Questions for the owner
+## 7. Owner decisions
 
-1. **Code text scaling (change 6):** may code and gutters clamp the system text scale at about 1.15× (code size has
-   its own setting), or must code follow 2× too?
-2. **Repo navigation (change 12):** keep the bottom `NavigationBar` for repo sections on phones (better reach, hides
-   the global bar), or move to top tabs everywhere (consistent, keeps global navigation)?
-3. **Markdown (change 13):** write a small pure-Dart renderer, or accept a Markdown package despite "no new heavy
-   dependencies"?
-4. **Brand presence:** should the cat appear in empty states and first run (signed-out home), or stay on the
-   launcher icon only?
+Asked in the first version of this review; answered by the owner on 2026-10-20.
+
+1. **Code text scaling (change 6):** approved. Code, line numbers and the blame gutter may grow less than UI text
+   (clamped system text scale); code size stays its own setting.
+2. **Repo navigation (change 12):** keep the bottom `NavigationBar` for repo sections on phones; it's better for
+   reach, especially on tall phones. Tablets and wider get secondary top tabs instead of the segmented button.
+3. **Markdown (change 13):** a package is fine, but if a hand-made renderer can be leaner and better suited, build it,
+   with an API that could later be published as a pub package.
+4. **Brand presence (change 15):** yes, the cat may appear where it makes sense and doesn't disturb the work-focused
+   layout: first run and a few empty states, never on working screens.
