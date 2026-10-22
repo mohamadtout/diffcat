@@ -17,9 +17,16 @@ Every screenshot is the real app running on **demo data**: a made-up `demo/payme
 people, served by a fake GitHub (`app/test/support/demo_github.dart`). No real account, token or host appears.
 
 ```bash
-make store-screenshots DEVICE=<simulator or emulator id> NAME=<folder>   # raw shots → app/build/store/raw/<folder>/
-make store-frames                                                         # captions + device frame → store/screenshots/
+make store-screenshots                                   # all six devices below, one at a time → app/build/store/raw/<folder>/
+make store-screenshots DEVICES="android-phone=Shots_Phone,ipad-13=iPad Pro 13-inch (M5)"   # just these
+make store-screenshot DEVICE=<id> NAME=<folder>          # one device that is already running
+make store-frames                                        # captions + device frame → store/screenshots/
 ```
+
+`DEVICES` is a comma-separated list of `NAME=target`, where `NAME` is a folder from the table below and `target` is an
+Android AVD name, an iOS simulator name or UDID, or the id of a connected device. [take_screenshots.sh](take_screenshots.sh)
+goes through them **sequentially**: it boots the emulator or simulator, shoots, and shuts it down before the next one
+starts (several Android emulators at once exhaust memory). A failed device is reported at the end and doesn't stop the rest.
 
 Folder names the frame tool expects, and the devices that produce the right sizes:
 
@@ -32,10 +39,10 @@ Folder names the frame tool expects, and the devices that produce the right size
 | `android-tablet-7` | Medium tablet emulator (`Shots_Tablet7`) | 1200 × 1920 | Play 7", same size |
 | `android-tablet-10` | Pixel Tablet emulator (`Shots_Tablet10`) | 1600 × 2560 | Play 10", same size |
 
-- **Android tablets are shot in landscape** (in portrait they're narrower than the 840dp split view). Before the run:
-  `adb -s <id> shell settings put system accelerometer_rotation 0 && adb -s <id> shell settings put system user_rotation 1`.
-- **Start the emulators with `-gpu host`** (`emulator -avd Shots_Phone -gpu host`). With less than about 5 GB of free
-  memory the emulator otherwise falls back to software rendering, and the app dies mid-run ("Service has disappeared").
+- **Android tablets are shot in landscape** (in portrait they're narrower than the 840dp split view); the script sets
+  the rotation itself. By hand: `adb -s <id> shell settings put system accelerometer_rotation 0 && adb -s <id> shell settings put system user_rotation 1`.
+- **Emulators start with `-gpu host`**, which the script does. With less than about 5 GB of free memory the emulator
+  otherwise falls back to software rendering, and the app dies mid-run ("Service has disappeared").
 
 The captions and each store's pick live in `app/tool/store/frame_test.dart`. The App Store takes up to 10 screenshots
 per device and Google Play up to 8, so the App Store gets two more:

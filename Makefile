@@ -1,5 +1,5 @@
 # One-word entry points for humans and agents. `make check` before every PR.
-.PHONY: setup check fmt run apk release-apk aab ipa no-team-id device-test ssh-test offline-test store-screenshots store-frames design-shots
+.PHONY: setup check fmt run apk release-apk aab ipa no-team-id device-test ssh-test offline-test store-screenshots store-screenshot store-frames design-shots
 
 setup:            ## Install dependencies
 	cd app && flutter pub get
@@ -33,7 +33,13 @@ offline-test:     ## Real offline download of a small public repo on a device: m
 	cd app && flutter drive --driver=test_driver/integration_test.dart \
 		--target=integration_test/offline_test.dart $(if $(DEVICE),-d $(DEVICE))
 
-store-screenshots: ## Store screenshots on demo data: make store-screenshots DEVICE=<id> NAME=<folder, see store/README.md>
+# The six devices store/README.md lists, shot one after the other (an emulator is shut down before the next boots).
+STORE_DEVICES ?= iphone-6.3=iPhone 17 Pro,iphone-6.9=iPhone 17 Pro Max,ipad-13=iPad Pro 13-inch (M5),android-phone=Shots_Phone,android-tablet-7=Shots_Tablet7,android-tablet-10=Shots_Tablet10
+
+store-screenshots: ## Store screenshots, devices one at a time: make store-screenshots [DEVICES="NAME=target,NAME=target"] (default: all six, store/README.md)
+	store/take_screenshots.sh "$(or $(DEVICES),$(STORE_DEVICES))"
+
+store-screenshot: ## One device, already running: make store-screenshot DEVICE=<id> NAME=<folder, see store/README.md>
 	rm -rf app/build/store/raw/$(NAME)  # a failed or partial run must not leave older shots to be framed
 	cd app && SCREENSHOT_DIR=build/store/raw/$(NAME) flutter drive --driver=test_driver/integration_test.dart \
 		--target=integration_test/store_screenshots_test.dart $(if $(DEVICE),-d $(DEVICE))
